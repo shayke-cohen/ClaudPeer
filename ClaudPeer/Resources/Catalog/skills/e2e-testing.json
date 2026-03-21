@@ -1,0 +1,20 @@
+{
+  "catalogId": "e2e-testing",
+  "name": "End-to-End Testing",
+  "description": "User journeys across the full stack in realistic environments",
+  "category": "Testing & QA",
+  "icon": "map.fill",
+  "requiredMCPs": [
+    "playwright"
+  ],
+  "triggers": [
+    "e2e",
+    "end to end",
+    "smoke test"
+  ],
+  "tags": [
+    "ui",
+    "journey",
+    "automation"
+  ]
+}

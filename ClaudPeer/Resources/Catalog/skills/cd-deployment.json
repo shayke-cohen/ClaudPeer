@@ -1,0 +1,20 @@
+{
+  "catalogId": "cd-deployment",
+  "name": "CD Deployment",
+  "description": "Safe promotion from staging to production with observability",
+  "category": "DevOps & CI/CD",
+  "icon": "airplane.departure",
+  "requiredMCPs": [
+    "vercel"
+  ],
+  "triggers": [
+    "CD",
+    "deploy",
+    "release"
+  ],
+  "tags": [
+    "release",
+    "production",
+    "delivery"
+  ]
+}

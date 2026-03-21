@@ -1,0 +1,28 @@
+{
+  "catalogId": "minio",
+  "name": "MinIO",
+  "description": "S3-compatible object storage for self-hosted and hybrid clouds",
+  "category": "File & Storage",
+  "icon": "cylinder.and.needle",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-minio"
+    ],
+    "envKeys": [
+      "MINIO_ENDPOINT",
+      "MINIO_ACCESS_KEY",
+      "MINIO_SECRET_KEY"
+    ]
+  },
+  "popularity": 33000,
+  "tags": [
+    "s3",
+    "self-hosted",
+    "object-storage",
+    "kubernetes"
+  ],
+  "homepage": "https://min.io"
+}

@@ -1,0 +1,20 @@
+{
+  "catalogId": "code-architecture",
+  "name": "Code Architecture",
+  "description": "Module boundaries, coupling, and long-term maintainability",
+  "category": "Development",
+  "icon": "building.columns.fill",
+  "requiredMCPs": [
+    "sequential-thinking"
+  ],
+  "triggers": [
+    "architecture",
+    "modules",
+    "boundaries"
+  ],
+  "tags": [
+    "design",
+    "maintainability",
+    "systems"
+  ]
+}

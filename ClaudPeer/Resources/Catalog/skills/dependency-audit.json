@@ -1,0 +1,20 @@
+{
+  "catalogId": "dependency-audit",
+  "name": "Dependency Audit",
+  "description": "Evaluate third-party packages for risk, licenses, and updates",
+  "category": "Development",
+  "icon": "shippingbox.fill",
+  "requiredMCPs": [
+    "github"
+  ],
+  "triggers": [
+    "dependencies",
+    "supply chain",
+    "versions"
+  ],
+  "tags": [
+    "security",
+    "maintenance",
+    "licenses"
+  ]
+}

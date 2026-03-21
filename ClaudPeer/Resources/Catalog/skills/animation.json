@@ -1,0 +1,18 @@
+{
+  "catalogId": "animation",
+  "name": "UI Animation",
+  "description": "Motion that aids comprehension without harming performance",
+  "category": "Frontend",
+  "icon": "wind",
+  "requiredMCPs": [],
+  "triggers": [
+    "animation",
+    "motion",
+    "transitions"
+  ],
+  "tags": [
+    "motion",
+    "ux",
+    "performance"
+  ]
+}

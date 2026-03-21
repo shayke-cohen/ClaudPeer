@@ -1,0 +1,28 @@
+{
+  "catalogId": "dynamodb",
+  "name": "DynamoDB",
+  "description": "AWS DynamoDB tables, items, GSIs, and throughput metrics",
+  "category": "Databases",
+  "icon": "tablecells.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-dynamodb"
+    ],
+    "envKeys": [
+      "AWS_ACCESS_KEY_ID",
+      "AWS_SECRET_ACCESS_KEY",
+      "AWS_REGION"
+    ]
+  },
+  "popularity": 62000,
+  "tags": [
+    "nosql",
+    "aws",
+    "key-value",
+    "streams"
+  ],
+  "homepage": "https://aws.amazon.com/dynamodb"
+}

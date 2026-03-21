@@ -1,0 +1,26 @@
+{
+  "catalogId": "asana",
+  "name": "Asana",
+  "description": "Asana projects, tasks, sections, and workload views",
+  "category": "Productivity",
+  "icon": "list.bullet.rectangle.portrait.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-asana"
+    ],
+    "envKeys": [
+      "ASANA_ACCESS_TOKEN"
+    ]
+  },
+  "popularity": 44000,
+  "tags": [
+    "tasks",
+    "projects",
+    "teams",
+    "timeline"
+  ],
+  "homepage": "https://asana.com"
+}

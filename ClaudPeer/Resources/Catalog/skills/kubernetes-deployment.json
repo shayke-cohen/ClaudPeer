@@ -1,0 +1,20 @@
+{
+  "catalogId": "kubernetes-deployment",
+  "name": "Kubernetes Deployment",
+  "description": "Rollouts, resources, and cluster-safe configuration",
+  "category": "DevOps & CI/CD",
+  "icon": "k.circle.fill",
+  "requiredMCPs": [
+    "kubernetes"
+  ],
+  "triggers": [
+    "k8s",
+    "helm",
+    "deployment"
+  ],
+  "tags": [
+    "orchestration",
+    "cloud",
+    "reliability"
+  ]
+}

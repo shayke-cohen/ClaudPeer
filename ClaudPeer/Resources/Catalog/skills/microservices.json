@@ -1,0 +1,18 @@
+{
+  "catalogId": "microservices",
+  "name": "Microservices",
+  "description": "Service boundaries, contracts, and operational tradeoffs",
+  "category": "Backend",
+  "icon": "square.grid.4x3.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "microservices",
+    "soa",
+    "bounded context"
+  ],
+  "tags": [
+    "architecture",
+    "distributed",
+    "reliability"
+  ]
+}

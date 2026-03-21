@@ -1,0 +1,20 @@
+{
+  "catalogId": "regression-suite",
+  "name": "Regression Suite",
+  "description": "Curate automated checks that protect core user value",
+  "category": "Testing & QA",
+  "icon": "arrow.counterclockwise.circle.fill",
+  "requiredMCPs": [
+    "playwright"
+  ],
+  "triggers": [
+    "regression",
+    "nightly",
+    "smoke suite"
+  ],
+  "tags": [
+    "ci",
+    "stability",
+    "automation"
+  ]
+}

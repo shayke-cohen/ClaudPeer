@@ -1,0 +1,26 @@
+{
+  "catalogId": "pulumi",
+  "name": "Pulumi",
+  "description": "Pulumi stacks, previews, and cloud resource graph exploration",
+  "category": "Cloud & Infra",
+  "icon": "square.grid.3x3.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-pulumi"
+    ],
+    "envKeys": [
+      "PULUMI_ACCESS_TOKEN"
+    ]
+  },
+  "popularity": 28000,
+  "tags": [
+    "iac",
+    "typescript",
+    "go",
+    "python"
+  ],
+  "homepage": "https://www.pulumi.com"
+}

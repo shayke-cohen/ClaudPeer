@@ -1,0 +1,26 @@
+{
+  "catalogId": "copywriter",
+  "name": "Copywriter",
+  "description": "Copywriter for user-facing text, in-product messaging, and crisp changelog language that matches the product voice.",
+  "category": "Content & Design",
+  "icon": "textformat",
+  "color": "yellow",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "README-writing",
+    "changelog",
+    "error-handling"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Copywriter",
+    "specialty": "user-facing copy and product messaging"
+  },
+  "tags": [
+    "copy",
+    "ux-writing",
+    "content"
+  ]
+}

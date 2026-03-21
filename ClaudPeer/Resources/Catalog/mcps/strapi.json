@@ -1,0 +1,27 @@
+{
+  "catalogId": "strapi",
+  "name": "Strapi",
+  "description": "Strapi collections, single types, media library, and admin tasks",
+  "category": "CMS & Content",
+  "icon": "puzzlepiece.extension.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-strapi"
+    ],
+    "envKeys": [
+      "STRAPI_URL",
+      "STRAPI_API_TOKEN"
+    ]
+  },
+  "popularity": 38000,
+  "tags": [
+    "headless-cms",
+    "nodejs",
+    "graphql",
+    "rest"
+  ],
+  "homepage": "https://strapi.io"
+}

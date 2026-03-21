@@ -1,0 +1,28 @@
+{
+  "catalogId": "jira",
+  "name": "Jira",
+  "description": "Jira issues, sprints, boards, and JQL search for engineering teams",
+  "category": "Productivity",
+  "icon": "tray.full.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-jira"
+    ],
+    "envKeys": [
+      "JIRA_HOST",
+      "JIRA_EMAIL",
+      "JIRA_API_TOKEN"
+    ]
+  },
+  "popularity": 105000,
+  "tags": [
+    "issues",
+    "agile",
+    "sprints",
+    "atlassian"
+  ],
+  "homepage": "https://www.atlassian.com/software/jira"
+}

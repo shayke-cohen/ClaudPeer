@@ -1,0 +1,26 @@
+{
+  "catalogId": "telegram",
+  "name": "Telegram",
+  "description": "Telegram Bot API for messaging, inline queries, and file transfer",
+  "category": "Communication",
+  "icon": "paperplane.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-telegram"
+    ],
+    "envKeys": [
+      "TELEGRAM_BOT_TOKEN"
+    ]
+  },
+  "popularity": 64000,
+  "tags": [
+    "messaging",
+    "bots",
+    "mobile",
+    "channels"
+  ],
+  "homepage": "https://core.telegram.org/bots/api"
+}

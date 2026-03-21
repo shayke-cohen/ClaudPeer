@@ -1,0 +1,26 @@
+{
+  "catalogId": "replicate",
+  "name": "Replicate",
+  "description": "Run open models for image, video, audio, and LLM workloads",
+  "category": "AI & Knowledge",
+  "icon": "wand.and.stars",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-replicate"
+    ],
+    "envKeys": [
+      "REPLICATE_API_TOKEN"
+    ]
+  },
+  "popularity": 68000,
+  "tags": [
+    "inference",
+    "gpu",
+    "image-gen",
+    "models"
+  ],
+  "homepage": "https://replicate.com"
+}

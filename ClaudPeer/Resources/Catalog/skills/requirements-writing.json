@@ -1,0 +1,18 @@
+{
+  "catalogId": "requirements-writing",
+  "name": "Requirements Writing",
+  "description": "Unambiguous specs that separate problem, constraints, and solution",
+  "category": "Project & Process",
+  "icon": "list.bullet.rectangle.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "requirements",
+    "spec",
+    "PRD"
+  ],
+  "tags": [
+    "product",
+    "clarity",
+    "scope"
+  ]
+}

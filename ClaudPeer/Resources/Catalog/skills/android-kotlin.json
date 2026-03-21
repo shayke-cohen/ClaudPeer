@@ -1,0 +1,20 @@
+{
+  "catalogId": "android-kotlin",
+  "name": "Android (Kotlin)",
+  "description": "Compose/material guidance, lifecycle, and device fragmentation",
+  "category": "Mobile",
+  "icon": "a.circle.fill",
+  "requiredMCPs": [
+    "appxray"
+  ],
+  "triggers": [
+    "kotlin",
+    "jetpack compose",
+    "android"
+  ],
+  "tags": [
+    "android",
+    "kotlin",
+    "mobile"
+  ]
+}

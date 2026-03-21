@@ -1,0 +1,18 @@
+{
+  "catalogId": "etl-pipeline",
+  "name": "ETL Pipeline",
+  "description": "Extract, transform, load with idempotency and data quality gates",
+  "category": "Data",
+  "icon": "arrow.left.arrow.right.circle",
+  "requiredMCPs": [],
+  "triggers": [
+    "ETL",
+    "data pipeline",
+    "batch"
+  ],
+  "tags": [
+    "data-engineering",
+    "quality",
+    "scale"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "catalogId": "dependency-scanning",
+  "name": "Dependency Scanning",
+  "description": "Automated SBOM and vulnerability management in CI",
+  "category": "Security",
+  "icon": "ladybug.fill",
+  "requiredMCPs": [
+    "github"
+  ],
+  "triggers": [
+    "CVE",
+    "SBOM",
+    "dependabot"
+  ],
+  "tags": [
+    "supply-chain",
+    "compliance",
+    "ci"
+  ]
+}

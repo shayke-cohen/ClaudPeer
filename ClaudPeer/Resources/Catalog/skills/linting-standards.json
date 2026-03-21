@@ -1,0 +1,18 @@
+{
+  "catalogId": "linting-standards",
+  "name": "Linting & Standards",
+  "description": "Enforce consistent style and static checks across the codebase",
+  "category": "Development",
+  "icon": "checkmark.seal.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "lint",
+    "format",
+    "style guide"
+  ],
+  "tags": [
+    "consistency",
+    "ci",
+    "quality"
+  ]
+}

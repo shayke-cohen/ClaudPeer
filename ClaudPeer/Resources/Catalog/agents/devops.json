@@ -1,0 +1,26 @@
+{
+  "catalogId": "devops",
+  "name": "DevOps",
+  "description": "DevOps specialist for CI/CD, containers, environments, and operational hygiene. Keeps pipelines reliable and observable.",
+  "category": "Core Team",
+  "icon": "wrench.and.screwdriver",
+  "color": "gray",
+  "model": "haiku",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "docker-containerization",
+    "CI-pipeline",
+    "monitoring-setup"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "worker",
+  "systemPromptVariables": {
+    "role": "DevOps Engineer",
+    "specialty": "CI/CD, deployment, and infrastructure operations"
+  },
+  "tags": [
+    "devops",
+    "ci-cd",
+    "operations"
+  ]
+}

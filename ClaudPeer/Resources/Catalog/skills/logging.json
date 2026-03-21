@@ -1,0 +1,20 @@
+{
+  "catalogId": "logging",
+  "name": "Logging Strategy",
+  "description": "Structured logs, levels, and correlation for operability",
+  "category": "Development",
+  "icon": "doc.text.magnifyingglass",
+  "requiredMCPs": [
+    "datadog"
+  ],
+  "triggers": [
+    "logging",
+    "structured logs",
+    "tracing"
+  ],
+  "tags": [
+    "observability",
+    "operations",
+    "debugging"
+  ]
+}

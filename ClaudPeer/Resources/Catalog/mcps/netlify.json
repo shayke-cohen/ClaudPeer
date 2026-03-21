@@ -1,0 +1,26 @@
+{
+  "catalogId": "netlify",
+  "name": "Netlify",
+  "description": "Netlify sites, deploys, functions, and DNS management",
+  "category": "Cloud & Infra",
+  "icon": "n.circle.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-netlify"
+    ],
+    "envKeys": [
+      "NETLIFY_AUTH_TOKEN"
+    ]
+  },
+  "popularity": 56000,
+  "tags": [
+    "jamstack",
+    "hosting",
+    "functions",
+    "cdn"
+  ],
+  "homepage": "https://www.netlify.com"
+}

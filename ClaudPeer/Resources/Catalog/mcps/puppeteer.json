@@ -1,0 +1,24 @@
+{
+  "catalogId": "puppeteer",
+  "name": "Puppeteer",
+  "description": "Headless Chrome control for scraping, PDFs, and UI automation",
+  "category": "Browser & Testing",
+  "icon": "hand.raised.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-puppeteer"
+    ],
+    "envKeys": []
+  },
+  "popularity": 176000,
+  "tags": [
+    "chrome",
+    "headless",
+    "pdf",
+    "scraping"
+  ],
+  "homepage": "https://github.com/modelcontextprotocol/servers"
+}

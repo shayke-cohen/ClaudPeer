@@ -1,0 +1,27 @@
+{
+  "catalogId": "airtable",
+  "name": "Airtable",
+  "description": "Airtable bases, tables, records, and attachment fields",
+  "category": "Productivity",
+  "icon": "tablecells",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-airtable"
+    ],
+    "envKeys": [
+      "AIRTABLE_API_KEY",
+      "AIRTABLE_BASE_ID"
+    ]
+  },
+  "popularity": 62000,
+  "tags": [
+    "spreadsheet",
+    "crm",
+    "nocode",
+    "records"
+  ],
+  "homepage": "https://airtable.com"
+}

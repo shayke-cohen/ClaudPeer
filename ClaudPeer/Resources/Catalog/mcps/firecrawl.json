@@ -1,0 +1,26 @@
+{
+  "catalogId": "firecrawl",
+  "name": "Firecrawl",
+  "description": "Crawl, scrape, and map websites into clean markdown or structured data",
+  "category": "Search & Web",
+  "icon": "flame.circle.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "firecrawl-mcp"
+    ],
+    "envKeys": [
+      "FIRECRAWL_API_KEY"
+    ]
+  },
+  "popularity": 142000,
+  "tags": [
+    "crawl",
+    "scrape",
+    "markdown",
+    "agents"
+  ],
+  "homepage": "https://firecrawl.dev"
+}

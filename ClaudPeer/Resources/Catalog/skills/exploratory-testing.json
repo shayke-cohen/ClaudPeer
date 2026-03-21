@@ -1,0 +1,20 @@
+{
+  "catalogId": "exploratory-testing",
+  "name": "Exploratory Testing",
+  "description": "Chartered sessions to find unknown-unknowns quickly",
+  "category": "Testing & QA",
+  "icon": "binoculars.fill",
+  "requiredMCPs": [
+    "argus"
+  ],
+  "triggers": [
+    "explore",
+    "ad hoc",
+    "bug hunt"
+  ],
+  "tags": [
+    "discovery",
+    "quality",
+    "risk"
+  ]
+}

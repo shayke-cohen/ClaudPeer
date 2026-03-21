@@ -1,0 +1,20 @@
+{
+  "catalogId": "api-testing",
+  "name": "API Testing",
+  "description": "Contract, negative, and performance checks for HTTP APIs",
+  "category": "Testing & QA",
+  "icon": "arrow.left.arrow.right.circle.fill",
+  "requiredMCPs": [
+    "fetch"
+  ],
+  "triggers": [
+    "API test",
+    "REST test",
+    "postman"
+  ],
+  "tags": [
+    "http",
+    "contracts",
+    "automation"
+  ]
+}

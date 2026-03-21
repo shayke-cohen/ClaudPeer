@@ -1,0 +1,20 @@
+{
+  "catalogId": "runbook",
+  "name": "Runbook Authoring",
+  "description": "Operational procedures for incidents and routine tasks",
+  "category": "Documentation",
+  "icon": "cross.case",
+  "requiredMCPs": [
+    "notion"
+  ],
+  "triggers": [
+    "runbook",
+    "operations",
+    "playbook"
+  ],
+  "tags": [
+    "sre",
+    "incident",
+    "operations"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "catalogId": "slack",
+  "name": "Slack",
+  "description": "Slack channels, messages, files, and workflow posting",
+  "category": "Communication",
+  "icon": "bubble.left.and.bubble.right.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-slack"
+    ],
+    "envKeys": [
+      "SLACK_BOT_TOKEN",
+      "SLACK_TEAM_ID"
+    ]
+  },
+  "popularity": 186000,
+  "tags": [
+    "chat",
+    "notifications",
+    "team",
+    "bots"
+  ],
+  "homepage": "https://github.com/modelcontextprotocol/servers"
+}

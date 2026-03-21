@@ -1,0 +1,27 @@
+{
+  "catalogId": "obsidian",
+  "name": "Obsidian",
+  "description": "Local vault navigation, backlinks, and markdown note operations",
+  "category": "Productivity",
+  "icon": "note.text",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-obsidian"
+    ],
+    "envKeys": [
+      "OBSIDIAN_API_KEY",
+      "OBSIDIAN_VAULT_PATH"
+    ]
+  },
+  "popularity": 69000,
+  "tags": [
+    "notes",
+    "markdown",
+    "pkm",
+    "graph"
+  ],
+  "homepage": "https://obsidian.md"
+}

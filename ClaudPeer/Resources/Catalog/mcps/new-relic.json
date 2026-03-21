@@ -1,0 +1,27 @@
+{
+  "catalogId": "new-relic",
+  "name": "New Relic",
+  "description": "NRQL queries, entity inventory, and deployment markers",
+  "category": "Monitoring",
+  "icon": "chart.xyaxis.line",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-newrelic"
+    ],
+    "envKeys": [
+      "NEW_RELIC_USER_KEY",
+      "NEW_RELIC_ACCOUNT_ID"
+    ]
+  },
+  "popularity": 51000,
+  "tags": [
+    "apm",
+    "nrql",
+    "observability",
+    "alerts"
+  ],
+  "homepage": "https://newrelic.com"
+}

@@ -1,0 +1,26 @@
+{
+  "catalogId": "mongodb",
+  "name": "MongoDB",
+  "description": "MongoDB collections, aggregation pipelines, and index inspection",
+  "category": "Databases",
+  "icon": "leaf.circle.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@mongodb-js/mongodb-mcp-server"
+    ],
+    "envKeys": [
+      "MONGODB_URI"
+    ]
+  },
+  "popularity": 134000,
+  "tags": [
+    "nosql",
+    "documents",
+    "aggregation",
+    "atlas"
+  ],
+  "homepage": "https://www.mongodb.com"
+}

@@ -1,0 +1,20 @@
+{
+  "catalogId": "rate-limiting",
+  "name": "Rate Limiting",
+  "description": "Fair usage, abuse protection, and client-visible errors",
+  "category": "Backend",
+  "icon": "speedometer",
+  "requiredMCPs": [
+    "redis"
+  ],
+  "triggers": [
+    "rate limit",
+    "throttle",
+    "quota"
+  ],
+  "tags": [
+    "security",
+    "reliability",
+    "api"
+  ]
+}

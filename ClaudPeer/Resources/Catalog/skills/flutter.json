@@ -1,0 +1,18 @@
+{
+  "catalogId": "flutter",
+  "name": "Flutter",
+  "description": "Widgets, platform channels, and build/release pipelines",
+  "category": "Mobile",
+  "icon": "wind.snow",
+  "requiredMCPs": [],
+  "triggers": [
+    "flutter",
+    "dart",
+    "material"
+  ],
+  "tags": [
+    "dart",
+    "ui",
+    "cross-platform"
+  ]
+}

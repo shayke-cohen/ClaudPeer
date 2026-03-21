@@ -1,0 +1,27 @@
+{
+  "catalogId": "ml-engineer",
+  "name": "ML Engineer",
+  "description": "ML and AI engineer for integrating models, profiling performance, and designing clean APIs around intelligent features.",
+  "category": "Specialists",
+  "icon": "brain",
+  "color": "teal",
+  "model": "opus",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "data-modeling",
+    "performance-profiling",
+    "API-design",
+    "code-architecture"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "ML Engineer",
+    "specialty": "model integration, performance, and ML systems design"
+  },
+  "tags": [
+    "ml",
+    "ai",
+    "integration"
+  ]
+}

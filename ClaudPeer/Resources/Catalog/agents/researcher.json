@@ -1,0 +1,26 @@
+{
+  "catalogId": "researcher",
+  "name": "Researcher",
+  "description": "Research specialist that gathers information from the web and documentation, summarizes findings, and turns them into actionable notes.",
+  "category": "Core Team",
+  "icon": "magnifyingglass",
+  "color": "green",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "web-scraping",
+    "browser-automation",
+    "README-writing"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Research Specialist",
+    "specialty": "information gathering and synthesis"
+  },
+  "tags": [
+    "research",
+    "documentation",
+    "discovery"
+  ]
+}

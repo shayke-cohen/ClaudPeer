@@ -1,0 +1,26 @@
+{
+  "catalogId": "selenium",
+  "name": "Selenium",
+  "description": "WebDriver-backed browser automation for legacy and enterprise stacks",
+  "category": "Browser & Testing",
+  "icon": "car.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-selenium"
+    ],
+    "envKeys": [
+      "SELENIUM_REMOTE_URL"
+    ]
+  },
+  "popularity": 78000,
+  "tags": [
+    "webdriver",
+    "testing",
+    "legacy",
+    "cross-browser"
+  ],
+  "homepage": "https://www.selenium.dev"
+}

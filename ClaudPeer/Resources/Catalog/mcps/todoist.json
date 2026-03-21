@@ -1,0 +1,26 @@
+{
+  "catalogId": "todoist",
+  "name": "Todoist",
+  "description": "Todoist tasks, projects, labels, and productivity filters",
+  "category": "Productivity",
+  "icon": "checklist",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-todoist"
+    ],
+    "envKeys": [
+      "TODOIST_API_TOKEN"
+    ]
+  },
+  "popularity": 51000,
+  "tags": [
+    "tasks",
+    "gtm",
+    "productivity",
+    "reminders"
+  ],
+  "homepage": "https://todoist.com"
+}

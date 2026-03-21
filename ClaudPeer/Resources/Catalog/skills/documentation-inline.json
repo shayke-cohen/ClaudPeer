@@ -1,0 +1,18 @@
+{
+  "catalogId": "documentation-inline",
+  "name": "Inline Documentation",
+  "description": "Comments and docstrings that explain why, not what",
+  "category": "Development",
+  "icon": "text.book.closed.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "comments",
+    "docstrings",
+    "explain why"
+  ],
+  "tags": [
+    "readability",
+    "knowledge",
+    "api"
+  ]
+}

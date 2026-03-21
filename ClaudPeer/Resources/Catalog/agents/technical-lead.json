@@ -1,0 +1,27 @@
+{
+  "catalogId": "technical-lead",
+  "name": "Technical Lead",
+  "description": "Technical lead for architecture decisions, RFCs, ADRs, and high-quality review standards across the codebase.",
+  "category": "Process",
+  "icon": "star.fill",
+  "color": "blue",
+  "model": "opus",
+  "instancePolicy": "singleton",
+  "requiredSkills": [
+    "code-architecture",
+    "technical-RFC",
+    "ADR-writing",
+    "code-review"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "coordinator",
+  "systemPromptVariables": {
+    "role": "Technical Lead",
+    "specialty": "architecture, RFCs, and technical direction"
+  },
+  "tags": [
+    "leadership",
+    "architecture",
+    "rfc"
+  ]
+}

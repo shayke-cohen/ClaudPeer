@@ -1,0 +1,24 @@
+{
+  "catalogId": "memory",
+  "name": "Memory",
+  "description": "Persistent key-value memory graph for long-running agent sessions",
+  "category": "AI & Knowledge",
+  "icon": "brain",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-memory"
+    ],
+    "envKeys": []
+  },
+  "popularity": 267000,
+  "tags": [
+    "memory",
+    "agents",
+    "context",
+    "kv"
+  ],
+  "homepage": "https://github.com/modelcontextprotocol/servers"
+}

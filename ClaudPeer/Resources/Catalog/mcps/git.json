@@ -1,0 +1,24 @@
+{
+  "catalogId": "git",
+  "name": "Git",
+  "description": "Local Git operations: status, diff, log, branch, and commit workflows",
+  "category": "Version Control",
+  "icon": "arrow.triangle.branch",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-git"
+    ],
+    "envKeys": []
+  },
+  "popularity": 215000,
+  "tags": [
+    "git",
+    "cli",
+    "version-control",
+    "local"
+  ],
+  "homepage": "https://github.com/modelcontextprotocol/servers"
+}

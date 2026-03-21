@@ -1,0 +1,27 @@
+{
+  "catalogId": "coinbase",
+  "name": "Coinbase",
+  "description": "Coinbase Advanced Trade balances, orders, and market data",
+  "category": "Finance",
+  "icon": "bitcoinsign.circle.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-coinbase"
+    ],
+    "envKeys": [
+      "COINBASE_API_KEY",
+      "COINBASE_API_SECRET"
+    ]
+  },
+  "popularity": 47000,
+  "tags": [
+    "crypto",
+    "trading",
+    "exchange",
+    "portfolio"
+  ],
+  "homepage": "https://www.coinbase.com"
+}

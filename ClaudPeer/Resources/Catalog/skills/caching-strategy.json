@@ -1,0 +1,20 @@
+{
+  "catalogId": "caching-strategy",
+  "name": "Caching Strategy",
+  "description": "Correctness-first caching across CDN, app, and data layers",
+  "category": "Backend",
+  "icon": "externaldrive.fill",
+  "requiredMCPs": [
+    "redis"
+  ],
+  "triggers": [
+    "cache",
+    "redis",
+    "CDN"
+  ],
+  "tags": [
+    "performance",
+    "scalability",
+    "correctness"
+  ]
+}

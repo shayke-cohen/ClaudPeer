@@ -1,0 +1,25 @@
+{
+  "catalogId": "translator",
+  "name": "Translator",
+  "description": "Localization specialist for translating and adapting product and onboarding content across languages and locales.",
+  "category": "Content & Design",
+  "icon": "globe",
+  "color": "green",
+  "model": "haiku",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "README-writing",
+    "onboarding-guide"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "worker",
+  "systemPromptVariables": {
+    "role": "Translator",
+    "specialty": "localization and translation"
+  },
+  "tags": [
+    "localization",
+    "i18n",
+    "translation"
+  ]
+}

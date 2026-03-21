@@ -1,0 +1,18 @@
+{
+  "catalogId": "component-design",
+  "name": "Component Design",
+  "description": "Reusable UI primitives with clear APIs and states",
+  "category": "Frontend",
+  "icon": "square.grid.3x3.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "component",
+    "design system",
+    "ui kit"
+  ],
+  "tags": [
+    "ui",
+    "reuse",
+    "design-system"
+  ]
+}

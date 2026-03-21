@@ -1,0 +1,22 @@
+{
+  "catalogId": "sentry",
+  "name": "Sentry",
+  "description": "Error monitoring, performance traces, and release health",
+  "category": "Monitoring",
+  "icon": "exclamationmark.triangle.fill",
+  "transport": {
+    "kind": "http",
+    "url": "https://mcp.sentry.dev/sse",
+    "headerKeys": [
+      "Authorization"
+    ]
+  },
+  "popularity": 142000,
+  "tags": [
+    "errors",
+    "apm",
+    "releases",
+    "alerts"
+  ],
+  "homepage": "https://sentry.io"
+}

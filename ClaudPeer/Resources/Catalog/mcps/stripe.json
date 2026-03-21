@@ -1,0 +1,26 @@
+{
+  "catalogId": "stripe",
+  "name": "Stripe",
+  "description": "Payments, customers, subscriptions, invoices, and Connect accounts",
+  "category": "Finance",
+  "icon": "creditcard.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-stripe"
+    ],
+    "envKeys": [
+      "STRIPE_SECRET_KEY"
+    ]
+  },
+  "popularity": 129000,
+  "tags": [
+    "payments",
+    "subscriptions",
+    "billing",
+    "connect"
+  ],
+  "homepage": "https://stripe.com"
+}

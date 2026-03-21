@@ -1,0 +1,28 @@
+{
+  "catalogId": "couchbase",
+  "name": "Couchbase",
+  "description": "Couchbase buckets, N1QL queries, and full-text search indexes",
+  "category": "Databases",
+  "icon": "archivebox.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-couchbase"
+    ],
+    "envKeys": [
+      "COUCHBASE_CONNECTION_STRING",
+      "COUCHBASE_USERNAME",
+      "COUCHBASE_PASSWORD"
+    ]
+  },
+  "popularity": 19000,
+  "tags": [
+    "nosql",
+    "n1ql",
+    "json",
+    "mobile-sync"
+  ],
+  "homepage": "https://www.couchbase.com"
+}

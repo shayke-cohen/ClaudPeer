@@ -1,0 +1,18 @@
+{
+  "catalogId": "vue-patterns",
+  "name": "Vue Patterns",
+  "description": "Reactivity, composition API, and scalable SFC structure",
+  "category": "Frontend",
+  "icon": "leaf.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "vue",
+    "composition api",
+    "sfc"
+  ],
+  "tags": [
+    "vue",
+    "ui",
+    "reactivity"
+  ]
+}

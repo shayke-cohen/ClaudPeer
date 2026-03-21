@@ -1,0 +1,18 @@
+{
+  "catalogId": "code-audit",
+  "name": "Security Code Audit",
+  "description": "Line-by-line review for dangerous patterns and misuse",
+  "category": "Security",
+  "icon": "doc.plaintext.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "security review",
+    "audit code",
+    "dangerous api"
+  ],
+  "tags": [
+    "review",
+    "secure-coding",
+    "quality"
+  ]
+}

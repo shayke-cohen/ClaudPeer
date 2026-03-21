@@ -1,0 +1,21 @@
+{
+  "catalogId": "web-testing",
+  "name": "Web Testing",
+  "description": "Cross-browser checks for functional and visual quality",
+  "category": "Testing & QA",
+  "icon": "globe",
+  "requiredMCPs": [
+    "playwright",
+    "argus"
+  ],
+  "triggers": [
+    "web test",
+    "browser",
+    "playwright"
+  ],
+  "tags": [
+    "frontend",
+    "quality",
+    "automation"
+  ]
+}

@@ -50,9 +50,29 @@ struct ChatView: View {
         .onReceive(appState.$lastSessionEvent) { _ in
             checkForCompletion()
         }
+        .onReceive(appState.$streamingText) { texts in
+            let sessionId = conversationId.uuidString
+            if texts[sessionId] != nil {
+                lastTokenTime = Date()
+            }
+        }
         .onReceive(appState.$sidecarStatus) { status in
             if status != .connected && isProcessing {
                 isProcessing = false
+            }
+        }
+        .task(id: isProcessing) {
+            guard isProcessing else { return }
+            while isProcessing {
+                try? await Task.sleep(for: .seconds(3))
+                guard isProcessing else { return }
+                let sessionId = conversationId.uuidString
+                let hasText = appState.streamingText[sessionId] != nil
+                let stale = lastTokenTime.map { Date().timeIntervalSince($0) > 3 } ?? false
+                if hasText && stale {
+                    collectResponse()
+                    return
+                }
             }
         }
         .alert("Clear Messages?", isPresented: $showClearConfirmation) {

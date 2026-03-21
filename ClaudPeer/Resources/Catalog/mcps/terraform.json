@@ -1,0 +1,26 @@
+{
+  "catalogId": "terraform",
+  "name": "Terraform",
+  "description": "Terraform plan/apply assistance, state inspection, and module docs",
+  "category": "Cloud & Infra",
+  "icon": "wrench.and.screwdriver.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-terraform"
+    ],
+    "envKeys": [
+      "TERRAFORM_CLOUD_TOKEN"
+    ]
+  },
+  "popularity": 73000,
+  "tags": [
+    "iac",
+    "hashicorp",
+    "plan",
+    "modules"
+  ],
+  "homepage": "https://www.terraform.io"
+}

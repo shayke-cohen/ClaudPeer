@@ -1,0 +1,26 @@
+{
+  "catalogId": "neon",
+  "name": "Neon",
+  "description": "Neon serverless Postgres branches, compute, and connection strings",
+  "category": "Databases",
+  "icon": "sparkles",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@neondatabase/mcp-server-neon"
+    ],
+    "envKeys": [
+      "NEON_API_KEY"
+    ]
+  },
+  "popularity": 72000,
+  "tags": [
+    "postgres",
+    "serverless",
+    "branching",
+    "serverless-sql"
+  ],
+  "homepage": "https://neon.tech"
+}

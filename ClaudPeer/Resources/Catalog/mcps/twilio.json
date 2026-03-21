@@ -1,0 +1,27 @@
+{
+  "catalogId": "twilio",
+  "name": "Twilio",
+  "description": "SMS, voice, WhatsApp, and Verify API orchestration",
+  "category": "Communication",
+  "icon": "phone.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-twilio"
+    ],
+    "envKeys": [
+      "TWILIO_ACCOUNT_SID",
+      "TWILIO_AUTH_TOKEN"
+    ]
+  },
+  "popularity": 72000,
+  "tags": [
+    "sms",
+    "voice",
+    "whatsapp",
+    "2fa"
+  ],
+  "homepage": "https://www.twilio.com"
+}

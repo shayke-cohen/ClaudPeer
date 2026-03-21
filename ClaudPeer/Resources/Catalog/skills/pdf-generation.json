@@ -1,0 +1,18 @@
+{
+  "catalogId": "pdf-generation",
+  "name": "PDF Generation",
+  "description": "Layout-faithful documents with fonts, pagination, and accessibility",
+  "category": "Specialized",
+  "icon": "doc.richtext",
+  "requiredMCPs": [],
+  "triggers": [
+    "PDF",
+    "report",
+    "print"
+  ],
+  "tags": [
+    "documents",
+    "reporting",
+    "layout"
+  ]
+}

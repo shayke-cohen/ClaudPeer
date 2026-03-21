@@ -1,0 +1,27 @@
+{
+  "catalogId": "trello",
+  "name": "Trello",
+  "description": "Trello boards, lists, cards, and checklist automation",
+  "category": "Productivity",
+  "icon": "rectangle.on.rectangle.angled",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-trello"
+    ],
+    "envKeys": [
+      "TRELLO_API_KEY",
+      "TRELLO_TOKEN"
+    ]
+  },
+  "popularity": 48000,
+  "tags": [
+    "kanban",
+    "tasks",
+    "atlassian",
+    "boards"
+  ],
+  "homepage": "https://trello.com"
+}

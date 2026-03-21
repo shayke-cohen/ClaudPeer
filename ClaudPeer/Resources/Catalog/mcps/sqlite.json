@@ -1,0 +1,24 @@
+{
+  "catalogId": "sqlite",
+  "name": "SQLite",
+  "description": "Local SQLite databases: schema, queries, and migrations assistance",
+  "category": "Databases",
+  "icon": "square.stack.3d.down.right.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@mokei/mcp-sqlite"
+    ],
+    "envKeys": []
+  },
+  "popularity": 156000,
+  "tags": [
+    "sql",
+    "embedded",
+    "local",
+    "mobile"
+  ],
+  "homepage": "https://github.com/modelcontextprotocol/servers"
+}

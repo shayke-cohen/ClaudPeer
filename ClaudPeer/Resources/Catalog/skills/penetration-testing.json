@@ -1,0 +1,18 @@
+{
+  "catalogId": "penetration-testing",
+  "name": "Penetration Testing",
+  "description": "Goal-oriented offensive testing with safe scope",
+  "category": "Security",
+  "icon": "bolt.shield.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "pentest",
+    "exploit",
+    "red team"
+  ],
+  "tags": [
+    "offense",
+    "assessment",
+    "hardening"
+  ]
+}

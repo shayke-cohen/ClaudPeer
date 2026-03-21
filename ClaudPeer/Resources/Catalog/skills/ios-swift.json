@@ -1,0 +1,20 @@
+{
+  "catalogId": "ios-swift",
+  "name": "iOS (Swift)",
+  "description": "SwiftUI/UIKit patterns, concurrency, and App Store readiness",
+  "category": "Mobile",
+  "icon": "applelogo",
+  "requiredMCPs": [
+    "appxray"
+  ],
+  "triggers": [
+    "swift",
+    "swiftui",
+    "ios"
+  ],
+  "tags": [
+    "ios",
+    "swift",
+    "mobile"
+  ]
+}

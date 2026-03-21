@@ -1,0 +1,26 @@
+{
+  "catalogId": "release-manager",
+  "name": "Release Manager",
+  "description": "Release manager for deployment workflows, environment promotion, and keeping releases predictable and reversible.",
+  "category": "Process",
+  "icon": "shippingbox.fill",
+  "color": "orange",
+  "model": "haiku",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "CD-deployment",
+    "environment-management",
+    "CI-pipeline"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "worker",
+  "systemPromptVariables": {
+    "role": "Release Manager",
+    "specialty": "releases, environments, and deployment pipelines"
+  },
+  "tags": [
+    "release",
+    "deployment",
+    "cd"
+  ]
+}

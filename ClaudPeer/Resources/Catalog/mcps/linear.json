@@ -1,0 +1,26 @@
+{
+  "catalogId": "linear",
+  "name": "Linear",
+  "description": "Linear issue tracking: teams, projects, cycles, and workflow automation",
+  "category": "Version Control",
+  "icon": "line.diagonal",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@mseep/linear-mcp"
+    ],
+    "envKeys": [
+      "LINEAR_API_KEY"
+    ]
+  },
+  "popularity": 91000,
+  "tags": [
+    "issues",
+    "project-management",
+    "sprints",
+    "roadmap"
+  ],
+  "homepage": "https://linear.app"
+}

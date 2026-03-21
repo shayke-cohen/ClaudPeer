@@ -1,0 +1,20 @@
+{
+  "catalogId": "mobile-ci",
+  "name": "Mobile CI",
+  "description": "Build, sign, and test mobile apps in automated pipelines",
+  "category": "Mobile",
+  "icon": "gearshape.2.fill",
+  "requiredMCPs": [
+    "github"
+  ],
+  "triggers": [
+    "mobile ci",
+    "fastlane",
+    "signing"
+  ],
+  "tags": [
+    "ci",
+    "signing",
+    "automation"
+  ]
+}

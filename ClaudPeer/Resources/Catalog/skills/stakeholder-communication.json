@@ -1,0 +1,20 @@
+{
+  "catalogId": "stakeholder-communication",
+  "name": "Stakeholder Communication",
+  "description": "Clear updates, tradeoffs, and decision records",
+  "category": "Project & Process",
+  "icon": "person.wave.2.fill",
+  "requiredMCPs": [
+    "slack"
+  ],
+  "triggers": [
+    "stakeholders",
+    "status update",
+    "exec summary"
+  ],
+  "tags": [
+    "communication",
+    "leadership",
+    "alignment"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "catalogId": "workspace-collaboration",
+  "name": "Workspace Collaboration",
+  "description": "Shared directories, permissions, and safe parallel edits",
+  "category": "ClaudPeer Collaboration",
+  "icon": "folder.fill.badge.gearshape",
+  "requiredMCPs": [
+    "filesystem"
+  ],
+  "triggers": [
+    "workspace",
+    "shared folder",
+    "sandbox"
+  ],
+  "tags": [
+    "files",
+    "permissions",
+    "claudpeer"
+  ]
+}

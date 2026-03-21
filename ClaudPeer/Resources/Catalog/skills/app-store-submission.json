@@ -1,0 +1,20 @@
+{
+  "catalogId": "app-store-submission",
+  "name": "App Store Submission",
+  "description": "Compliance, metadata, and release checklist for stores",
+  "category": "Mobile",
+  "icon": "bag.fill",
+  "requiredMCPs": [
+    "jira"
+  ],
+  "triggers": [
+    "app store",
+    "play store",
+    "release"
+  ],
+  "tags": [
+    "release",
+    "compliance",
+    "distribution"
+  ]
+}

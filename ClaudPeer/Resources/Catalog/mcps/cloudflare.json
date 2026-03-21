@@ -1,0 +1,27 @@
+{
+  "catalogId": "cloudflare",
+  "name": "Cloudflare",
+  "description": "Cloudflare Workers, KV, R2, DNS, and WAF rule inspection",
+  "category": "Cloud & Infra",
+  "icon": "hurricane",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@cloudflare/mcp-server-cloudflare"
+    ],
+    "envKeys": [
+      "CLOUDFLARE_API_TOKEN",
+      "CLOUDFLARE_ACCOUNT_ID"
+    ]
+  },
+  "popularity": 149000,
+  "tags": [
+    "cdn",
+    "workers",
+    "edge",
+    "dns"
+  ],
+  "homepage": "https://www.cloudflare.com"
+}

@@ -1,0 +1,28 @@
+{
+  "catalogId": "wordpress",
+  "name": "WordPress",
+  "description": "WordPress REST API for posts, pages, media, and users",
+  "category": "CMS & Content",
+  "icon": "w.square.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-wordpress"
+    ],
+    "envKeys": [
+      "WORDPRESS_SITE_URL",
+      "WORDPRESS_USERNAME",
+      "WORDPRESS_APPLICATION_PASSWORD"
+    ]
+  },
+  "popularity": 74000,
+  "tags": [
+    "blog",
+    "php",
+    "rest",
+    "cms"
+  ],
+  "homepage": "https://wordpress.org"
+}

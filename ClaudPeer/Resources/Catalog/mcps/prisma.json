@@ -1,0 +1,26 @@
+{
+  "catalogId": "prisma",
+  "name": "Prisma",
+  "description": "Prisma schema, migrations, and database introspection workflows",
+  "category": "Databases",
+  "icon": "triangle.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-prisma"
+    ],
+    "envKeys": [
+      "DATABASE_URL"
+    ]
+  },
+  "popularity": 98000,
+  "tags": [
+    "orm",
+    "migrations",
+    "schema",
+    "typescript"
+  ],
+  "homepage": "https://www.prisma.io"
+}

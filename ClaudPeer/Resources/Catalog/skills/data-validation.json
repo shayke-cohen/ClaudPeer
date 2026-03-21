@@ -1,0 +1,18 @@
+{
+  "catalogId": "data-validation",
+  "name": "Data Validation",
+  "description": "Constraints, checks, and monitoring for trustworthy datasets",
+  "category": "Data",
+  "icon": "checkmark.circle.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "validation",
+    "quality checks",
+    "great expectations"
+  ],
+  "tags": [
+    "quality",
+    "governance",
+    "pipelines"
+  ]
+}

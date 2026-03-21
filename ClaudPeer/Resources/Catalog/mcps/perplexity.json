@@ -1,0 +1,26 @@
+{
+  "catalogId": "perplexity",
+  "name": "Perplexity",
+  "description": "Perplexity Sonar search and answer APIs for grounded research",
+  "category": "Search & Web",
+  "icon": "questionmark.circle.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@perplexity-ai/mcp-server"
+    ],
+    "envKeys": [
+      "PERPLEXITY_API_KEY"
+    ]
+  },
+  "popularity": 156000,
+  "tags": [
+    "search",
+    "llm",
+    "citations",
+    "research"
+  ],
+  "homepage": "https://www.perplexity.ai"
+}

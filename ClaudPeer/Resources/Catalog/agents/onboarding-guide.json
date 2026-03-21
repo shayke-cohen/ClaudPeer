@@ -1,0 +1,26 @@
+{
+  "catalogId": "onboarding-guide",
+  "name": "Onboarding Guide",
+  "description": "ClaudPeer-oriented onboarding guide that helps new teammates understand workflows, workspace collaboration, and agent identity.",
+  "category": "Collaboration",
+  "icon": "hand.wave.fill",
+  "color": "green",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "onboarding-guide",
+    "workspace-collaboration",
+    "agent-identity"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Onboarding Guide",
+    "specialty": "new teammate orientation and ClaudPeer workflows"
+  },
+  "tags": [
+    "onboarding",
+    "claudpeer",
+    "collaboration"
+  ]
+}

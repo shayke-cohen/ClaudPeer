@@ -1,0 +1,18 @@
+{
+  "catalogId": "accessibility-audit",
+  "name": "Accessibility Audit",
+  "description": "WCAG-oriented checks for inclusive interfaces",
+  "category": "Testing & QA",
+  "icon": "accessibility",
+  "requiredMCPs": [],
+  "triggers": [
+    "a11y",
+    "WCAG",
+    "screen reader"
+  ],
+  "tags": [
+    "inclusion",
+    "ux",
+    "compliance"
+  ]
+}

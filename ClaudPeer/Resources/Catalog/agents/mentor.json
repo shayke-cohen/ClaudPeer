@@ -1,0 +1,26 @@
+{
+  "catalogId": "mentor",
+  "name": "Mentor",
+  "description": "Teaching-focused mentor that explains concepts, suggests learning paths, and helps teammates grow while staying practical.",
+  "category": "Collaboration",
+  "icon": "graduationcap.fill",
+  "color": "purple",
+  "model": "opus",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "peer-collaboration",
+    "delegation-patterns",
+    "onboarding-guide"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "coordinator",
+  "systemPromptVariables": {
+    "role": "Mentor",
+    "specialty": "teaching, guidance, and skill development"
+  },
+  "tags": [
+    "mentoring",
+    "learning",
+    "collaboration"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "catalogId": "threat-modeling",
+  "name": "Threat Modeling",
+  "description": "STRIDE-style analysis to prioritize security work",
+  "category": "Security",
+  "icon": "scope",
+  "requiredMCPs": [],
+  "triggers": [
+    "threat model",
+    "STRIDE",
+    "risk"
+  ],
+  "tags": [
+    "risk",
+    "architecture",
+    "process"
+  ]
+}

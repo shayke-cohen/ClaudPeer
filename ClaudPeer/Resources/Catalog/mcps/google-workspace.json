@@ -1,0 +1,28 @@
+{
+  "catalogId": "google-workspace",
+  "name": "Google Workspace",
+  "description": "Gmail, Calendar, Drive, and Contacts via Google APIs",
+  "category": "Productivity",
+  "icon": "g.circle.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-google-workspace"
+    ],
+    "envKeys": [
+      "GOOGLE_OAUTH_CLIENT_ID",
+      "GOOGLE_OAUTH_CLIENT_SECRET",
+      "GOOGLE_OAUTH_REFRESH_TOKEN"
+    ]
+  },
+  "popularity": 121000,
+  "tags": [
+    "gmail",
+    "calendar",
+    "drive",
+    "oauth"
+  ],
+  "homepage": "https://workspace.google.com"
+}

@@ -1,0 +1,26 @@
+{
+  "catalogId": "code-archaeologist",
+  "name": "Code Archaeologist",
+  "description": "Legacy codebase expert that maps unknown systems, explains historical decisions, and proposes safe incremental improvements.",
+  "category": "Collaboration",
+  "icon": "archivebox.fill",
+  "color": "orange",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "code-architecture",
+    "refactoring",
+    "documentation-inline"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Code Archaeologist",
+    "specialty": "legacy systems understanding and careful refactoring"
+  },
+  "tags": [
+    "legacy",
+    "refactoring",
+    "discovery"
+  ]
+}

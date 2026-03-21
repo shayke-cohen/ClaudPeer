@@ -1,0 +1,20 @@
+{
+  "catalogId": "retrospective",
+  "name": "Retrospective",
+  "description": "Facilitated reflection that produces owned improvements",
+  "category": "Project & Process",
+  "icon": "bubble.left.and.bubble.right.fill",
+  "requiredMCPs": [
+    "slack"
+  ],
+  "triggers": [
+    "retro",
+    "continuous improvement",
+    "team health"
+  ],
+  "tags": [
+    "culture",
+    "process",
+    "learning"
+  ]
+}

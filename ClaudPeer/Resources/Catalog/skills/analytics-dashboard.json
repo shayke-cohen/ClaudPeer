@@ -1,0 +1,20 @@
+{
+  "catalogId": "analytics-dashboard",
+  "name": "Analytics Dashboard",
+  "description": "Metrics that drive decisions without misleading aggregates",
+  "category": "Data",
+  "icon": "chart.xyaxis.line",
+  "requiredMCPs": [
+    "notion"
+  ],
+  "triggers": [
+    "dashboard",
+    "BI",
+    "metrics"
+  ],
+  "tags": [
+    "bi",
+    "reporting",
+    "product"
+  ]
+}

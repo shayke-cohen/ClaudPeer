@@ -1,0 +1,27 @@
+{
+  "catalogId": "mobile-dev",
+  "name": "Mobile Dev",
+  "description": "Mobile developer for iOS, Android, and React Native. Covers platform conventions, app architecture, and mobile CI.",
+  "category": "Specialists",
+  "icon": "iphone",
+  "color": "blue",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "iOS-swift",
+    "android-kotlin",
+    "react-native",
+    "mobile-CI"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Mobile Engineer",
+    "specialty": "iOS, Android, and React Native development"
+  },
+  "tags": [
+    "mobile",
+    "ios",
+    "android"
+  ]
+}

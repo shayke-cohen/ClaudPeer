@@ -1,0 +1,26 @@
+{
+  "catalogId": "tavily",
+  "name": "Tavily",
+  "description": "Tavily AI search optimized for agent and RAG pipelines",
+  "category": "Search & Web",
+  "icon": "network",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "tavily-mcp"
+    ],
+    "envKeys": [
+      "TAVILY_API_KEY"
+    ]
+  },
+  "popularity": 103000,
+  "tags": [
+    "search",
+    "rag",
+    "agents",
+    "news"
+  ],
+  "homepage": "https://tavily.com"
+}

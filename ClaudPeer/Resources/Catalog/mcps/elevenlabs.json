@@ -1,0 +1,26 @@
+{
+  "catalogId": "elevenlabs",
+  "name": "ElevenLabs",
+  "description": "Text-to-speech, voice cloning, and conversational audio generation",
+  "category": "Misc",
+  "icon": "waveform",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-elevenlabs"
+    ],
+    "envKeys": [
+      "ELEVENLABS_API_KEY"
+    ]
+  },
+  "popularity": 96000,
+  "tags": [
+    "tts",
+    "audio",
+    "voice",
+    "ai"
+  ],
+  "homepage": "https://elevenlabs.io"
+}

@@ -1,0 +1,27 @@
+{
+  "catalogId": "grafana",
+  "name": "Grafana",
+  "description": "Grafana dashboards, alerts, and Loki/Prometheus/Mimir queries",
+  "category": "Monitoring",
+  "icon": "waveform.path.ecg",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-grafana"
+    ],
+    "envKeys": [
+      "GRAFANA_URL",
+      "GRAFANA_API_KEY"
+    ]
+  },
+  "popularity": 67000,
+  "tags": [
+    "dashboards",
+    "prometheus",
+    "loki",
+    "alerts"
+  ],
+  "homepage": "https://grafana.com"
+}

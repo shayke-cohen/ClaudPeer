@@ -1,0 +1,20 @@
+{
+  "catalogId": "code-generation",
+  "name": "Code Generation",
+  "description": "Produce idiomatic code from specs with review-ready output",
+  "category": "Development",
+  "icon": "hammer.fill",
+  "requiredMCPs": [
+    "openai"
+  ],
+  "triggers": [
+    "generate code",
+    "scaffold",
+    "boilerplate"
+  ],
+  "tags": [
+    "productivity",
+    "scaffolding",
+    "ai"
+  ]
+}

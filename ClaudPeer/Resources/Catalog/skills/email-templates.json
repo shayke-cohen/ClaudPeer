@@ -1,0 +1,18 @@
+{
+  "catalogId": "email-templates",
+  "name": "Email Templates",
+  "description": "Cross-client HTML/text with deliverability and compliance in mind",
+  "category": "Specialized",
+  "icon": "envelope.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "email",
+    "template",
+    "transactional"
+  ],
+  "tags": [
+    "messaging",
+    "deliverability",
+    "marketing"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "catalogId": "time",
+  "name": "Time",
+  "description": "World clocks, timezone conversions, cron helpers, and scheduling utilities",
+  "category": "Misc",
+  "icon": "clock.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@odgrim/mcp-datetime"
+    ],
+    "envKeys": []
+  },
+  "popularity": 189000,
+  "tags": [
+    "timezone",
+    "scheduling",
+    "utilities",
+    "datetime"
+  ],
+  "homepage": "https://github.com/modelcontextprotocol/servers"
+}

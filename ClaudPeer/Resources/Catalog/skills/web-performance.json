@@ -1,0 +1,18 @@
+{
+  "catalogId": "web-performance",
+  "name": "Web Performance",
+  "description": "Core Web Vitals and bundle discipline for fast sites",
+  "category": "Frontend",
+  "icon": "hare.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "LCP",
+    "CLS",
+    "web perf"
+  ],
+  "tags": [
+    "vitals",
+    "frontend",
+    "optimization"
+  ]
+}

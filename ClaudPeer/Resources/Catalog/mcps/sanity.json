@@ -1,0 +1,28 @@
+{
+  "catalogId": "sanity",
+  "name": "Sanity",
+  "description": "Structured content, GROQ queries, and real-time studio workflows",
+  "category": "CMS & Content",
+  "icon": "square.stack.3d.up.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-sanity"
+    ],
+    "envKeys": [
+      "SANITY_PROJECT_ID",
+      "SANITY_DATASET",
+      "SANITY_API_TOKEN"
+    ]
+  },
+  "popularity": 49000,
+  "tags": [
+    "headless-cms",
+    "groq",
+    "content",
+    "realtime"
+  ],
+  "homepage": "https://www.sanity.io"
+}

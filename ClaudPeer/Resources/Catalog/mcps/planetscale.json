@@ -1,0 +1,27 @@
+{
+  "catalogId": "planetscale",
+  "name": "PlanetScale",
+  "description": "PlanetScale Vitess-backed MySQL: branches, deploy requests, and schema",
+  "category": "Databases",
+  "icon": "globe.americas.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-planetscale"
+    ],
+    "envKeys": [
+      "PLANETSCALE_SERVICE_TOKEN",
+      "PLANETSCALE_ORG"
+    ]
+  },
+  "popularity": 41000,
+  "tags": [
+    "mysql",
+    "vitess",
+    "branching",
+    "serverless"
+  ],
+  "homepage": "https://planetscale.com"
+}

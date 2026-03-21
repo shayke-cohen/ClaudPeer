@@ -1,0 +1,18 @@
+{
+  "catalogId": "infrastructure-as-code",
+  "name": "Infrastructure as Code",
+  "description": "Declarative environments with reviewable changes",
+  "category": "DevOps & CI/CD",
+  "icon": "server.rack",
+  "requiredMCPs": [],
+  "triggers": [
+    "terraform",
+    "IaC",
+    "cloudformation"
+  ],
+  "tags": [
+    "cloud",
+    "governance",
+    "automation"
+  ]
+}

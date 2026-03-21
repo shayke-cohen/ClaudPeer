@@ -1,0 +1,20 @@
+{
+  "catalogId": "sql-optimization",
+  "name": "SQL Optimization",
+  "description": "Query plans, indexes, and workload-aware tuning",
+  "category": "Data",
+  "icon": "function",
+  "requiredMCPs": [
+    "postgresql"
+  ],
+  "triggers": [
+    "SQL",
+    "explain",
+    "index"
+  ],
+  "tags": [
+    "database",
+    "performance",
+    "tuning"
+  ]
+}

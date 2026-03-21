@@ -1,0 +1,27 @@
+{
+  "catalogId": "buildkite",
+  "name": "Buildkite",
+  "description": "Buildkite pipelines, builds, agents, and artifact inspection",
+  "category": "Version Control",
+  "icon": "hammer.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-buildkite"
+    ],
+    "envKeys": [
+      "BUILDKITE_API_TOKEN",
+      "BUILDKITE_ORGANIZATION"
+    ]
+  },
+  "popularity": 18000,
+  "tags": [
+    "ci-cd",
+    "pipelines",
+    "builds",
+    "agents"
+  ],
+  "homepage": "https://buildkite.com"
+}

@@ -1,0 +1,21 @@
+{
+  "catalogId": "monitoring-setup",
+  "name": "Monitoring Setup",
+  "description": "Dashboards, alerts, and SLOs that match on-call reality",
+  "category": "DevOps & CI/CD",
+  "icon": "chart.bar.fill",
+  "requiredMCPs": [
+    "datadog",
+    "sentry"
+  ],
+  "triggers": [
+    "monitoring",
+    "metrics",
+    "alerts"
+  ],
+  "tags": [
+    "observability",
+    "sre",
+    "on-call"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "catalogId": "technical-writer",
+  "name": "Technical Writer",
+  "description": "Technical documentation specialist for deep dives: APIs, runbooks, and onboarding material engineers actually use.",
+  "category": "Content & Design",
+  "icon": "text.book.closed.fill",
+  "color": "indigo",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "README-writing",
+    "API-documentation",
+    "runbook",
+    "onboarding-guide"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Technical Writer",
+    "specialty": "technical documentation and runbooks"
+  },
+  "tags": [
+    "documentation",
+    "runbook",
+    "onboarding"
+  ]
+}

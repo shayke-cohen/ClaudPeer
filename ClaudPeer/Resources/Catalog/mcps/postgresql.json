@@ -1,0 +1,26 @@
+{
+  "catalogId": "postgresql",
+  "name": "PostgreSQL",
+  "description": "Query and inspect PostgreSQL databases with safe read-focused tools",
+  "category": "Databases",
+  "icon": "cylinder.split.1x2",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-postgres"
+    ],
+    "envKeys": [
+      "POSTGRES_CONNECTION_STRING"
+    ]
+  },
+  "popularity": 168000,
+  "tags": [
+    "sql",
+    "relational",
+    "postgres",
+    "analytics"
+  ],
+  "homepage": "https://github.com/modelcontextprotocol/servers"
+}

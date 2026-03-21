@@ -1,0 +1,26 @@
+{
+  "catalogId": "brave-search",
+  "name": "Brave Search",
+  "description": "Privacy-focused web search via the Brave Search API",
+  "category": "Search & Web",
+  "icon": "magnifyingglass",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-brave-search"
+    ],
+    "envKeys": [
+      "BRAVE_API_KEY"
+    ]
+  },
+  "popularity": 201000,
+  "tags": [
+    "search",
+    "web",
+    "privacy",
+    "api"
+  ],
+  "homepage": "https://github.com/modelcontextprotocol/servers"
+}

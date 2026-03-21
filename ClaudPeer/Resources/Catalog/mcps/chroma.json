@@ -1,0 +1,28 @@
+{
+  "catalogId": "chroma",
+  "name": "Chroma",
+  "description": "Chroma vector database for embeddings, collections, and similarity search",
+  "category": "AI & Knowledge",
+  "icon": "circle.hexagongrid.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-chroma"
+    ],
+    "envKeys": [
+      "CHROMA_HOST",
+      "CHROMA_TENANT",
+      "CHROMA_API_KEY"
+    ]
+  },
+  "popularity": 45000,
+  "tags": [
+    "vector-db",
+    "embeddings",
+    "rag",
+    "similarity"
+  ],
+  "homepage": "https://www.trychroma.com"
+}

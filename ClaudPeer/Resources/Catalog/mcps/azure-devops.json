@@ -1,0 +1,27 @@
+{
+  "catalogId": "azure-devops",
+  "name": "Azure DevOps",
+  "description": "Azure Repos, Boards, Pipelines, and Test Plans via Azure DevOps REST APIs",
+  "category": "Version Control",
+  "icon": "cloud.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@azure-devops/mcp"
+    ],
+    "envKeys": [
+      "AZURE_DEVOPS_EXT_PAT",
+      "AZURE_DEVOPS_ORG_URL"
+    ]
+  },
+  "popularity": 76000,
+  "tags": [
+    "azure",
+    "repos",
+    "boards",
+    "pipelines"
+  ],
+  "homepage": "https://learn.microsoft.com/azure/devops"
+}

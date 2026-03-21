@@ -1,0 +1,27 @@
+{
+  "catalogId": "data-analyst",
+  "name": "Data Analyst",
+  "description": "Data specialist for SQL analytics, dashboards, validation, and lightweight ETL to make metrics trustworthy.",
+  "category": "Specialists",
+  "icon": "chart.bar.fill",
+  "color": "purple",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "SQL-optimization",
+    "analytics-dashboard",
+    "data-validation",
+    "ETL-pipeline"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Data Analyst",
+    "specialty": "analytics, validation, and ETL workflows"
+  },
+  "tags": [
+    "data",
+    "analytics",
+    "sql"
+  ]
+}

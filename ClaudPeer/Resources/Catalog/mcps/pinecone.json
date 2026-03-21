@@ -1,0 +1,27 @@
+{
+  "catalogId": "pinecone",
+  "name": "Pinecone",
+  "description": "Managed vector indexes, namespaces, and hybrid search",
+  "category": "AI & Knowledge",
+  "icon": "cone.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-pinecone"
+    ],
+    "envKeys": [
+      "PINECONE_API_KEY",
+      "PINECONE_ENVIRONMENT"
+    ]
+  },
+  "popularity": 59000,
+  "tags": [
+    "vector-db",
+    "rag",
+    "semantic-search",
+    "saas"
+  ],
+  "homepage": "https://www.pinecone.io"
+}

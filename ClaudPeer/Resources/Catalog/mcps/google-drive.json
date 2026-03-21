@@ -1,0 +1,28 @@
+{
+  "catalogId": "google-drive",
+  "name": "Google Drive",
+  "description": "Drive files, folders, sharing, and export to common formats",
+  "category": "File & Storage",
+  "icon": "externaldrive.connected.to.line.below",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-google-drive"
+    ],
+    "envKeys": [
+      "GOOGLE_OAUTH_CLIENT_ID",
+      "GOOGLE_OAUTH_CLIENT_SECRET",
+      "GOOGLE_OAUTH_REFRESH_TOKEN"
+    ]
+  },
+  "popularity": 86000,
+  "tags": [
+    "storage",
+    "sharing",
+    "docs",
+    "oauth"
+  ],
+  "homepage": "https://drive.google.com"
+}

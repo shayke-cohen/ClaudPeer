@@ -1,0 +1,26 @@
+{
+  "catalogId": "debugg-ai",
+  "name": "Debugg.ai",
+  "description": "AI-assisted reproduction and triage for flaky UI and integration tests",
+  "category": "Browser & Testing",
+  "icon": "ladybug.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "debugg-ai-mcp"
+    ],
+    "envKeys": [
+      "DEBUGG_AI_API_KEY"
+    ]
+  },
+  "popularity": 12000,
+  "tags": [
+    "debugging",
+    "flaky-tests",
+    "qa",
+    "ai"
+  ],
+  "homepage": "https://debugg.ai"
+}

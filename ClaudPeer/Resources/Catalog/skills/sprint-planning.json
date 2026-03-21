@@ -1,0 +1,20 @@
+{
+  "catalogId": "sprint-planning",
+  "name": "Sprint Planning",
+  "description": "Capacity-based commitments with clear definitions of done",
+  "category": "Project & Process",
+  "icon": "calendar.badge.clock",
+  "requiredMCPs": [
+    "jira"
+  ],
+  "triggers": [
+    "sprint",
+    "planning",
+    "backlog"
+  ],
+  "tags": [
+    "agile",
+    "delivery",
+    "team"
+  ]
+}

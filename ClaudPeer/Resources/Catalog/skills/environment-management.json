@@ -1,0 +1,18 @@
+{
+  "catalogId": "environment-management",
+  "name": "Environment Management",
+  "description": "Dev/stage/prod parity and configuration discipline",
+  "category": "DevOps & CI/CD",
+  "icon": "slider.horizontal.3",
+  "requiredMCPs": [],
+  "triggers": [
+    "environments",
+    "staging",
+    "config"
+  ],
+  "tags": [
+    "parity",
+    "config",
+    "operations"
+  ]
+}

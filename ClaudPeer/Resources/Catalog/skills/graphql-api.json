@@ -1,0 +1,18 @@
+{
+  "catalogId": "graphql-api",
+  "name": "GraphQL API",
+  "description": "Schema design, resolvers, and operational safeguards",
+  "category": "Backend",
+  "icon": "point.3.connected.trianglepath.dotted",
+  "requiredMCPs": [],
+  "triggers": [
+    "GraphQL",
+    "schema",
+    "resolver"
+  ],
+  "tags": [
+    "api",
+    "schema",
+    "performance"
+  ]
+}

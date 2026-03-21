@@ -1,0 +1,18 @@
+{
+  "catalogId": "tdd",
+  "name": "Test-Driven Development",
+  "description": "Red-green-refactor cycles with tight feedback loops",
+  "category": "Development",
+  "icon": "flask.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "TDD",
+    "test first",
+    "red green refactor"
+  ],
+  "tags": [
+    "testing",
+    "workflow",
+    "quality"
+  ]
+}

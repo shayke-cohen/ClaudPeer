@@ -1,0 +1,26 @@
+{
+  "catalogId": "bright-data",
+  "name": "Bright Data",
+  "description": "Residential proxies, SERP API, and structured web datasets",
+  "category": "Search & Web",
+  "icon": "sun.max.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@brightdata/mcp"
+    ],
+    "envKeys": [
+      "API_TOKEN"
+    ]
+  },
+  "popularity": 54000,
+  "tags": [
+    "proxy",
+    "serp",
+    "scraping",
+    "datasets"
+  ],
+  "homepage": "https://brightdata.com"
+}

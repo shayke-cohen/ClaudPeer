@@ -1,0 +1,20 @@
+{
+  "catalogId": "performance-profiling",
+  "name": "Performance Profiling",
+  "description": "Measure first, optimize hotspots with evidence",
+  "category": "Development",
+  "icon": "gauge.with.dots.needle.67percent",
+  "requiredMCPs": [
+    "appxray"
+  ],
+  "triggers": [
+    "profile",
+    "slow",
+    "optimize"
+  ],
+  "tags": [
+    "performance",
+    "measurement",
+    "latency"
+  ]
+}

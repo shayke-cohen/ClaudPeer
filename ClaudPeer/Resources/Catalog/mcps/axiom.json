@@ -1,0 +1,27 @@
+{
+  "catalogId": "axiom",
+  "name": "Axiom",
+  "description": "Serverless log analytics and tracing with APL queries",
+  "category": "Monitoring",
+  "icon": "chart.line.uptrend.xyaxis",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-axiom"
+    ],
+    "envKeys": [
+      "AXIOM_TOKEN",
+      "AXIOM_DATASET"
+    ]
+  },
+  "popularity": 28000,
+  "tags": [
+    "logs",
+    "tracing",
+    "serverless",
+    "apl"
+  ],
+  "homepage": "https://axiom.co"
+}

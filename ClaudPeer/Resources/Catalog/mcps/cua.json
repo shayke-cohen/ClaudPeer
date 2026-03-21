@@ -1,0 +1,26 @@
+{
+  "catalogId": "cua",
+  "name": "CUA",
+  "description": "Cloud browser automation for computer-use style agent workflows via Hyperbrowser",
+  "category": "Misc",
+  "icon": "display",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "hyperbrowser-mcp"
+    ],
+    "envKeys": [
+      "HYPERBROWSER_API_KEY"
+    ]
+  },
+  "popularity": 21000,
+  "tags": [
+    "desktop",
+    "automation",
+    "agents",
+    "experimental"
+  ],
+  "homepage": "https://www.npmjs.com/search?q=cua%20mcp"
+}

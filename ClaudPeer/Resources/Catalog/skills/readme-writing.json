@@ -1,0 +1,18 @@
+{
+  "catalogId": "readme-writing",
+  "name": "README Writing",
+  "description": "Onboarding docs that get newcomers productive fast",
+  "category": "Documentation",
+  "icon": "book.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "README",
+    "onboarding",
+    "quickstart"
+  ],
+  "tags": [
+    "docs",
+    "dx",
+    "open-source"
+  ]
+}

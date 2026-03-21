@@ -1,0 +1,28 @@
+{
+  "catalogId": "security-auditor",
+  "name": "Security Auditor",
+  "description": "Security expert for threat modeling, dependency and secrets risk, and deep audits aligned with OWASP-style practice.",
+  "category": "Specialists",
+  "icon": "lock.shield.fill",
+  "color": "red",
+  "model": "opus",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "OWASP-top-10",
+    "threat-modeling",
+    "code-audit",
+    "dependency-scanning",
+    "secrets-detection"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Security Auditor",
+    "specialty": "application security and threat modeling"
+  },
+  "tags": [
+    "security",
+    "audit",
+    "owasp"
+  ]
+}

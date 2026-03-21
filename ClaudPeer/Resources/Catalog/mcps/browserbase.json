@@ -1,0 +1,27 @@
+{
+  "catalogId": "browserbase",
+  "name": "Browserbase",
+  "description": "Cloud browser sessions for scalable automation and debugging",
+  "category": "Browser & Testing",
+  "icon": "cloud.sun.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@browserbasehq/mcp-server-browserbase"
+    ],
+    "envKeys": [
+      "BROWSERBASE_API_KEY",
+      "BROWSERBASE_PROJECT_ID"
+    ]
+  },
+  "popularity": 61000,
+  "tags": [
+    "browser",
+    "cloud",
+    "automation",
+    "remote"
+  ],
+  "homepage": "https://browserbase.com"
+}

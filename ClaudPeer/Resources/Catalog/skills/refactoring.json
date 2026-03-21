@@ -1,0 +1,18 @@
+{
+  "catalogId": "refactoring",
+  "name": "Refactoring",
+  "description": "Safe structural improvements without changing observable behavior",
+  "category": "Development",
+  "icon": "arrow.triangle.branch",
+  "requiredMCPs": [],
+  "triggers": [
+    "refactor",
+    "cleanup",
+    "restructure"
+  ],
+  "tags": [
+    "maintainability",
+    "structure",
+    "clean-code"
+  ]
+}

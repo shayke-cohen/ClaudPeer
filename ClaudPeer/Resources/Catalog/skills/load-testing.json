@@ -1,0 +1,18 @@
+{
+  "catalogId": "load-testing",
+  "name": "Load Testing",
+  "description": "Stress and capacity validation under realistic traffic",
+  "category": "Testing & QA",
+  "icon": "chart.line.uptrend.xyaxis",
+  "requiredMCPs": [],
+  "triggers": [
+    "load test",
+    "stress",
+    "capacity"
+  ],
+  "tags": [
+    "performance",
+    "scalability",
+    "reliability"
+  ]
+}

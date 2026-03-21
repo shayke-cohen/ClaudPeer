@@ -1,0 +1,27 @@
+{
+  "catalogId": "google-search",
+  "name": "Google Search",
+  "description": "Programmable Google Custom Search JSON API integration",
+  "category": "Search & Web",
+  "icon": "globe",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-google-search"
+    ],
+    "envKeys": [
+      "GOOGLE_API_KEY",
+      "GOOGLE_CSE_ID"
+    ]
+  },
+  "popularity": 124000,
+  "tags": [
+    "search",
+    "google",
+    "seo",
+    "web"
+  ],
+  "homepage": "https://developers.google.com/custom-search"
+}

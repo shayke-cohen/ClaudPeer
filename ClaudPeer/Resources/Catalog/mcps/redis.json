@@ -1,0 +1,26 @@
+{
+  "catalogId": "redis",
+  "name": "Redis",
+  "description": "Redis keys, TTLs, pub/sub channels, and cache diagnostics",
+  "category": "Databases",
+  "icon": "bolt.horizontal.circle.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-redis"
+    ],
+    "envKeys": [
+      "REDIS_URL"
+    ]
+  },
+  "popularity": 87000,
+  "tags": [
+    "cache",
+    "kv",
+    "pubsub",
+    "sessions"
+  ],
+  "homepage": "https://redis.io"
+}

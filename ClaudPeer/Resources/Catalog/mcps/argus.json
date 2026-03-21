@@ -1,0 +1,24 @@
+{
+  "catalogId": "argus",
+  "name": "Argus",
+  "description": "UI testing across web, mobile, macOS, and APIs with inspect and act tools",
+  "category": "Browser & Testing",
+  "icon": "eye.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@anthropic-ai/argus-mcp-server"
+    ],
+    "envKeys": []
+  },
+  "popularity": 94000,
+  "tags": [
+    "testing",
+    "qa",
+    "mobile",
+    "web"
+  ],
+  "homepage": "https://www.npmjs.com/package/@anthropic-ai/argus-mcp-server"
+}

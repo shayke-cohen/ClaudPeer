@@ -1,0 +1,28 @@
+{
+  "catalogId": "contentful",
+  "name": "Contentful",
+  "description": "Contentful spaces, entries, assets, and GraphQL/REST delivery",
+  "category": "CMS & Content",
+  "icon": "doc.richtext",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-contentful"
+    ],
+    "envKeys": [
+      "CONTENTFUL_SPACE_ID",
+      "CONTENTFUL_MANAGEMENT_TOKEN",
+      "CONTENTFUL_DELIVERY_TOKEN"
+    ]
+  },
+  "popularity": 52000,
+  "tags": [
+    "headless-cms",
+    "graphql",
+    "localization",
+    "assets"
+  ],
+  "homepage": "https://www.contentful.com"
+}

@@ -1,0 +1,26 @@
+{
+  "catalogId": "dropbox",
+  "name": "Dropbox",
+  "description": "Dropbox files, shared links, and team folder navigation",
+  "category": "File & Storage",
+  "icon": "arrow.down.doc.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-dropbox"
+    ],
+    "envKeys": [
+      "DROPBOX_ACCESS_TOKEN"
+    ]
+  },
+  "popularity": 42000,
+  "tags": [
+    "sync",
+    "sharing",
+    "backup",
+    "files"
+  ],
+  "homepage": "https://www.dropbox.com"
+}

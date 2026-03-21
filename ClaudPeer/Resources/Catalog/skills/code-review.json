@@ -1,0 +1,20 @@
+{
+  "catalogId": "code-review",
+  "name": "Code Review",
+  "description": "Systematic code review focusing on correctness, security, performance, and style",
+  "category": "Development",
+  "icon": "eye.fill",
+  "requiredMCPs": [
+    "github"
+  ],
+  "triggers": [
+    "review",
+    "code review",
+    "PR review"
+  ],
+  "tags": [
+    "quality",
+    "review",
+    "pull-request"
+  ]
+}

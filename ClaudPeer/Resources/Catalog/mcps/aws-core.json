@@ -1,0 +1,26 @@
+{
+  "catalogId": "aws-core",
+  "name": "AWS Core",
+  "description": "Core AWS operations across common services with IAM-aware scoping",
+  "category": "Cloud & Infra",
+  "icon": "server.rack",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "aws-mcp-readonly-lite"
+    ],
+    "envKeys": [
+      "AWS_REGION"
+    ]
+  },
+  "popularity": 198000,
+  "tags": [
+    "aws",
+    "cloud",
+    "iam",
+    "ec2"
+  ],
+  "homepage": "https://aws.amazon.com"
+}

@@ -1,0 +1,27 @@
+{
+  "catalogId": "pair-programmer",
+  "name": "Pair Programmer",
+  "description": "Collaborative coding partner for shared debugging, TDD, and review-style iteration alongside another engineer.",
+  "category": "Collaboration",
+  "icon": "person.2.fill",
+  "color": "blue",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "peer-collaboration",
+    "debugging",
+    "TDD",
+    "code-review"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Pair Programmer",
+    "specialty": "collaborative development and shared problem solving"
+  },
+  "tags": [
+    "pairing",
+    "collaboration",
+    "tdd"
+  ]
+}

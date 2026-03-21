@@ -1,0 +1,26 @@
+{
+  "catalogId": "writer",
+  "name": "Writer",
+  "description": "Technical writer that produces clear docs, guides, and release notes aligned with how the product actually works.",
+  "category": "Core Team",
+  "icon": "doc.text.fill",
+  "color": "indigo",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "README-writing",
+    "API-documentation",
+    "changelog"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Technical Writer",
+    "specialty": "documentation and technical communication"
+  },
+  "tags": [
+    "documentation",
+    "writing",
+    "technical-writing"
+  ]
+}

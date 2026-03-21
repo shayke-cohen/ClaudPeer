@@ -1,0 +1,22 @@
+{
+  "catalogId": "dash0",
+  "name": "Dash0",
+  "description": "OpenTelemetry-native observability with dashboards and investigations",
+  "category": "Monitoring",
+  "icon": "gauge.with.dots.needle.67percent",
+  "transport": {
+    "kind": "http",
+    "url": "https://api.dash0.com/mcp",
+    "headerKeys": [
+      "Authorization"
+    ]
+  },
+  "popularity": 14000,
+  "tags": [
+    "opentelemetry",
+    "traces",
+    "metrics",
+    "eu-cloud"
+  ],
+  "homepage": "https://www.dash0.com"
+}

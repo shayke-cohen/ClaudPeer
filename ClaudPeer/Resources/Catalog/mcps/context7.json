@@ -1,0 +1,26 @@
+{
+  "catalogId": "context7",
+  "name": "Context7",
+  "description": "Up-to-date library and framework documentation for coding agents",
+  "category": "Search & Web",
+  "icon": "book.closed.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@upstash/context7-mcp"
+    ],
+    "envKeys": [
+      "CONTEXT7_API_KEY"
+    ]
+  },
+  "popularity": 118000,
+  "tags": [
+    "docs",
+    "libraries",
+    "context",
+    "sdk"
+  ],
+  "homepage": "https://context7.com"
+}

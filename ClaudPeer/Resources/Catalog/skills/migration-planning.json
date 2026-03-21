@@ -1,0 +1,20 @@
+{
+  "catalogId": "migration-planning",
+  "name": "Migration Planning",
+  "description": "Cross-system moves with cutover, rollback, and parity checks",
+  "category": "Data",
+  "icon": "arrow.triangle.swap",
+  "requiredMCPs": [
+    "postgresql"
+  ],
+  "triggers": [
+    "data migration",
+    "cutover",
+    "rollback"
+  ],
+  "tags": [
+    "operations",
+    "risk",
+    "integrity"
+  ]
+}

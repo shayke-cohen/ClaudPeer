@@ -1,0 +1,26 @@
+{
+  "catalogId": "digma",
+  "name": "Digma",
+  "description": "Continuous feedback on code hotspots, regressions, and runtime insights",
+  "category": "Monitoring",
+  "icon": "scope",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-digma"
+    ],
+    "envKeys": [
+      "DIGMA_API_KEY"
+    ]
+  },
+  "popularity": 11000,
+  "tags": [
+    "otel",
+    "developer-feedback",
+    "regressions",
+    "java"
+  ],
+  "homepage": "https://digma.ai"
+}

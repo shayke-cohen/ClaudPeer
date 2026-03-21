@@ -1,0 +1,20 @@
+{
+  "catalogId": "serverless",
+  "name": "Serverless",
+  "description": "Functions and managed platforms with cold starts in mind",
+  "category": "Backend",
+  "icon": "cloud.fill",
+  "requiredMCPs": [
+    "vercel"
+  ],
+  "triggers": [
+    "serverless",
+    "lambda",
+    "functions"
+  ],
+  "tags": [
+    "cloud",
+    "scaling",
+    "ops"
+  ]
+}

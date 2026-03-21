@@ -1,0 +1,20 @@
+{
+  "catalogId": "docker-containerization",
+  "name": "Docker Containerization",
+  "description": "Reproducible images, layers, and local dev parity",
+  "category": "DevOps & CI/CD",
+  "icon": "cube.fill",
+  "requiredMCPs": [
+    "docker"
+  ],
+  "triggers": [
+    "dockerfile",
+    "container",
+    "image"
+  ],
+  "tags": [
+    "containers",
+    "devops",
+    "reproducibility"
+  ]
+}

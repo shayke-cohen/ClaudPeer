@@ -1,0 +1,22 @@
+{
+  "catalogId": "claudpeer-accessibility",
+  "name": "ClaudPeer Accessibility",
+  "description": "Accessibility identifier conventions for ClaudPeer UI — enables AppXray and UI automation",
+  "category": "ClaudPeer",
+  "icon": "accessibility",
+  "requiredMCPs": [],
+  "triggers": [
+    "accessibility identifier",
+    "accessibilityIdentifier",
+    "testId",
+    "appxray",
+    "UI testing",
+    "a11y identifier"
+  ],
+  "tags": [
+    "accessibility",
+    "appxray",
+    "ui-testing",
+    "claudpeer"
+  ]
+}

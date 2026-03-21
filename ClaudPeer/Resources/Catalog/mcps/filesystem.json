@@ -1,0 +1,24 @@
+{
+  "catalogId": "filesystem",
+  "name": "Filesystem",
+  "description": "Controlled local filesystem read/write within allowed directories",
+  "category": "File & Storage",
+  "icon": "folder.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-filesystem"
+    ],
+    "envKeys": []
+  },
+  "popularity": 312000,
+  "tags": [
+    "files",
+    "local",
+    "io",
+    "sandbox"
+  ],
+  "homepage": "https://github.com/modelcontextprotocol/servers"
+}

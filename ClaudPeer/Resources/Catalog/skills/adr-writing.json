@@ -1,0 +1,18 @@
+{
+  "catalogId": "adr-writing",
+  "name": "ADR Writing",
+  "description": "Lightweight architecture decision records for future context",
+  "category": "Project & Process",
+  "icon": "bookmark.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "ADR",
+    "decision record",
+    "architecture"
+  ],
+  "tags": [
+    "documentation",
+    "architecture",
+    "history"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "catalogId": "confluence",
+  "name": "Confluence",
+  "description": "Confluence spaces, pages, and inline comments for team wikis",
+  "category": "Productivity",
+  "icon": "books.vertical.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-confluence"
+    ],
+    "envKeys": [
+      "CONFLUENCE_HOST",
+      "CONFLUENCE_EMAIL",
+      "CONFLUENCE_API_TOKEN"
+    ]
+  },
+  "popularity": 55000,
+  "tags": [
+    "wiki",
+    "docs",
+    "atlassian",
+    "knowledge-base"
+  ],
+  "homepage": "https://www.atlassian.com/software/confluence"
+}

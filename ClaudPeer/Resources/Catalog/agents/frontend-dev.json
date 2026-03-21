@@ -1,0 +1,29 @@
+{
+  "catalogId": "frontend-dev",
+  "name": "Frontend Dev",
+  "description": "Frontend specialist for React, CSS architecture, accessible UI, and web performance. Ships polished user interfaces.",
+  "category": "Specialists",
+  "icon": "paintbrush.fill",
+  "color": "pink",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "react-patterns",
+    "CSS-architecture",
+    "component-design",
+    "web-performance",
+    "accessibility-audit",
+    "claudpeer-accessibility"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Frontend Engineer",
+    "specialty": "React, UI architecture, accessibility, and performance"
+  },
+  "tags": [
+    "frontend",
+    "react",
+    "accessibility"
+  ]
+}

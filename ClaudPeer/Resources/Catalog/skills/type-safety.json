@@ -1,0 +1,18 @@
+{
+  "catalogId": "type-safety",
+  "name": "Type Safety",
+  "description": "Leverage static types to prevent entire bug classes",
+  "category": "Development",
+  "icon": "square.stack.3d.up.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "types",
+    "typescript",
+    "swift"
+  ],
+  "tags": [
+    "correctness",
+    "static-analysis",
+    "safety"
+  ]
+}

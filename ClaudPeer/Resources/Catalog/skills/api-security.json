@@ -1,0 +1,20 @@
+{
+  "catalogId": "api-security",
+  "name": "API Security",
+  "description": "Hardening HTTP/GraphQL endpoints against abuse and data leaks",
+  "category": "Security",
+  "icon": "lock.shield.fill",
+  "requiredMCPs": [
+    "fetch"
+  ],
+  "triggers": [
+    "API security",
+    "authz",
+    "abuse"
+  ],
+  "tags": [
+    "authz",
+    "abuse",
+    "web"
+  ]
+}

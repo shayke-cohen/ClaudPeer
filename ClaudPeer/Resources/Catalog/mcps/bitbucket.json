@@ -1,0 +1,28 @@
+{
+  "catalogId": "bitbucket",
+  "name": "Bitbucket",
+  "description": "Atlassian Bitbucket Cloud integration for repos, PRs, and pipelines",
+  "category": "Version Control",
+  "icon": "shippingbox.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@submergedas/bitbucket-mcp"
+    ],
+    "envKeys": [
+      "BITBUCKET_EMAIL",
+      "BITBUCKET_USERNAME",
+      "BITBUCKET_API_TOKEN"
+    ]
+  },
+  "popularity": 48000,
+  "tags": [
+    "git",
+    "atlassian",
+    "pull-requests",
+    "pipelines"
+  ],
+  "homepage": "https://www.npmjs.com/search?q=bitbucket%20mcp"
+}

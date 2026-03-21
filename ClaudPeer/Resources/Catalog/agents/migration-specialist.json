@@ -1,0 +1,26 @@
+{
+  "catalogId": "migration-specialist",
+  "name": "Migration Specialist",
+  "description": "Migration specialist for coordinated database and code migrations with rollback thinking and clear execution plans.",
+  "category": "Collaboration",
+  "icon": "arrow.triangle.swap",
+  "color": "teal",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "database-migration",
+    "migration-planning",
+    "refactoring"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Migration Specialist",
+    "specialty": "database and codebase migrations"
+  },
+  "tags": [
+    "migration",
+    "database",
+    "refactoring"
+  ]
+}

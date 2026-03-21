@@ -1,0 +1,26 @@
+{
+  "catalogId": "coingecko",
+  "name": "CoinGecko",
+  "description": "Cryptocurrency prices, market caps, trending coins, and metadata",
+  "category": "Finance",
+  "icon": "chart.pie.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-coingecko"
+    ],
+    "envKeys": [
+      "COINGECKO_API_KEY"
+    ]
+  },
+  "popularity": 56000,
+  "tags": [
+    "crypto",
+    "market-data",
+    "defi",
+    "prices"
+  ],
+  "homepage": "https://www.coingecko.com"
+}

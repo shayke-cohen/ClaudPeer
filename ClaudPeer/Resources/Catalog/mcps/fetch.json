@@ -1,0 +1,24 @@
+{
+  "catalogId": "fetch",
+  "name": "Fetch",
+  "description": "HTTP fetch for retrieving HTML, JSON, and API responses safely",
+  "category": "Search & Web",
+  "icon": "arrow.down.circle.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-fetch-server"
+    ],
+    "envKeys": []
+  },
+  "popularity": 245000,
+  "tags": [
+    "http",
+    "scraping",
+    "api",
+    "download"
+  ],
+  "homepage": "https://github.com/modelcontextprotocol/servers"
+}

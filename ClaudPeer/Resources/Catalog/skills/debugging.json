@@ -1,0 +1,18 @@
+{
+  "catalogId": "debugging",
+  "name": "Debugging",
+  "description": "Systematic root-cause analysis from symptoms to minimal fix",
+  "category": "Development",
+  "icon": "ant.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "debug",
+    "bug",
+    "investigate"
+  ],
+  "tags": [
+    "diagnostics",
+    "root-cause",
+    "stability"
+  ]
+}

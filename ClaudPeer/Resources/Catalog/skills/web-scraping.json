@@ -1,0 +1,21 @@
+{
+  "catalogId": "web-scraping",
+  "name": "Web Scraping",
+  "description": "Respectful extraction with parsing, rate limits, and legality",
+  "category": "Specialized",
+  "icon": "spider.fill",
+  "requiredMCPs": [
+    "fetch",
+    "brave-search"
+  ],
+  "triggers": [
+    "scrape",
+    "crawl",
+    "html parse"
+  ],
+  "tags": [
+    "data",
+    "automation",
+    "compliance"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "catalogId": "postmark",
+  "name": "Postmark",
+  "description": "Transactional email delivery, bounces, and inbound parsing",
+  "category": "Communication",
+  "icon": "stamp.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-postmark"
+    ],
+    "envKeys": [
+      "POSTMARK_SERVER_TOKEN"
+    ]
+  },
+  "popularity": 31000,
+  "tags": [
+    "email",
+    "transactional",
+    "deliverability",
+    "inbound"
+  ],
+  "homepage": "https://postmarkapp.com"
+}

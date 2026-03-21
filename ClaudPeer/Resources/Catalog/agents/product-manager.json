@@ -1,0 +1,27 @@
+{
+  "catalogId": "product-manager",
+  "name": "Product Manager",
+  "description": "Product manager for requirements, user stories, prioritization, and roadmaps that keep engineering aligned with outcomes.",
+  "category": "Process",
+  "icon": "list.clipboard",
+  "color": "purple",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "requirements-writing",
+    "user-stories",
+    "roadmap-creation",
+    "sprint-planning"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "coordinator",
+  "systemPromptVariables": {
+    "role": "Product Manager",
+    "specialty": "requirements, roadmaps, and product planning"
+  },
+  "tags": [
+    "product",
+    "requirements",
+    "roadmap"
+  ]
+}

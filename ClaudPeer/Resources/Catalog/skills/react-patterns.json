@@ -1,0 +1,18 @@
+{
+  "catalogId": "react-patterns",
+  "name": "React Patterns",
+  "description": "Hooks, composition, and performance-minded component design",
+  "category": "Frontend",
+  "icon": "atom",
+  "requiredMCPs": [],
+  "triggers": [
+    "react",
+    "hooks",
+    "jsx"
+  ],
+  "tags": [
+    "react",
+    "ui",
+    "performance"
+  ]
+}

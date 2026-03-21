@@ -1,0 +1,18 @@
+{
+  "catalogId": "responsive-design",
+  "name": "Responsive Design",
+  "description": "Layouts that adapt across breakpoints and input modes",
+  "category": "Frontend",
+  "icon": "rectangle.split.2x1.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "responsive",
+    "breakpoints",
+    "mobile web"
+  ],
+  "tags": [
+    "layout",
+    "accessibility",
+    "mobile"
+  ]
+}

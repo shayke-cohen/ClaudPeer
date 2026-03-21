@@ -1,0 +1,20 @@
+{
+  "catalogId": "integration-testing",
+  "name": "Integration Testing",
+  "description": "Verify components together with realistic boundaries",
+  "category": "Testing & QA",
+  "icon": "link",
+  "requiredMCPs": [
+    "postgresql"
+  ],
+  "triggers": [
+    "integration test",
+    "service test",
+    "db test"
+  ],
+  "tags": [
+    "systems",
+    "ci",
+    "contracts"
+  ]
+}

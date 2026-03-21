@@ -1,0 +1,28 @@
+{
+  "catalogId": "clickhouse",
+  "name": "ClickHouse",
+  "description": "ClickHouse OLAP queries, tables, and distributed cluster metadata",
+  "category": "Databases",
+  "icon": "chart.xyaxis.line",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-clickhouse"
+    ],
+    "envKeys": [
+      "CLICKHOUSE_HOST",
+      "CLICKHOUSE_USER",
+      "CLICKHOUSE_PASSWORD"
+    ]
+  },
+  "popularity": 38000,
+  "tags": [
+    "olap",
+    "analytics",
+    "columnar",
+    "sql"
+  ],
+  "homepage": "https://clickhouse.com"
+}

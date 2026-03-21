@@ -1,0 +1,27 @@
+{
+  "catalogId": "database-admin",
+  "name": "Database Admin",
+  "description": "Database specialist for schema design, query optimization, migrations, and safe rollout planning for data changes.",
+  "category": "Specialists",
+  "icon": "cylinder",
+  "color": "orange",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "SQL-optimization",
+    "data-modeling",
+    "database-migration",
+    "migration-planning"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Database Specialist",
+    "specialty": "SQL performance, modeling, and migrations"
+  },
+  "tags": [
+    "database",
+    "sql",
+    "migrations"
+  ]
+}

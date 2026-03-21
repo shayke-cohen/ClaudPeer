@@ -32,8 +32,8 @@ struct CatalogSkill: Codable, Identifiable {
     let icon: String
     let requiredMCPs: [String]
     let triggers: [String]
-    let content: String
     let tags: [String]
+    var content: String = ""
 
     var id: String { catalogId }
 }
@@ -69,26 +69,58 @@ final class CatalogService {
     }
 
     private func loadCatalogs() {
-        mcpCatalog = loadJSON("MCPCatalog") ?? []
-        skillCatalog = loadJSON("SkillCatalog") ?? []
-        agentCatalog = loadJSON("AgentCatalog") ?? []
+        agentCatalog = loadCatalogItems(directory: "agents")
+        skillCatalog = loadSkillItems()
+        mcpCatalog = loadCatalogItems(directory: "mcps")
     }
 
-    private func loadJSON<T: Decodable>(_ name: String) -> T? {
-        if let url = Bundle.main.url(forResource: name, withExtension: "json", subdirectory: "Catalog") {
+    private func loadCatalogItems<T: Decodable>(directory: String) -> [T] {
+        guard let ids: [String] = loadJSON(directory: directory, name: "index") else { return [] }
+        return ids.compactMap { loadJSON(directory: directory, name: $0) }
+    }
+
+    private func loadSkillItems() -> [CatalogSkill] {
+        guard let ids: [String] = loadJSON(directory: "skills", name: "index") else { return [] }
+        return ids.compactMap { id -> CatalogSkill? in
+            guard var skill: CatalogSkill = loadJSON(directory: "skills", name: id) else { return nil }
+            skill.content = loadMarkdown(directory: "skills", name: id) ?? ""
+            return skill
+        }
+    }
+
+    private func loadJSON<T: Decodable>(directory: String, name: String) -> T? {
+        let subdirectory = "Catalog/\(directory)"
+        if let url = Bundle.main.url(forResource: name, withExtension: "json", subdirectory: subdirectory) {
             return decodeJSON(from: url)
         }
-        let fallbackPaths = [
-            "\(NSHomeDirectory())/ClaudPeer/ClaudPeer/Resources/Catalog/\(name).json",
-            Bundle.main.bundlePath + "/Contents/Resources/Catalog/\(name).json"
-        ]
-        for path in fallbackPaths {
-            let url = URL(fileURLWithPath: path)
-            if FileManager.default.fileExists(atPath: path), let result: T = decodeJSON(from: url) {
-                return result
+        for base in catalogSearchPaths() {
+            let path = "\(base)/\(directory)/\(name).json"
+            if FileManager.default.fileExists(atPath: path) {
+                return decodeJSON(from: URL(fileURLWithPath: path))
             }
         }
         return nil
+    }
+
+    private func loadMarkdown(directory: String, name: String) -> String? {
+        let subdirectory = "Catalog/\(directory)"
+        if let url = Bundle.main.url(forResource: name, withExtension: "md", subdirectory: subdirectory) {
+            return try? String(contentsOf: url, encoding: .utf8)
+        }
+        for base in catalogSearchPaths() {
+            let path = "\(base)/\(directory)/\(name).md"
+            if FileManager.default.fileExists(atPath: path) {
+                return try? String(contentsOf: URL(fileURLWithPath: path), encoding: .utf8)
+            }
+        }
+        return nil
+    }
+
+    private func catalogSearchPaths() -> [String] {
+        [
+            "\(NSHomeDirectory())/ClaudPeer/ClaudPeer/Resources/Catalog",
+            Bundle.main.bundlePath + "/Contents/Resources/Catalog"
+        ]
     }
 
     private func decodeJSON<T: Decodable>(from url: URL) -> T? {

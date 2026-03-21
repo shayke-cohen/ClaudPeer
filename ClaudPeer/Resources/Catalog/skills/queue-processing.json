@@ -1,0 +1,18 @@
+{
+  "catalogId": "queue-processing",
+  "name": "Queue Processing",
+  "description": "Reliable async work with retries, idempotency, and DLQs",
+  "category": "Backend",
+  "icon": "tray.full.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "queue",
+    "worker",
+    "async"
+  ],
+  "tags": [
+    "async",
+    "reliability",
+    "scaling"
+  ]
+}

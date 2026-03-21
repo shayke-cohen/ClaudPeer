@@ -1,0 +1,20 @@
+{
+  "catalogId": "browser-automation",
+  "name": "Browser Automation",
+  "description": "Reliable UI automation with stable selectors and debugging",
+  "category": "Specialized",
+  "icon": "cursorarrow.rays",
+  "requiredMCPs": [
+    "playwright"
+  ],
+  "triggers": [
+    "browser automation",
+    "e2e",
+    "scraping ui"
+  ],
+  "tags": [
+    "testing",
+    "rpa",
+    "automation"
+  ]
+}

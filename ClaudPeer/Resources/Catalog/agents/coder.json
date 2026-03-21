@@ -1,0 +1,28 @@
+{
+  "catalogId": "coder",
+  "name": "Coder",
+  "description": "Expert software engineer that implements features, edits and refactors code, and ships maintainable changes with strong engineering discipline.",
+  "category": "Core Team",
+  "icon": "chevron.left.forwardslash.chevron.right",
+  "color": "blue",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "code-review",
+    "refactoring",
+    "debugging",
+    "TDD",
+    "claudpeer-accessibility"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Software Engineer",
+    "specialty": "implementation, refactoring, and debugging"
+  },
+  "tags": [
+    "engineering",
+    "implementation",
+    "refactoring"
+  ]
+}

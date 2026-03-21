@@ -1,0 +1,29 @@
+{
+  "catalogId": "mysql",
+  "name": "MySQL",
+  "description": "MySQL and MariaDB schema exploration, queries, and performance hints",
+  "category": "Databases",
+  "icon": "cylinder.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-mysql"
+    ],
+    "envKeys": [
+      "MYSQL_HOST",
+      "MYSQL_USER",
+      "MYSQL_PASSWORD",
+      "MYSQL_DATABASE"
+    ]
+  },
+  "popularity": 112000,
+  "tags": [
+    "sql",
+    "relational",
+    "mariadb",
+    "lamp"
+  ],
+  "homepage": "https://www.mysql.com"
+}

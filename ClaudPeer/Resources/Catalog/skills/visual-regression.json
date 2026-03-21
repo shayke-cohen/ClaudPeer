@@ -1,0 +1,20 @@
+{
+  "catalogId": "visual-regression",
+  "name": "Visual Regression",
+  "description": "Pixel and perceptual diffs to catch unintended UI drift",
+  "category": "Testing & QA",
+  "icon": "camera.viewfinder",
+  "requiredMCPs": [
+    "playwright"
+  ],
+  "triggers": [
+    "visual diff",
+    "screenshot",
+    "percy"
+  ],
+  "tags": [
+    "ui",
+    "snapshots",
+    "quality"
+  ]
+}

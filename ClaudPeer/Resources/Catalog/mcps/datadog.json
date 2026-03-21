@@ -1,0 +1,27 @@
+{
+  "catalogId": "datadog",
+  "name": "Datadog",
+  "description": "Metrics, logs, traces, monitors, and dashboards via Datadog APIs",
+  "category": "Monitoring",
+  "icon": "chart.bar.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-datadog"
+    ],
+    "envKeys": [
+      "DATADOG_API_KEY",
+      "DATADOG_APP_KEY"
+    ]
+  },
+  "popularity": 88000,
+  "tags": [
+    "apm",
+    "logs",
+    "metrics",
+    "observability"
+  ],
+  "homepage": "https://www.datadoghq.com"
+}

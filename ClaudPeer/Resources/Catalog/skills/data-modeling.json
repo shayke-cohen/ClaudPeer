@@ -1,0 +1,21 @@
+{
+  "catalogId": "data-modeling",
+  "name": "Data Modeling",
+  "description": "Entities, relationships, and integrity constraints that age well",
+  "category": "Data",
+  "icon": "point.3.connected.trianglepath.dotted",
+  "requiredMCPs": [
+    "mongodb",
+    "postgresql"
+  ],
+  "triggers": [
+    "ERD",
+    "schema design",
+    "normalization"
+  ],
+  "tags": [
+    "schema",
+    "integrity",
+    "design"
+  ]
+}

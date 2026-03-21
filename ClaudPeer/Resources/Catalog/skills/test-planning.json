@@ -1,0 +1,18 @@
+{
+  "catalogId": "test-planning",
+  "name": "Test Planning",
+  "description": "Risk-based coverage planning before implementation spikes",
+  "category": "Testing & QA",
+  "icon": "list.clipboard.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "test plan",
+    "coverage",
+    "qa plan"
+  ],
+  "tags": [
+    "strategy",
+    "risk",
+    "release"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "catalogId": "vercel",
+  "name": "Vercel",
+  "description": "Vercel projects, deployments, env vars, and edge config",
+  "category": "Cloud & Infra",
+  "icon": "triangle.fill",
+  "transport": {
+    "kind": "http",
+    "url": "https://mcp.vercel.com",
+    "headerKeys": [
+      "Authorization"
+    ]
+  },
+  "popularity": 167000,
+  "tags": [
+    "hosting",
+    "nextjs",
+    "edge",
+    "preview"
+  ],
+  "homepage": "https://vercel.com"
+}

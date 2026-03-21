@@ -1,0 +1,26 @@
+{
+  "catalogId": "discord",
+  "name": "Discord",
+  "description": "Discord guild channels, messages, and moderation helpers",
+  "category": "Communication",
+  "icon": "gamecontroller.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-discord"
+    ],
+    "envKeys": [
+      "DISCORD_BOT_TOKEN"
+    ]
+  },
+  "popularity": 91000,
+  "tags": [
+    "chat",
+    "community",
+    "bots",
+    "voice"
+  ],
+  "homepage": "https://discord.com"
+}

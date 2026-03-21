@@ -1,0 +1,18 @@
+{
+  "catalogId": "state-management",
+  "name": "State Management",
+  "description": "Predictable data flow for complex client applications",
+  "category": "Frontend",
+  "icon": "arrow.triangle.swap",
+  "requiredMCPs": [],
+  "triggers": [
+    "redux",
+    "zustand",
+    "state"
+  ],
+  "tags": [
+    "frontend",
+    "architecture",
+    "data-flow"
+  ]
+}

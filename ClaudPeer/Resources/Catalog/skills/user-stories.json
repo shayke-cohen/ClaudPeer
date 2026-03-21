@@ -1,0 +1,20 @@
+{
+  "catalogId": "user-stories",
+  "name": "User Stories",
+  "description": "Small vertical slices with personas and testable value",
+  "category": "Project & Process",
+  "icon": "person.text.rectangle.fill",
+  "requiredMCPs": [
+    "jira"
+  ],
+  "triggers": [
+    "user story",
+    "acceptance criteria",
+    "INVEST"
+  ],
+  "tags": [
+    "agile",
+    "backlog",
+    "value"
+  ]
+}

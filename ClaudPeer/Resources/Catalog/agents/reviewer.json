@@ -1,0 +1,26 @@
+{
+  "catalogId": "reviewer",
+  "name": "Reviewer",
+  "description": "Senior code reviewer focused on correctness, security, performance, and maintainability. Surfaces risks before merge.",
+  "category": "Core Team",
+  "icon": "eye.fill",
+  "color": "orange",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "code-review",
+    "OWASP-top-10",
+    "code-audit"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Senior Code Reviewer",
+    "specialty": "correctness, security, and performance review"
+  },
+  "tags": [
+    "review",
+    "quality",
+    "security"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "catalogId": "technical-rfc",
+  "name": "Technical RFC",
+  "description": "Design proposals with alternatives and rollout plans",
+  "category": "Project & Process",
+  "icon": "doc.richtext.fill",
+  "requiredMCPs": [
+    "notion"
+  ],
+  "triggers": [
+    "RFC",
+    "design doc",
+    "proposal"
+  ],
+  "tags": [
+    "design",
+    "engineering",
+    "governance"
+  ]
+}

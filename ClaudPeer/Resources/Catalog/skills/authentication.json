@@ -1,0 +1,18 @@
+{
+  "catalogId": "authentication",
+  "name": "Authentication",
+  "description": "Identity flows, sessions, tokens, and threat modeling",
+  "category": "Backend",
+  "icon": "lock.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "auth",
+    "oauth",
+    "JWT"
+  ],
+  "tags": [
+    "security",
+    "identity",
+    "sessions"
+  ]
+}

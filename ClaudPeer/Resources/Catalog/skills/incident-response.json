@@ -1,0 +1,21 @@
+{
+  "catalogId": "incident-response",
+  "name": "Incident Response",
+  "description": "Coordinate mitigation, communication, and postmortems",
+  "category": "DevOps & CI/CD",
+  "icon": "cross.case.fill",
+  "requiredMCPs": [
+    "pagerduty",
+    "slack"
+  ],
+  "triggers": [
+    "incident",
+    "outage",
+    "SEV"
+  ],
+  "tags": [
+    "reliability",
+    "communication",
+    "process"
+  ]
+}

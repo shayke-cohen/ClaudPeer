@@ -1,0 +1,20 @@
+{
+  "catalogId": "image-processing",
+  "name": "Image Processing",
+  "description": "Resize, compress, and transform images without quality surprises",
+  "category": "Specialized",
+  "icon": "photo.fill",
+  "requiredMCPs": [
+    "openai"
+  ],
+  "triggers": [
+    "image",
+    "vision",
+    "thumbnail"
+  ],
+  "tags": [
+    "media",
+    "performance",
+    "ml"
+  ]
+}

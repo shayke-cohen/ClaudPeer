@@ -1,0 +1,18 @@
+{
+  "catalogId": "rest-api",
+  "name": "REST API Implementation",
+  "description": "Resource-oriented HTTP APIs with consistent semantics",
+  "category": "Backend",
+  "icon": "network",
+  "requiredMCPs": [],
+  "triggers": [
+    "REST",
+    "HTTP API",
+    "CRUD"
+  ],
+  "tags": [
+    "http",
+    "api",
+    "server"
+  ]
+}

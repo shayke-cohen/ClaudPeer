@@ -1,0 +1,29 @@
+{
+  "catalogId": "email-smtp",
+  "name": "Email (SMTP)",
+  "description": "Send transactional and digest emails via SMTP or provider APIs",
+  "category": "Communication",
+  "icon": "envelope.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-email"
+    ],
+    "envKeys": [
+      "SMTP_HOST",
+      "SMTP_USER",
+      "SMTP_PASSWORD",
+      "SMTP_FROM"
+    ]
+  },
+  "popularity": 38000,
+  "tags": [
+    "email",
+    "smtp",
+    "notifications",
+    "transactional"
+  ],
+  "homepage": "https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol"
+}

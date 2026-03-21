@@ -1,0 +1,18 @@
+{
+  "catalogId": "changelog",
+  "name": "Changelog Maintenance",
+  "description": "User-facing release notes with clear upgrade guidance",
+  "category": "Documentation",
+  "icon": "list.number",
+  "requiredMCPs": [],
+  "triggers": [
+    "changelog",
+    "release notes",
+    "semver"
+  ],
+  "tags": [
+    "releases",
+    "communication",
+    "semver"
+  ]
+}

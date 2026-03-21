@@ -1,0 +1,20 @@
+{
+  "catalogId": "api-documentation",
+  "name": "API Documentation",
+  "description": "Accurate examples, errors, and versioning guidance",
+  "category": "Documentation",
+  "icon": "doc.text.fill",
+  "requiredMCPs": [
+    "fetch"
+  ],
+  "triggers": [
+    "OpenAPI",
+    "swagger",
+    "API docs"
+  ],
+  "tags": [
+    "reference",
+    "developer-experience",
+    "contracts"
+  ]
+}

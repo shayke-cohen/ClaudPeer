@@ -1,0 +1,18 @@
+{
+  "catalogId": "pair-programming",
+  "name": "Pair Programming",
+  "description": "Driver/navigator rhythm for shared problem solving",
+  "category": "Development",
+  "icon": "person.2.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "pair",
+    "mob",
+    "collaborate code"
+  ],
+  "tags": [
+    "collaboration",
+    "workflow",
+    "team"
+  ]
+}

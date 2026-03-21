@@ -1,0 +1,18 @@
+{
+  "catalogId": "pwa-development",
+  "name": "PWA Development",
+  "description": "Installable web apps with offline and update strategies",
+  "category": "Frontend",
+  "icon": "app.badge.checkmark.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "PWA",
+    "service worker",
+    "offline"
+  ],
+  "tags": [
+    "offline",
+    "web",
+    "mobile"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "catalogId": "monday",
+  "name": "Monday.com",
+  "description": "Monday boards, items, updates, and automation recipes",
+  "category": "Productivity",
+  "icon": "calendar.badge.clock",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-monday"
+    ],
+    "envKeys": [
+      "MONDAY_API_TOKEN"
+    ]
+  },
+  "popularity": 36000,
+  "tags": [
+    "project-management",
+    "workflows",
+    "crm",
+    "boards"
+  ],
+  "homepage": "https://monday.com"
+}

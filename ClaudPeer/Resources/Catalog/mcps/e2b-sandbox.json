@@ -1,0 +1,26 @@
+{
+  "catalogId": "e2b-sandbox",
+  "name": "E2B Sandbox",
+  "description": "Secure cloud sandboxes for code execution, browsers, and data science",
+  "category": "Misc",
+  "icon": "shippingbox.and.arrow.backward.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@e2b/mcp-server"
+    ],
+    "envKeys": [
+      "E2B_API_KEY"
+    ]
+  },
+  "popularity": 63000,
+  "tags": [
+    "sandbox",
+    "code-exec",
+    "python",
+    "containers"
+  ],
+  "homepage": "https://e2b.dev"
+}

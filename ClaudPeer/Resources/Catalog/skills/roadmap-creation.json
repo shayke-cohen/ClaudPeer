@@ -1,0 +1,20 @@
+{
+  "catalogId": "roadmap-creation",
+  "name": "Roadmap Creation",
+  "description": "Now/next/later planning aligned to strategy and dependencies",
+  "category": "Project & Process",
+  "icon": "map.circle.fill",
+  "requiredMCPs": [
+    "notion"
+  ],
+  "triggers": [
+    "roadmap",
+    "strategy",
+    "themes"
+  ],
+  "tags": [
+    "planning",
+    "product",
+    "communication"
+  ]
+}

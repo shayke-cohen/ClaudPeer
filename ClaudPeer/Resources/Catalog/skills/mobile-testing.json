@@ -1,0 +1,21 @@
+{
+  "catalogId": "mobile-testing",
+  "name": "Mobile Testing",
+  "description": "Simulator and device validation for native mobile apps",
+  "category": "Testing & QA",
+  "icon": "iphone",
+  "requiredMCPs": [
+    "appxray",
+    "argus"
+  ],
+  "triggers": [
+    "ios test",
+    "android test",
+    "mobile qa"
+  ],
+  "tags": [
+    "mobile",
+    "qa",
+    "devices"
+  ]
+}

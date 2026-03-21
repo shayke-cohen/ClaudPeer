@@ -1,0 +1,27 @@
+{
+  "catalogId": "qdrant",
+  "name": "Qdrant",
+  "description": "Qdrant collections, points, filters, and payload indexes",
+  "category": "AI & Knowledge",
+  "icon": "point.topleft.down.curvedto.point.bottomright.up",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-qdrant"
+    ],
+    "envKeys": [
+      "QDRANT_URL",
+      "QDRANT_API_KEY"
+    ]
+  },
+  "popularity": 41000,
+  "tags": [
+    "vector-db",
+    "rust",
+    "filters",
+    "self-hosted"
+  ],
+  "homepage": "https://qdrant.tech"
+}

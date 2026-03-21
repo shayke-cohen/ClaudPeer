@@ -1,0 +1,18 @@
+{
+  "catalogId": "error-handling",
+  "name": "Error Handling",
+  "description": "Predictable failures, observability, and user-safe messaging",
+  "category": "Development",
+  "icon": "exclamationmark.triangle.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "errors",
+    "exceptions",
+    "resilience"
+  ],
+  "tags": [
+    "reliability",
+    "observability",
+    "ux"
+  ]
+}

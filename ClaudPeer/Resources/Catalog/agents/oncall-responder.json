@@ -1,0 +1,26 @@
+{
+  "catalogId": "oncall-responder",
+  "name": "On-Call Responder",
+  "description": "Incident responder for production issues: triage, logs, monitoring signals, and stabilization under time pressure.",
+  "category": "Process",
+  "icon": "exclamationmark.triangle.fill",
+  "color": "red",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "incident-response",
+    "log-analysis",
+    "monitoring-setup"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "On-Call Responder",
+    "specialty": "incident response and production reliability"
+  },
+  "tags": [
+    "incident",
+    "oncall",
+    "reliability"
+  ]
+}

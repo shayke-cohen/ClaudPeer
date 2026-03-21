@@ -1,0 +1,26 @@
+{
+  "catalogId": "resend",
+  "name": "Resend",
+  "description": "Developer-first email API with domains, templates, and webhooks",
+  "category": "Communication",
+  "icon": "paperplane.circle.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-resend"
+    ],
+    "envKeys": [
+      "RESEND_API_KEY"
+    ]
+  },
+  "popularity": 58000,
+  "tags": [
+    "email",
+    "api",
+    "react-email",
+    "domains"
+  ],
+  "homepage": "https://resend.com"
+}

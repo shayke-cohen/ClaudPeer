@@ -1,0 +1,26 @@
+{
+  "catalogId": "kubernetes",
+  "name": "Kubernetes",
+  "description": "kubectl-style cluster inspection: pods, services, events, and logs",
+  "category": "Cloud & Infra",
+  "icon": "hexagon.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-kubernetes"
+    ],
+    "envKeys": [
+      "KUBECONFIG"
+    ]
+  },
+  "popularity": 115000,
+  "tags": [
+    "k8s",
+    "orchestration",
+    "helm",
+    "devops"
+  ],
+  "homepage": "https://kubernetes.io"
+}

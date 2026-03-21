@@ -1,0 +1,18 @@
+{
+  "catalogId": "react-native",
+  "name": "React Native",
+  "description": "Bridge boundaries, native modules, and release hardening",
+  "category": "Mobile",
+  "icon": "rectangle.stack.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "react native",
+    "expo",
+    "mobile js"
+  ],
+  "tags": [
+    "mobile",
+    "javascript",
+    "cross-platform"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "catalogId": "backend-dev",
+  "name": "Backend Dev",
+  "description": "Backend engineer focused on APIs, authentication, caching, and data access patterns. Builds reliable server-side systems.",
+  "category": "Specialists",
+  "icon": "server.rack",
+  "color": "green",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "REST-API",
+    "GraphQL-API",
+    "authentication",
+    "caching-strategy",
+    "database-migration"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Backend Engineer",
+    "specialty": "APIs, databases, and scalable services"
+  },
+  "tags": [
+    "backend",
+    "api",
+    "services"
+  ]
+}

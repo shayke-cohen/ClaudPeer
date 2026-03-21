@@ -1,0 +1,26 @@
+{
+  "catalogId": "exa",
+  "name": "Exa",
+  "description": "Neural and keyword search over the web with structured results",
+  "category": "Search & Web",
+  "icon": "sparkle.magnifyingglass",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "exa-mcp-server"
+    ],
+    "envKeys": [
+      "EXA_API_KEY"
+    ]
+  },
+  "popularity": 88000,
+  "tags": [
+    "search",
+    "research",
+    "semantic",
+    "citations"
+  ],
+  "homepage": "https://exa.ai"
+}

@@ -1,0 +1,24 @@
+{
+  "catalogId": "playwright",
+  "name": "Playwright",
+  "description": "Cross-browser automation: navigation, screenshots, and end-to-end flows",
+  "category": "Browser & Testing",
+  "icon": "play.rectangle.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@playwright/mcp"
+    ],
+    "envKeys": []
+  },
+  "popularity": 228000,
+  "tags": [
+    "browser",
+    "e2e",
+    "testing",
+    "automation"
+  ],
+  "homepage": "https://playwright.dev"
+}

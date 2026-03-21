@@ -1,0 +1,27 @@
+{
+  "catalogId": "supabase",
+  "name": "Supabase",
+  "description": "Supabase Postgres, Auth, Storage, and Edge Functions management",
+  "category": "Databases",
+  "icon": "flame.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@supabase/mcp-server-supabase"
+    ],
+    "envKeys": [
+      "SUPABASE_ACCESS_TOKEN",
+      "SUPABASE_PROJECT_REF"
+    ]
+  },
+  "popularity": 189000,
+  "tags": [
+    "postgres",
+    "baas",
+    "auth",
+    "realtime"
+  ],
+  "homepage": "https://supabase.com"
+}

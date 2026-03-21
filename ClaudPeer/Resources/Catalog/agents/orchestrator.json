@@ -1,0 +1,26 @@
+{
+  "catalogId": "orchestrator",
+  "name": "Orchestrator",
+  "description": "Team lead that breaks complex work into subtasks, coordinates execution, and delegates to specialists. Keeps context on the blackboard and across agents.",
+  "category": "Core Team",
+  "icon": "gear.2",
+  "color": "purple",
+  "model": "opus",
+  "instancePolicy": "singleton",
+  "requiredSkills": [
+    "peer-collaboration",
+    "delegation-patterns",
+    "blackboard-patterns"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "coordinator",
+  "systemPromptVariables": {
+    "role": "Orchestrator",
+    "specialty": "task breakdown, delegation, and team coordination"
+  },
+  "tags": [
+    "leadership",
+    "planning",
+    "delegation"
+  ]
+}

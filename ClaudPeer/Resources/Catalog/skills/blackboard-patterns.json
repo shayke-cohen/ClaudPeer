@@ -1,0 +1,20 @@
+{
+  "catalogId": "blackboard-patterns",
+  "name": "Blackboard Patterns",
+  "description": "Shared knowledge store usage for facts, tasks, and decisions",
+  "category": "ClaudPeer Collaboration",
+  "icon": "square.and.pencil",
+  "requiredMCPs": [
+    "memory"
+  ],
+  "triggers": [
+    "blackboard",
+    "shared state",
+    "facts"
+  ],
+  "tags": [
+    "knowledge",
+    "shared-context",
+    "claudpeer"
+  ]
+}

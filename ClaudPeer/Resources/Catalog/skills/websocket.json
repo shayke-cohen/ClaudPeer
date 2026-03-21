@@ -1,0 +1,18 @@
+{
+  "catalogId": "websocket",
+  "name": "WebSocket Services",
+  "description": "Real-time channels, backpressure, and auth at connection time",
+  "category": "Backend",
+  "icon": "dot.radiowaves.left.and.right",
+  "requiredMCPs": [],
+  "triggers": [
+    "websocket",
+    "realtime",
+    "socket"
+  ],
+  "tags": [
+    "realtime",
+    "networking",
+    "scale"
+  ]
+}

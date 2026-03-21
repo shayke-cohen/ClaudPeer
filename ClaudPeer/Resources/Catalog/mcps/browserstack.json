@@ -1,0 +1,27 @@
+{
+  "catalogId": "browserstack",
+  "name": "BrowserStack",
+  "description": "Real device and browser cloud testing with live sessions",
+  "category": "Browser & Testing",
+  "icon": "rectangle.stack.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-browserstack"
+    ],
+    "envKeys": [
+      "BROWSERSTACK_USERNAME",
+      "BROWSERSTACK_ACCESS_KEY"
+    ]
+  },
+  "popularity": 44000,
+  "tags": [
+    "devices",
+    "cloud",
+    "qa",
+    "parallel"
+  ],
+  "homepage": "https://www.browserstack.com"
+}

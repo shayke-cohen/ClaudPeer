@@ -1,0 +1,27 @@
+{
+  "catalogId": "api-designer",
+  "name": "API Designer",
+  "description": "API design specialist for REST and GraphQL contracts, versioning, consistency, and developer-friendly documentation.",
+  "category": "Specialists",
+  "icon": "arrow.left.arrow.right",
+  "color": "blue",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "REST-API",
+    "GraphQL-API",
+    "API-design",
+    "API-documentation"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "API Designer",
+    "specialty": "API contracts, design, and documentation"
+  },
+  "tags": [
+    "api",
+    "design",
+    "graphql"
+  ]
+}

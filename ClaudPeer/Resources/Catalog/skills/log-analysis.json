@@ -1,0 +1,20 @@
+{
+  "catalogId": "log-analysis",
+  "name": "Log Analysis",
+  "description": "Search, correlate, and explain incidents from log evidence",
+  "category": "DevOps & CI/CD",
+  "icon": "doc.text.magnifyingglass",
+  "requiredMCPs": [
+    "datadog"
+  ],
+  "triggers": [
+    "logs",
+    "Loki",
+    "splunk"
+  ],
+  "tags": [
+    "incident",
+    "debugging",
+    "operations"
+  ]
+}

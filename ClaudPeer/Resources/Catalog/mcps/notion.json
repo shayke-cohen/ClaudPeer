@@ -1,0 +1,26 @@
+{
+  "catalogId": "notion",
+  "name": "Notion",
+  "description": "Notion pages, databases, and workspace search for knowledge bases",
+  "category": "Productivity",
+  "icon": "doc.text.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@notionhq/notion-mcp-server"
+    ],
+    "envKeys": [
+      "NOTION_TOKEN"
+    ]
+  },
+  "popularity": 178000,
+  "tags": [
+    "wiki",
+    "docs",
+    "databases",
+    "notes"
+  ],
+  "homepage": "https://www.notion.so"
+}

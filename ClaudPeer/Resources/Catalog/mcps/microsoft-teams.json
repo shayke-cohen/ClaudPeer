@@ -1,0 +1,27 @@
+{
+  "catalogId": "microsoft-teams",
+  "name": "Microsoft Teams",
+  "description": "Teams messages, channels, meetings, and Graph-backed collaboration",
+  "category": "Communication",
+  "icon": "person.3.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-microsoft-teams"
+    ],
+    "envKeys": [
+      "MICROSOFT_TEAMS_ACCESS_TOKEN",
+      "MICROSOFT_GRAPH_TENANT_ID"
+    ]
+  },
+  "popularity": 47000,
+  "tags": [
+    "enterprise",
+    "meetings",
+    "office365",
+    "chat"
+  ],
+  "homepage": "https://www.microsoft.com/microsoft-teams"
+}

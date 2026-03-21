@@ -1,0 +1,20 @@
+{
+  "catalogId": "ci-pipeline",
+  "name": "CI Pipeline",
+  "description": "Fast feedback loops for build, test, and artifact promotion",
+  "category": "DevOps & CI/CD",
+  "icon": "arrow.triangle.merge",
+  "requiredMCPs": [
+    "github"
+  ],
+  "triggers": [
+    "CI",
+    "github actions",
+    "pipeline"
+  ],
+  "tags": [
+    "automation",
+    "quality",
+    "delivery"
+  ]
+}

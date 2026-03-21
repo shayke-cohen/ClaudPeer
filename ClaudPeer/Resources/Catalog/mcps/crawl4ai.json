@@ -1,0 +1,24 @@
+{
+  "catalogId": "crawl4ai",
+  "name": "Crawl4AI",
+  "description": "Open-source crawling and extraction tuned for LLM consumption",
+  "category": "Search & Web",
+  "icon": "ant.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@gkzhb/crawl4ai-mcp"
+    ],
+    "envKeys": []
+  },
+  "popularity": 67000,
+  "tags": [
+    "crawl",
+    "open-source",
+    "extraction",
+    "markdown"
+  ],
+  "homepage": "https://github.com/unclecode/crawl4ai"
+}

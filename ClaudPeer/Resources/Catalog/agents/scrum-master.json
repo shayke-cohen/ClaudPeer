@@ -1,0 +1,26 @@
+{
+  "catalogId": "scrum-master",
+  "name": "Scrum Master",
+  "description": "Agile facilitator for sprint planning, ceremonies, and stakeholder communication. Removes friction so the team can ship.",
+  "category": "Process",
+  "icon": "person.3.fill",
+  "color": "green",
+  "model": "haiku",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "sprint-planning",
+    "retrospective",
+    "stakeholder-communication"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "coordinator",
+  "systemPromptVariables": {
+    "role": "Scrum Master",
+    "specialty": "agile facilitation and team process"
+  },
+  "tags": [
+    "agile",
+    "scrum",
+    "facilitation"
+  ]
+}

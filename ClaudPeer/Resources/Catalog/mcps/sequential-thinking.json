@@ -1,0 +1,24 @@
+{
+  "catalogId": "sequential-thinking",
+  "name": "Sequential Thinking",
+  "description": "Structured step-by-step reasoning chains with revision and branching",
+  "category": "AI & Knowledge",
+  "icon": "list.number",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-sequential-thinking"
+    ],
+    "envKeys": []
+  },
+  "popularity": 198000,
+  "tags": [
+    "reasoning",
+    "planning",
+    "agents",
+    "chain-of-thought"
+  ],
+  "homepage": "https://github.com/modelcontextprotocol/servers"
+}

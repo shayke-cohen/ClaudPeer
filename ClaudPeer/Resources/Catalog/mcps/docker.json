@@ -1,0 +1,26 @@
+{
+  "catalogId": "docker",
+  "name": "Docker",
+  "description": "Local Docker: images, containers, logs, and compose project control",
+  "category": "Cloud & Infra",
+  "icon": "cube.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-docker"
+    ],
+    "envKeys": [
+      "DOCKER_HOST"
+    ]
+  },
+  "popularity": 132000,
+  "tags": [
+    "containers",
+    "compose",
+    "devops",
+    "local"
+  ],
+  "homepage": "https://www.docker.com"
+}

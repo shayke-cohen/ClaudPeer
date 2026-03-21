@@ -1,0 +1,18 @@
+{
+  "catalogId": "design-system",
+  "name": "Design System",
+  "description": "Tokens, documentation, and governance for UI consistency",
+  "category": "Frontend",
+  "icon": "square.stack.3d.forward.dottedline.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "design system",
+    "tokens",
+    "storybook"
+  ],
+  "tags": [
+    "consistency",
+    "ux",
+    "governance"
+  ]
+}

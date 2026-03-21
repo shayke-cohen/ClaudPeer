@@ -1,0 +1,18 @@
+{
+  "catalogId": "css-architecture",
+  "name": "CSS Architecture",
+  "description": "Scalable styling with predictable specificity and tokens",
+  "category": "Frontend",
+  "icon": "paintbrush.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "css",
+    "scss",
+    "design tokens"
+  ],
+  "tags": [
+    "styling",
+    "maintainability",
+    "design"
+  ]
+}

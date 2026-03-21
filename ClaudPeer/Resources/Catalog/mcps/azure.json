@@ -1,0 +1,29 @@
+{
+  "catalogId": "azure",
+  "name": "Microsoft Azure",
+  "description": "Azure Resource Manager queries, App Service, and storage accounts",
+  "category": "Cloud & Infra",
+  "icon": "a.circle.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-azure"
+    ],
+    "envKeys": [
+      "AZURE_CLIENT_ID",
+      "AZURE_CLIENT_SECRET",
+      "AZURE_TENANT_ID",
+      "AZURE_SUBSCRIPTION_ID"
+    ]
+  },
+  "popularity": 79000,
+  "tags": [
+    "azure",
+    "arm",
+    "cloud",
+    "enterprise"
+  ],
+  "homepage": "https://azure.microsoft.com"
+}

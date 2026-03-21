@@ -1,0 +1,28 @@
+{
+  "catalogId": "s3",
+  "name": "Amazon S3",
+  "description": "S3 buckets, objects, multipart uploads, and presigned URLs",
+  "category": "File & Storage",
+  "icon": "externaldrive.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-aws-s3"
+    ],
+    "envKeys": [
+      "AWS_ACCESS_KEY_ID",
+      "AWS_SECRET_ACCESS_KEY",
+      "AWS_REGION"
+    ]
+  },
+  "popularity": 98000,
+  "tags": [
+    "object-storage",
+    "aws",
+    "backup",
+    "cdn-origin"
+  ],
+  "homepage": "https://aws.amazon.com/s3"
+}

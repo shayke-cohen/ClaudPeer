@@ -1,0 +1,18 @@
+{
+  "catalogId": "api-design",
+  "name": "API Design",
+  "description": "Design clear, evolvable interfaces for humans and machines",
+  "category": "Development",
+  "icon": "link.circle.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "API design",
+    "contracts",
+    "schemas"
+  ],
+  "tags": [
+    "contracts",
+    "evolution",
+    "dx"
+  ]
+}

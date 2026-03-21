@@ -1,0 +1,27 @@
+{
+  "catalogId": "gcp",
+  "name": "Google Cloud",
+  "description": "GCP projects, Cloud Run, GCS, and IAM resource discovery",
+  "category": "Cloud & Infra",
+  "icon": "cloud.sun.rain.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-gcp"
+    ],
+    "envKeys": [
+      "GOOGLE_APPLICATION_CREDENTIALS",
+      "GCP_PROJECT_ID"
+    ]
+  },
+  "popularity": 87000,
+  "tags": [
+    "gcp",
+    "kubernetes",
+    "cloud-run",
+    "storage"
+  ],
+  "homepage": "https://cloud.google.com"
+}

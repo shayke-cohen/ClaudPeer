@@ -1,0 +1,26 @@
+{
+  "catalogId": "openai",
+  "name": "OpenAI",
+  "description": "OpenAI models, embeddings, assistants, and file tooling",
+  "category": "AI & Knowledge",
+  "icon": "cpu",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-openai"
+    ],
+    "envKeys": [
+      "OPENAI_API_KEY"
+    ]
+  },
+  "popularity": 224000,
+  "tags": [
+    "llm",
+    "embeddings",
+    "assistants",
+    "gpt"
+  ],
+  "homepage": "https://platform.openai.com"
+}

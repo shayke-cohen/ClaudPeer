@@ -1,0 +1,27 @@
+{
+  "catalogId": "documentation-lead",
+  "name": "Documentation Lead",
+  "description": "Documentation lead who sets standards, reviews doc quality, and keeps onboarding and operational docs coherent.",
+  "category": "Content & Design",
+  "icon": "books.vertical.fill",
+  "color": "teal",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "API-documentation",
+    "runbook",
+    "onboarding-guide",
+    "changelog"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "Documentation Lead",
+    "specialty": "documentation strategy, review, and consistency"
+  },
+  "tags": [
+    "documentation",
+    "leadership",
+    "standards"
+  ]
+}

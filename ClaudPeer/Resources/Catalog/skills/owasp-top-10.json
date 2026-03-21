@@ -1,0 +1,18 @@
+{
+  "catalogId": "owasp-top-10",
+  "name": "OWASP Top 10",
+  "description": "Practical mitigation patterns for common web vulnerabilities",
+  "category": "Security",
+  "icon": "shield.lefthalf.filled",
+  "requiredMCPs": [],
+  "triggers": [
+    "OWASP",
+    "injection",
+    "XSS"
+  ],
+  "tags": [
+    "web-security",
+    "hardening",
+    "basics"
+  ]
+}

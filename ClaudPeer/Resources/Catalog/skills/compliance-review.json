@@ -1,0 +1,21 @@
+{
+  "catalogId": "compliance-review",
+  "name": "Compliance Review",
+  "description": "Map controls to frameworks and evidence for audits",
+  "category": "Security",
+  "icon": "checklist",
+  "requiredMCPs": [
+    "notion",
+    "stripe"
+  ],
+  "triggers": [
+    "SOC2",
+    "GDPR",
+    "compliance"
+  ],
+  "tags": [
+    "governance",
+    "audit",
+    "privacy"
+  ]
+}

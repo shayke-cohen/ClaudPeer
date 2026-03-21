@@ -1,0 +1,27 @@
+{
+  "catalogId": "ux-designer",
+  "name": "UX Designer",
+  "description": "UX specialist for component UX, responsive layouts, accessibility, and cohesive design-system usage.",
+  "category": "Content & Design",
+  "icon": "paintpalette.fill",
+  "color": "pink",
+  "model": "sonnet",
+  "instancePolicy": "spawn",
+  "requiredSkills": [
+    "component-design",
+    "accessibility-audit",
+    "responsive-design",
+    "design-system"
+  ],
+  "extraMCPs": [],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "UX Designer",
+    "specialty": "user experience, accessibility, and responsive design"
+  },
+  "tags": [
+    "ux",
+    "design",
+    "accessibility"
+  ]
+}

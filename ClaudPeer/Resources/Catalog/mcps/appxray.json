@@ -1,0 +1,24 @@
+{
+  "catalogId": "appxray",
+  "name": "AppXray",
+  "description": "Runtime inspection for native and hybrid apps: UI tree, network, performance",
+  "category": "Browser & Testing",
+  "icon": "viewfinder",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@anthropic-ai/appxray-mcp-server"
+    ],
+    "envKeys": []
+  },
+  "popularity": 52000,
+  "tags": [
+    "debugging",
+    "ios",
+    "android",
+    "react-native"
+  ],
+  "homepage": "https://www.npmjs.com/package/@anthropic-ai/appxray-mcp-server"
+}

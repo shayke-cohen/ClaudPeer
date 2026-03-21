@@ -1,0 +1,18 @@
+{
+  "catalogId": "onboarding-guide",
+  "name": "Onboarding Guide",
+  "description": "Role-based first-week plans for engineers and contributors",
+  "category": "Documentation",
+  "icon": "hand.raised.fill",
+  "requiredMCPs": [],
+  "triggers": [
+    "onboarding",
+    "new hire",
+    "contributing"
+  ],
+  "tags": [
+    "people",
+    "engineering",
+    "culture"
+  ]
+}

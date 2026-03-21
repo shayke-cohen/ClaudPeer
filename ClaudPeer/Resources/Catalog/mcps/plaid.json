@@ -1,0 +1,28 @@
+{
+  "catalogId": "plaid",
+  "name": "Plaid",
+  "description": "Bank linking, balances, transactions, and identity verification",
+  "category": "Finance",
+  "icon": "building.columns.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-plaid"
+    ],
+    "envKeys": [
+      "PLAID_CLIENT_ID",
+      "PLAID_SECRET",
+      "PLAID_ENV"
+    ]
+  },
+  "popularity": 43000,
+  "tags": [
+    "fintech",
+    "banking",
+    "open-banking",
+    "kyc"
+  ],
+  "homepage": "https://plaid.com"
+}

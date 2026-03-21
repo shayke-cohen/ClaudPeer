@@ -1,0 +1,26 @@
+{
+  "catalogId": "hugging-face",
+  "name": "Hugging Face",
+  "description": "Model Hub inference, datasets, spaces, and tokenizer utilities",
+  "category": "AI & Knowledge",
+  "icon": "face.smiling.fill",
+  "transport": {
+    "kind": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-huggingface"
+    ],
+    "envKeys": [
+      "HUGGINGFACE_API_TOKEN"
+    ]
+  },
+  "popularity": 76000,
+  "tags": [
+    "models",
+    "datasets",
+    "ml",
+    "open-source"
+  ],
+  "homepage": "https://huggingface.co"
+}

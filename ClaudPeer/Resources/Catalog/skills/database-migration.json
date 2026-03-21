@@ -1,0 +1,20 @@
+{
+  "catalogId": "database-migration",
+  "name": "Database Migration",
+  "description": "Safe, reversible schema and data changes at scale",
+  "category": "Backend",
+  "icon": "cylinder.split.1x2.fill",
+  "requiredMCPs": [
+    "postgresql"
+  ],
+  "triggers": [
+    "migration",
+    "schema",
+    "flyway"
+  ],
+  "tags": [
+    "sql",
+    "operations",
+    "reliability"
+  ]
+}
