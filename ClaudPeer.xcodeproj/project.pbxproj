@@ -51,6 +51,7 @@
 		E566CEE5AE9A75C9CA511CE0 /* NewSessionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E55639E38311435A165FCF48 /* NewSessionSheet.swift */; };
 		E701154D0CB6746A491CDAC2 /* ConversationTreeNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524B9ABDC5AF9E1B2192E9EA /* ConversationTreeNode.swift */; };
 		E7B8F4EEA002301168EF50FA /* CatalogBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C920CE61C35A41E207ECFF /* CatalogBrowserView.swift */; };
+		D95B148C6A41FEA1EBAB8746 /* CatalogDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3992DCDB9A3E8017B81130DF /* CatalogDetailView.swift */; };
 		E803E9987F6AC8A21A2AEFEE /* DefaultMCPs.json in Resources */ = {isa = PBXBuildFile; fileRef = 71CFB2B8835C44C52BD6A4E3 /* DefaultMCPs.json */; };
 		E9B66D0A2C0BF1E0DBAF391A /* SkillLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67FC5A4F5255F6C7A9C02A2F /* SkillLibraryView.swift */; };
 		ECDE6BF353A7B12DD4EDE369 /* Skill.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97D48E6D1102BCF5E092886 /* Skill.swift */; };
@@ -105,6 +106,7 @@
 		B7E20C232EF0FDCB15C1A11F /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		B9951FFFD1B701984B418041 /* ClaudPeerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudPeerApp.swift; sourceTree = "<group>"; };
 		C1C920CE61C35A41E207ECFF /* CatalogBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogBrowserView.swift; sourceTree = "<group>"; };
+		3992DCDB9A3E8017B81130DF /* CatalogDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogDetailView.swift; sourceTree = "<group>"; };
 		C371AD5F769C2CCCF62DE333 /* MessageBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBubble.swift; sourceTree = "<group>"; };
 		C97D48E6D1102BCF5E092886 /* Skill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Skill.swift; sourceTree = "<group>"; };
 		CF7DE569AA584CC2C46F605D /* Participant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Participant.swift; sourceTree = "<group>"; };
@@ -195,6 +197,7 @@
 			isa = PBXGroup;
 			children = (
 				C1C920CE61C35A41E207ECFF /* CatalogBrowserView.swift */,
+				3992DCDB9A3E8017B81130DF /* CatalogDetailView.swift */,
 			);
 			path = Catalog;
 			sourceTree = "<group>";
@@ -424,6 +427,7 @@
 				A530F8A9507C64D41DFA5476 /* AttachmentThumbnail.swift in Sources */,
 				5B631136B8D2C4EDD6A3B646 /* BlackboardEntry.swift in Sources */,
 				E7B8F4EEA002301168EF50FA /* CatalogBrowserView.swift in Sources */,
+				D95B148C6A41FEA1EBAB8746 /* CatalogDetailView.swift in Sources */,
 				FCCDF203D5B2716A9237FE44 /* CatalogService.swift in Sources */,
 				2CBFE743EF644CA057D27A53 /* ChatView.swift in Sources */,
 				0E04AD12F853FD94FD789F88 /* ClaudPeerApp.swift in Sources */,

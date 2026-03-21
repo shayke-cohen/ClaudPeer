@@ -27,6 +27,7 @@ struct CatalogBrowserView: View {
     @State private var showAgentInstallConfirmation = false
     @State private var agentInstallAlertTitle = ""
     @State private var agentInstallAlertMessage = ""
+    @State private var selectedItem: CatalogItem?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -70,14 +71,20 @@ struct CatalogBrowserView: View {
                     case .agents:
                         ForEach(filteredAgents) { agent in
                             agentCard(agent)
+                                .contentShape(Rectangle())
+                                .onTapGesture { selectedItem = .agent(agent) }
                         }
                     case .skills:
                         ForEach(filteredSkills) { skill in
                             skillCard(skill)
+                                .contentShape(Rectangle())
+                                .onTapGesture { selectedItem = .skill(skill) }
                         }
                     case .mcps:
                         ForEach(filteredMCPs) { mcp in
                             mcpCard(mcp)
+                                .contentShape(Rectangle())
+                                .onTapGesture { selectedItem = .mcp(mcp) }
                         }
                     }
                 }
@@ -99,6 +106,16 @@ struct CatalogBrowserView: View {
             }
         } message: {
             Text(agentInstallAlertMessage)
+        }
+        .sheet(isPresented: Binding(
+            get: { selectedItem != nil },
+            set: { if !$0 { selectedItem = nil } }
+        )) {
+            if let item = selectedItem {
+                CatalogDetailView(item: item) {
+                    listRevision += 1
+                }
+            }
         }
         .onChange(of: selectedTab) { _, _ in
             selectedCategory = "All"
