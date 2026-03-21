@@ -2,24 +2,38 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { randomUUID } from "crypto";
 import type { AgentConfig, SidecarEvent } from "./types.js";
 import { SessionRegistry } from "./stores/session-registry.js";
+import { ChatHandler } from "./chat-handler.js";
 
 type EventEmitter = (event: SidecarEvent) => void;
 
 export class SessionManager {
   private registry = new SessionRegistry();
+  private chatHandler: ChatHandler;
   private emit: EventEmitter;
   private activeAborts = new Map<string, AbortController>();
 
   constructor(emit: EventEmitter) {
     this.emit = emit;
+    this.chatHandler = new ChatHandler(emit);
   }
 
   async createSession(conversationId: string, config: AgentConfig): Promise<void> {
     this.registry.create(conversationId, config);
-    console.log(`[session] Created session ${conversationId} for "${config.name}"`);
+
+    if (ChatHandler.isSimpleChat(config)) {
+      this.chatHandler.register(conversationId, config);
+      console.log(`[session] Created SIMPLE CHAT session ${conversationId} for "${config.name}"`);
+    } else {
+      console.log(`[session] Created AGENT session ${conversationId} for "${config.name}"`);
+    }
   }
 
   async sendMessage(sessionId: string, text: string): Promise<void> {
+    if (this.chatHandler.has(sessionId)) {
+      await this.chatHandler.sendMessage(sessionId, text);
+      return;
+    }
+
     const config = this.registry.getConfig(sessionId);
     if (!config) {
       this.emit({ type: "session.error", sessionId, error: "Session not found" });
@@ -40,6 +54,7 @@ export class SessionManager {
       const options = this.buildQueryOptions(sessionId, config, state.claudeSessionId, abortController);
       const sdkSessionId = options.sessionId ?? options.resume;
 
+      console.log(`[session] Starting Agent SDK query for session ${sessionId}`);
       const stream = query({ prompt: text, options });
       let resultText = "";
 
@@ -48,7 +63,6 @@ export class SessionManager {
         this.handleSDKMessage(sessionId, message, (t) => { resultText += t; });
       }
 
-      // Store SDK session ID for future resume
       if (sdkSessionId && !state.claudeSessionId) {
         this.registry.update(sessionId, { claudeSessionId: sdkSessionId });
       }

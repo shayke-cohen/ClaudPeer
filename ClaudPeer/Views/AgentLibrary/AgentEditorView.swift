@@ -145,7 +145,7 @@ struct AgentEditorView: View {
                         .foregroundStyle(.blue)
                 }
                 Picker("Color", selection: $color) {
-                    ForEach(["blue", "red", "green", "purple", "orange", "teal", "pink"], id: \.self) { c in
+                    ForEach(["blue", "red", "green", "purple", "orange", "teal", "pink", "indigo", "gray"], id: \.self) { c in
                         Text(c.capitalized).tag(c)
                     }
                 }

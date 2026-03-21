@@ -8,7 +8,7 @@ struct AgentLibraryView: View {
     @Query(sort: \Agent.name) private var agents: [Agent]
     @State private var searchText = ""
     @State private var filterOrigin: AgentOriginFilter = .all
-    @State private var showingEditor = false
+    @State private var showingNewAgent = false
     @State private var editingAgent: Agent?
 
     enum AgentOriginFilter: String, CaseIterable {
@@ -48,12 +48,10 @@ struct AgentLibraryView: View {
                             startSession(with: agent)
                         }) {
                             editingAgent = agent
-                            showingEditor = true
                         }
                         .contextMenu {
                             Button("Edit") {
                                 editingAgent = agent
-                                showingEditor = true
                             }
                             Button("Duplicate") { duplicateAgent(agent) }
                             Divider()
@@ -64,10 +62,15 @@ struct AgentLibraryView: View {
                 .padding()
             }
         }
-        .sheet(isPresented: $showingEditor) {
-            AgentEditorView(agent: editingAgent) { _ in
-                showingEditor = false
+        .sheet(item: $editingAgent) { agent in
+            AgentEditorView(agent: agent) { _ in
                 editingAgent = nil
+            }
+            .frame(minWidth: 600, minHeight: 500)
+        }
+        .sheet(isPresented: $showingNewAgent) {
+            AgentEditorView(agent: nil) { _ in
+                showingNewAgent = false
             }
             .frame(minWidth: 600, minHeight: 500)
         }
@@ -94,8 +97,7 @@ struct AgentLibraryView: View {
                 .frame(width: 180)
 
             Button {
-                editingAgent = nil
-                showingEditor = true
+                showingNewAgent = true
             } label: {
                 Label("New Agent", systemImage: "plus")
             }

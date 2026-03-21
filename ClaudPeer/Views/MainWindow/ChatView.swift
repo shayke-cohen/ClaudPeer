@@ -52,6 +52,13 @@ struct ChatView: View {
         .onReceive(appState.$lastSessionEvent) { _ in
             checkForCompletion()
         }
+        .onAppear {
+            let sessionId = conversationId.uuidString
+            if appState.lastSessionEvent[sessionId] != nil {
+                isProcessing = true
+                checkForCompletion()
+            }
+        }
         .alert("Clear Messages?", isPresented: $showClearConfirmation) {
             Button("Clear All", role: .destructive) { clearMessages() }
             Button("Cancel", role: .cancel) {}
