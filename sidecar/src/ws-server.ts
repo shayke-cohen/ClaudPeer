@@ -30,6 +30,7 @@ export class WsServer {
         message: (ws, message) => {
           try {
             const data = typeof message === "string" ? message : new TextDecoder().decode(message);
+            console.log("[ws] Received:", data.substring(0, 200));
             const command = JSON.parse(data) as SidecarCommand;
             this.handleCommand(command);
           } catch (err) {

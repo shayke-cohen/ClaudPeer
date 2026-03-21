@@ -13,6 +13,7 @@ final class Conversation {
     var parentConversationId: UUID?
     var status: ConversationStatus
     var summary: String?
+    var isPinned: Bool = false
     var startedAt: Date
     var closedAt: Date?
     var session: Session?
@@ -27,6 +28,7 @@ final class Conversation {
         self.id = UUID()
         self.topic = topic
         self.status = .active
+        self.isPinned = false
         self.startedAt = Date()
         self.session = session
     }

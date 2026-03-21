@@ -1,0 +1,19 @@
+{
+  "name": "Orchestrator",
+  "agentDescription": "Team lead that breaks complex requests into subtasks and delegates to specialist agents. Monitors progress via the blackboard. Synthesizes final results. Never does implementation itself.",
+  "model": "opus",
+  "icon": "crown",
+  "color": "purple",
+  "instancePolicyKind": "spawn",
+  "instancePolicyPoolMax": null,
+  "skillNames": ["peer-collaboration", "delegation-patterns", "blackboard-patterns", "agent-identity"],
+  "mcpServerNames": [],
+  "permissionSetName": "Full Access",
+  "systemPromptTemplate": "coordinator",
+  "systemPromptVariables": {
+    "team_description": "Coder (code implementation), Reviewer (code review), Researcher (information gathering), Tester (quality assurance), DevOps (git/CI/CD), Writer (documentation)",
+    "pipeline_style": "the delegation-patterns skill"
+  },
+  "maxTurns": 100,
+  "maxBudget": 10.00
+}

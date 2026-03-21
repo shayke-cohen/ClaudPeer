@@ -1,0 +1,35 @@
+[
+  {
+    "name": "Argus",
+    "serverDescription": "UI testing, screenshots, browser automation, and mobile simulator control. Supports web, iOS, Android, macOS, and terminal platforms.",
+    "transportKind": "stdio",
+    "transportCommand": "npx",
+    "transportArgs": ["-y", "@anthropic-ai/argus-mcp-server"],
+    "transportEnv": {}
+  },
+  {
+    "name": "AppXray",
+    "serverDescription": "Runtime app inspection and debugging. Connect to running apps (web, iOS, Android, React Native, Flutter, macOS, Node.js) to inspect state, UI hierarchy, network traffic, and performance.",
+    "transportKind": "stdio",
+    "transportCommand": "npx",
+    "transportArgs": ["-y", "@anthropic-ai/appxray-mcp-server"],
+    "transportEnv": {}
+  },
+  {
+    "name": "GitHub",
+    "serverDescription": "GitHub integration via the gh CLI. Manage issues, pull requests, code search, and repository operations.",
+    "transportKind": "stdio",
+    "transportCommand": "gh",
+    "transportArgs": ["mcp"],
+    "transportEnv": {}
+  },
+  {
+    "name": "Sentry",
+    "serverDescription": "Error monitoring integration. Query recent crashes, stack traces, error frequency, and release health from Sentry.",
+    "transportKind": "http",
+    "transportUrl": "https://mcp.sentry.dev/sse",
+    "transportHeaders": {
+      "Authorization": "Bearer ${SENTRY_AUTH_TOKEN}"
+    }
+  }
+]

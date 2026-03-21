@@ -3,12 +3,20 @@ import Foundation
 
 @MainActor
 final class SidecarManager: ObservableObject, Sendable {
+    struct Config: Sendable {
+        var wsPort: Int = 9849
+        var httpPort: Int = 9850
+        var bunPathOverride: String?
+        var sidecarPathOverride: String?
+    }
+
     private var process: Process?
     private var webSocketTask: URLSessionWebSocketTask?
     private var urlSession: URLSession?
     private var eventContinuation: AsyncStream<SidecarEvent>.Continuation?
     private var isRunning = false
-    private let port: Int
+    private var isReconnecting = false
+    private let config: Config
 
     var events: AsyncStream<SidecarEvent> {
         AsyncStream { continuation in
@@ -16,15 +24,24 @@ final class SidecarManager: ObservableObject, Sendable {
         }
     }
 
-    nonisolated init(port: Int = 9849) {
-        self.port = port
+    nonisolated init(config: Config = Config()) {
+        self.config = config
     }
 
     func start() async throws {
         guard !isRunning else { return }
         isRunning = true
+
+        // Try connecting to an existing sidecar first
+        do {
+            try await connectWebSocket()
+            return
+        } catch {
+            // No existing sidecar, launch a new one
+        }
+
         try launchSidecar()
-        try await Task.sleep(for: .milliseconds(500))
+        try await Task.sleep(for: .milliseconds(800))
         try await connectWebSocket()
     }
 
@@ -39,8 +56,7 @@ final class SidecarManager: ObservableObject, Sendable {
     }
 
     func send(_ command: SidecarCommand) async throws {
-        let message = command.wireMessage
-        let data = try JSONEncoder().encode(message)
+        let data = try command.encodeToJSON()
         guard let text = String(data: data, encoding: .utf8) else { return }
         try await webSocketTask?.send(.string(text))
     }
@@ -55,7 +71,8 @@ final class SidecarManager: ObservableObject, Sendable {
         process.executableURL = URL(fileURLWithPath: bunPath)
         process.arguments = ["run", sidecarPath]
         process.environment = ProcessInfo.processInfo.environment
-        process.environment?["CLAUDPEER_WS_PORT"] = "\(port)"
+        process.environment?["CLAUDPEER_WS_PORT"] = "\(config.wsPort)"
+        process.environment?["CLAUDPEER_HTTP_PORT"] = "\(config.httpPort)"
 
         let logDir = "\(NSHomeDirectory())/.claudpeer/logs"
         try? FileManager.default.createDirectory(atPath: logDir, withIntermediateDirectories: true)
@@ -78,7 +95,7 @@ final class SidecarManager: ObservableObject, Sendable {
     }
 
     private func connectWebSocket() async throws {
-        let url = URL(string: "ws://localhost:\(port)")!
+        let url = URL(string: "ws://localhost:\(config.wsPort)")!
         let session = URLSession(configuration: .default)
         self.urlSession = session
         let task = session.webSocketTask(with: url)
@@ -126,22 +143,38 @@ final class SidecarManager: ObservableObject, Sendable {
     }
 
     private func attemptReconnect() {
-        guard isRunning else { return }
+        guard isRunning, !isReconnecting else { return }
+        isReconnecting = true
         Task {
+            defer { Task { @MainActor in self.isReconnecting = false } }
             try await Task.sleep(for: .seconds(2))
             guard isRunning else { return }
+
+            // Try connecting to an existing sidecar first (e.g. one that survived a UI restart)
+            do {
+                try await connectWebSocket()
+                return
+            } catch {
+                // No existing sidecar, launch a new one
+            }
+
             do {
                 try launchSidecar()
-                try await Task.sleep(for: .milliseconds(500))
+                try await Task.sleep(for: .milliseconds(800))
                 try await connectWebSocket()
             } catch {
-                try await Task.sleep(for: .seconds(5))
-                attemptReconnect()
+                print("[SidecarManager] Reconnect failed: \(error). Will retry in 5s.")
+                try? await Task.sleep(for: .seconds(5))
+                Task { @MainActor in self.attemptReconnect() }
             }
         }
     }
 
     private func findBunPath() -> String {
+        if let override = config.bunPathOverride,
+           FileManager.default.fileExists(atPath: override) {
+            return override
+        }
         let candidates = [
             "/opt/homebrew/bin/bun",
             "/usr/local/bin/bun",
@@ -156,6 +189,11 @@ final class SidecarManager: ObservableObject, Sendable {
     private func findSidecarPath() -> String {
         let fm = FileManager.default
 
+        if let override = config.sidecarPathOverride {
+            let overridePath = "\(override)/sidecar/src/index.ts"
+            if fm.fileExists(atPath: overridePath) { return overridePath }
+        }
+
         if let bundlePath = Bundle.main.resourcePath {
             let inBundle = "\(bundlePath)/sidecar/src/index.ts"
             if fm.fileExists(atPath: inBundle) { return inBundle }
@@ -166,11 +204,6 @@ final class SidecarManager: ObservableObject, Sendable {
 
         let wellKnown = "\(NSHomeDirectory())/ClaudPeer/sidecar/src/index.ts"
         if fm.fileExists(atPath: wellKnown) { return wellKnown }
-
-        if let saved = UserDefaults.standard.string(forKey: "claudpeer.projectPath") {
-            let savedPath = "\(saved)/sidecar/src/index.ts"
-            if fm.fileExists(atPath: savedPath) { return savedPath }
-        }
 
         return wellKnown
     }

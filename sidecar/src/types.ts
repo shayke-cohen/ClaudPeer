@@ -48,6 +48,7 @@ export interface SessionState {
   id: string;
   agentName: string;
   status: "active" | "paused" | "completed" | "failed";
+  claudeSessionId?: string;
   tokenCount: number;
   cost: number;
   startedAt: string;

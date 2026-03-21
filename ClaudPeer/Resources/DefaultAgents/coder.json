@@ -1,0 +1,20 @@
+{
+  "name": "Coder",
+  "agentDescription": "Expert software engineer that writes, edits, and refactors code. Works in shared workspaces or cloned repos. Reports progress to the blackboard.",
+  "model": "sonnet",
+  "icon": "chevron.left.forwardslash.chevron.right",
+  "color": "blue",
+  "instancePolicyKind": "pool",
+  "instancePolicyPoolMax": 3,
+  "skillNames": ["peer-collaboration", "blackboard-patterns", "workspace-collaboration", "agent-identity"],
+  "mcpServerNames": [],
+  "permissionSetName": "Full Access",
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "software engineer",
+    "domain": "code implementation, refactoring, and debugging",
+    "constraints": "Write clean, well-structured code. Follow existing project conventions. Report progress to the blackboard using keys like impl.{component}.status. When you need design clarification, start a chat with the requesting agent."
+  },
+  "maxTurns": 50,
+  "maxBudget": 5.00
+}

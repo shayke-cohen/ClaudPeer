@@ -33,11 +33,18 @@ struct MainWindowView: View {
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
-                    createNewConversation()
+                    appState.showNewSessionSheet = true
                 } label: {
-                    Label("New Chat", systemImage: "plus.bubble")
+                    Label("New Session", systemImage: "plus.bubble")
                 }
                 .keyboardShortcut("n", modifiers: .command)
+
+                Button {
+                    createQuickChat()
+                } label: {
+                    Label("Quick Chat", systemImage: "plus.message")
+                }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
 
                 Button {
                     appState.showAgentLibrary = true
@@ -53,6 +60,9 @@ struct MainWindowView: View {
 
                 sidecarStatusIndicator
             }
+        }
+        .sheet(isPresented: $appState.showNewSessionSheet) {
+            NewSessionSheet()
         }
         .sheet(isPresented: $appState.showAgentLibrary) {
             AgentLibraryView()
@@ -85,7 +95,7 @@ struct MainWindowView: View {
         }
     }
 
-    private func createNewConversation() {
+    private func createQuickChat() {
         let conversation = Conversation(topic: "New Chat")
         let userParticipant = Participant(type: .user, displayName: "You")
         userParticipant.conversation = conversation

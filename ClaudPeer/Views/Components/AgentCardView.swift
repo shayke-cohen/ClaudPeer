@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AgentCardView: View {
     let agent: Agent
+    let onStart: () -> Void
     let onEdit: () -> Void
 
     var body: some View {
@@ -47,11 +48,9 @@ struct AgentCardView: View {
             }
 
             HStack {
-                Button("Start") {
-                    // TODO: Start session with this agent
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                Button("Start", action: onStart)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
 
                 Button("Edit", action: onEdit)
                     .controlSize(.small)
@@ -72,6 +71,7 @@ struct AgentCardView: View {
         case .local: return "Local"
         case .peer: return "Shared"
         case .imported: return "Imported"
+        case .builtin: return "Built-in"
         }
     }
 

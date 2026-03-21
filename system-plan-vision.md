@@ -19,7 +19,8 @@
 8. [P2P Network Protocol](#8-p2p-network-protocol)
 9. [Project Structure](#9-project-structure)
 10. [Technical Decisions](#10-technical-decisions)
-11. [Implementation Roadmap](#11-implementation-roadmap)
+11. [Built-in Ecosystem](#11-built-in-ecosystem)
+12. [Implementation Roadmap](#12-implementation-roadmap)
 
 ---
 
@@ -1312,8 +1313,26 @@ ClaudPeer/
         StatusBadge.swift             -- Session/conversation status indicator
     Resources/
       Assets.xcassets
-      DefaultSkills/                  -- Bundled skill definitions
-      DefaultPermissionPresets.json
+      DefaultAgents/                  -- 7 built-in agent JSON definitions
+        orchestrator.json
+        coder.json
+        reviewer.json
+        researcher.json
+        tester.json
+        devops.json
+        writer.json
+      DefaultSkills/                  -- 5 ClaudPeer-specific skills
+        peer-collaboration/SKILL.md
+        blackboard-patterns/SKILL.md
+        delegation-patterns/SKILL.md
+        workspace-collaboration/SKILL.md
+        agent-identity/SKILL.md
+      DefaultMCPs.json                -- Pre-registered MCP server configs
+      DefaultPermissionPresets.json   -- 5 permission presets
+      SystemPromptTemplates/          -- 3 reusable system prompt templates
+        specialist.md
+        worker.md
+        coordinator.md
       BunRuntime/                     -- Bundled Bun binary for sidecar
 
   sidecar/                             -- TYPESCRIPT SIDECAR (Agent SDK + PeerBus)
@@ -1362,7 +1381,207 @@ ClaudPeer/
 
 ---
 
-## 11. Implementation Roadmap
+## 11. Built-in Ecosystem
+
+ClaudPeer ships with a curated set of default agents, skills, MCP integrations, permission presets, and system prompt templates. These components are designed to work together out of the box, enabling the delegation and collaboration flows described in Section 3 without requiring users to build agents from scratch.
+
+On first launch, the app seeds SwiftData from bundled JSON/Markdown resources in `Resources/`. Users can modify, duplicate, or delete any default -- they are starting points, not locked.
+
+### 11.1 Built-in Agents (7 defaults)
+
+Each agent has a distinct role, permission scope, and instance policy. Together they form a complete team that the Orchestrator can coordinate.
+
+**Orchestrator**
+
+- **Role**: Team lead. Breaks complex requests into subtasks and delegates to specialist agents. Monitors progress via the blackboard. Synthesizes final results. Never does implementation itself.
+- **Instance policy**: `.spawn` (one per user task)
+- **Model**: opus
+- **Permissions**: Full Access
+- **Skills**: `peer-collaboration`, `delegation-patterns`, `blackboard-patterns`
+- **Key tools**: `peer_delegate_task`, `blackboard_query`, `workspace_create`, `peer_broadcast`
+- **System prompt template**: Coordinator
+- **Rationale**: Without this agent, users must manually wire multi-agent pipelines. The Orchestrator makes collaboration accessible from a single prompt.
+
+**Coder**
+
+- **Role**: Writes, edits, and refactors code. Works in shared workspaces or cloned repos. Reports progress to the blackboard.
+- **Instance policy**: `.pool(max: 3)` (parallel coding tasks)
+- **Model**: sonnet
+- **Permissions**: Full Access
+- **Skills**: `peer-collaboration`, `blackboard-patterns`, `workspace-collaboration`
+- **System prompt template**: Specialist (role=software engineer, domain=code implementation)
+
+**Reviewer**
+
+- **Role**: Reviews code, PRs, and architecture decisions. Never writes production code. Writes findings to the blackboard or replies to the requesting agent.
+- **Instance policy**: `.singleton` (one reviewer, tasks queue to inbox)
+- **Model**: sonnet
+- **Permissions**: Read Only + `Bash(git diff *)`, `Bash(gh pr *)`
+- **Skills**: `peer-collaboration`, `blackboard-patterns`
+- **System prompt template**: Specialist (role=senior code reviewer, domain=code quality and security)
+
+**Researcher**
+
+- **Role**: Gathers information from the web, documentation, and codebases. Writes structured findings to the blackboard with namespaced keys. Never modifies code.
+- **Instance policy**: `.spawn`
+- **Model**: sonnet
+- **Permissions**: Read Only + `WebSearch`, `WebFetch`, `Bash(git log *)`, `Bash(git blame *)`
+- **Skills**: `peer-collaboration`, `blackboard-patterns`
+- **System prompt template**: Specialist (role=research specialist, domain=information gathering)
+
+**Tester**
+
+- **Role**: Writes and runs tests. Uses Argus MCP for UI/visual testing and AppXray for runtime inspection. Reports test results to the blackboard with pass/fail status.
+- **Instance policy**: `.pool(max: 2)` (parallel test runs on different simulators)
+- **Model**: sonnet
+- **Permissions**: Full Access
+- **MCPs**: Argus, AppXray
+- **Skills**: `peer-collaboration`, `blackboard-patterns`, `workspace-collaboration`
+- **System prompt template**: Specialist (role=QA engineer, domain=testing and quality assurance)
+
+**DevOps**
+
+- **Role**: Handles git workflows, CI/CD, deployment, and environment setup. Does not write application code.
+- **Instance policy**: `.singleton`
+- **Model**: haiku
+- **Permissions**: Git Only
+- **Skills**: `peer-collaboration`, `blackboard-patterns`
+- **System prompt template**: Specialist (role=DevOps specialist, domain=operations and infrastructure)
+
+**Writer**
+
+- **Role**: Writes documentation, READMEs, specs, PRDs, and UX copy. Reads code to understand behavior, then produces clear documentation.
+- **Instance policy**: `.spawn`
+- **Model**: sonnet
+- **Permissions**: Read + Write Docs
+- **Skills**: `peer-collaboration`, `blackboard-patterns`
+- **System prompt template**: Specialist (role=technical writer, domain=documentation)
+
+### 11.2 Built-in Skills (5 ClaudPeer-specific)
+
+These skills are specific to the multi-agent context. They teach agents how to use ClaudPeer's collaboration primitives (PeerBus, blackboard, workspaces). Distinct from the user's `~/.cursor/skills/` library, which can also be imported into the skill pool.
+
+**`peer-collaboration`**
+
+Injected into every built-in agent. Covers:
+- When to use blocking chat (`peer_chat_start`) vs async messages (`peer_send_message`)
+- Group chat etiquette (avoid flooding, use @-mentions)
+- Deadlock avoidance (never wait on an agent that's waiting on you)
+- How to handle `peer_receive_messages` polling in worker mode
+- Communication protocol: acknowledge receipt, summarize outcomes
+
+**`blackboard-patterns`**
+
+Injected into every built-in agent. Covers:
+- Key naming conventions: `{phase}.{topic}.{subtopic}` (e.g., `research.sorting.top3`, `impl.mergesort.status`, `review.mergesort.approved`)
+- Standard status values: `pending`, `in_progress`, `done`, `failed`, `blocked`
+- When to write to blackboard vs send a message (blackboard for persistent/structured data, messages for coordination)
+- How to subscribe to changes and react to updates
+- JSON value conventions for different data types (findings, decisions, artifacts)
+
+**`delegation-patterns`**
+
+For the Orchestrator and any agent that spawns subtasks. Covers:
+- When to use `wait_for_result: true` (sequential dependency) vs `false` (fire-and-forget or parallel)
+- Writing effective task descriptions (goal, context, constraints, expected output)
+- How to provide context without overwhelming the delegate
+- Handling delegation failures (timeout, error, unexpected result)
+- Common pipeline templates:
+  - **Research -> Implement -> Review**: sequential with blackboard handoffs
+  - **Parallel Investigation**: spawn N researchers, merge findings
+  - **Iterative Refinement**: implement -> review -> fix -> re-review (max 3 cycles)
+  - **Fan-out/Fan-in**: delegate N tasks, wait for all, synthesize
+
+**`workspace-collaboration`**
+
+For agents sharing a directory. Covers:
+- File ownership conventions: write a `{filename}.lock` marker while editing
+- Directory structure for multi-agent output: `{agent-name}/` subdirectories for work-in-progress, root for final artifacts
+- Signaling file readiness: write to blackboard key `workspace.{file}.ready = true`
+- Conflict avoidance: check blackboard before writing to shared files
+- Cleanup conventions: remove `.lock` files, temporary directories
+
+**`agent-identity`**
+
+Injected at every session start. Covers:
+- What ClaudPeer is (multi-agent orchestration system)
+- That this agent is one of several, potentially collaborating
+- How to discover peers: `peer_list_agents()` returns all active agents
+- How to introduce itself in conversations (name, role, current task)
+- That all communication is visible to the user in the Comms view
+
+### 11.3 MCP Integrations (pre-registered)
+
+These MCP servers are pre-configured in the MCP pool. Users enable them per-agent in Step 3 of the Agent Editor. All are optional -- agents work without them.
+
+- **Argus** -- UI testing, screenshots, browser automation, mobile simulator control. Primary MCP for the Tester agent. Transport: stdio.
+- **AppXray** -- Runtime app inspection: state trees, network traffic, performance metrics, crash logs. Useful for Tester and DevOps. Transport: stdio.
+- **GitHub** (via `gh` CLI wrapper) -- Issue management, PR creation/review, code search, repository operations. For Reviewer and DevOps. Transport: stdio.
+- **Sentry** -- Error monitoring integration: query recent crashes, stack traces, error frequency. For Tester and DevOps. Transport: http.
+- **Linear / Jira** -- Issue tracking: create/update tickets, query sprint boards. For Orchestrator (task tracking) and DevOps. Transport: http.
+- **Slack / Discord** -- Notifications: post summaries, alert on failures, share results. For Orchestrator (team updates). Transport: http.
+- **Blackboard MCP** (v2, future) -- Exposes the ClaudPeer blackboard as a standard MCP server, allowing Claude Desktop and other external AI tools to read/write the shared knowledge store.
+
+### 11.4 Permission Presets (5 defaults)
+
+Shipped in `DefaultPermissionPresets.json` and loaded into SwiftData on first launch.
+
+- **Full Access** -- All tools allowed. No directory restrictions. For: Coder, Tester, Orchestrator.
+  - Allow: `["*"]`
+- **Read Only** -- Read, search, and web access. No file writes or shell commands (except read-only git).
+  - Allow: `["Read", "Grep", "Glob", "WebSearch", "WebFetch", "Bash(git log *)", "Bash(git diff *)", "Bash(git show *)", "Bash(git blame *)"]`
+- **Read + Write Docs** -- Read everything, write only documentation files.
+  - Allow: `["Read", "Grep", "Glob", "Write(*.md)", "Write(*.txt)", "Write(*.json)", "WebSearch", "WebFetch"]`
+- **Git Only** -- Git and GitHub CLI operations plus read access. For: DevOps.
+  - Allow: `["Read", "Grep", "Glob", "Bash(git *)", "Bash(gh *)", "Bash(docker *)", "Bash(npm *)", "Bash(bun *)"]`
+- **Sandbox** -- Full access restricted to `~/.claudpeer/sandboxes/`. For untrusted or experimental agents.
+  - Allow: `["*"]`
+  - Additional directories: `["~/.claudpeer/sandboxes/"]`
+  - Deny: directories outside sandbox
+
+### 11.5 System Prompt Templates (3 defaults)
+
+Shipped in `Resources/SystemPromptTemplates/` as Markdown files with `{{placeholder}}` variables that the Agent Editor fills in. Users can also write fully custom prompts.
+
+**Specialist Template** (`specialist.md`)
+
+For focused, single-domain agents. Variables: `{{role}}`, `{{domain}}`, `{{constraints}}`.
+
+Core directive: "You are a {{role}} specialist. You focus exclusively on {{domain}}. When you encounter work outside your domain, delegate to the appropriate specialist using `peer_delegate_task` or ask for help via `peer_chat_start`. {{constraints}}"
+
+Used by: Coder, Reviewer, Researcher, Tester, DevOps, Writer.
+
+**Worker Template** (`worker.md`)
+
+For long-running singleton agents that process an inbox. Variables: `{{role}}`, `{{domain}}`, `{{polling_interval}}`.
+
+Core directive: "You are a long-running {{role}} worker. Between tasks, poll your inbox with `peer_receive_messages()` every {{polling_interval}} seconds. Process tasks sequentially. Write results to the blackboard. When idle, use `peer_chat_listen()` to wait for incoming conversations."
+
+Used by: agents with `.singleton` instance policy operating in `.worker` mode.
+
+**Coordinator Template** (`coordinator.md`)
+
+For orchestration agents that delegate but never implement. Variables: `{{team_description}}`, `{{pipeline_style}}`.
+
+Core directive: "You are a project coordinator managing a team of specialist agents: {{team_description}}. You break complex tasks into subtasks and delegate each to the appropriate specialist. You NEVER write code, tests, or documentation yourself. Track progress on the blackboard. Use {{pipeline_style}} to organize the work. Synthesize results when all subtasks complete."
+
+Used by: Orchestrator.
+
+### 11.6 First-Launch Seeding
+
+On first launch (detected by checking if the SwiftData store is empty), `ClaudPeerApp.swift` runs a seeding routine:
+
+1. Load `DefaultPermissionPresets.json` -> insert 5 `PermissionSet` records
+2. Load `DefaultMCPs.json` -> insert MCP server definitions (users still need to configure API keys)
+3. Load `DefaultSkills/*/SKILL.md` -> insert 5 `Skill` records with content
+4. Load `DefaultAgents/*.json` -> insert 7 `Agent` records, linking to skill/MCP/permission IDs by name
+5. Load `SystemPromptTemplates/*.md` -> store as named templates accessible in the Agent Editor
+
+All seeded records have `origin: .builtin`. Users can modify them freely -- edits are persisted. A "Reset to Defaults" option in Settings can re-seed.
+
+---
+
+## 12. Implementation Roadmap
 
 ### Phase 1: Foundation
 
@@ -1393,21 +1612,31 @@ ClaudPeer/
 16. **Shared workspaces** -- Create/join directories
 17. **Agent Comms view** -- Unified timeline UI
 
+### Phase 4.5: Built-in Ecosystem
+
+After inter-agent communication is functional, populate the default ecosystem:
+
+18. **ClaudPeer-specific skills** -- Write 5 SKILL.md files (peer-collaboration, blackboard-patterns, delegation-patterns, workspace-collaboration, agent-identity) in `Resources/DefaultSkills/`
+19. **Built-in agent definitions** -- Create 7 agent JSON files (Orchestrator, Coder, Reviewer, Researcher, Tester, DevOps, Writer) in `Resources/DefaultAgents/`
+20. **Permission presets and MCP configs** -- Create `DefaultPermissionPresets.json` (5 presets) and `DefaultMCPs.json` in `Resources/`
+21. **System prompt templates** -- Write 3 template files (specialist.md, worker.md, coordinator.md) in `Resources/SystemPromptTemplates/`
+22. **First-launch seeding** -- Wire `ClaudPeerApp.swift` to detect empty SwiftData store and seed defaults on first run
+
 ### Phase 5: Persistence and Polish
 
-18. **Session persistence** -- Save to SwiftData, resume via SDK, crash recovery
-19. **GitHub integration** -- Clone repos, branch from issues, gh CLI permissions
-20. **Conversation forking** -- Fork from any point in history
+23. **Session persistence** -- Save to SwiftData, resume via SDK, crash recovery
+24. **GitHub integration** -- Clone repos, branch from issues, gh CLI permissions
+25. **Conversation forking** -- Fork from any point in history
 
 ### Phase 6: P2P Networking (v1)
 
-21. **Bonjour discovery** -- Advertise/browse `_claudpeer._tcp`
-22. **Definition sharing** -- Browse/import agents and skills from peers
-23. **P2P Network panel** -- UI for peer management
+26. **Bonjour discovery** -- Advertise/browse `_claudpeer._tcp`
+27. **Definition sharing** -- Browse/import agents and skills from peers
+28. **P2P Network panel** -- UI for peer management
 
 ### Future: P2P v2
 
-24. **Peer registry in sidecar** -- Remote agent awareness
-25. **PeerBus routing layer** -- Local vs remote detection
-26. **Swift P2P bridge** -- Cross-machine message relay
-27. **Blackboard as MCP server** -- Universal AI tool integration
+29. **Peer registry in sidecar** -- Remote agent awareness
+30. **PeerBus routing layer** -- Local vs remote detection
+31. **Swift P2P bridge** -- Cross-machine message relay
+32. **Blackboard as MCP server** -- Universal AI tool integration

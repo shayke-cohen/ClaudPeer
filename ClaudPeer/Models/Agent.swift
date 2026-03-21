@@ -11,6 +11,7 @@ enum AgentOrigin: Sendable, Hashable {
     case local
     case peer(peerId: UUID)
     case imported
+    case builtin
 }
 
 @Model
@@ -78,6 +79,8 @@ final class Agent {
                 return .peer(peerId: originPeerId ?? UUID())
             case "imported":
                 return .imported
+            case "builtin":
+                return .builtin
             default:
                 return .local
             }
@@ -92,6 +95,9 @@ final class Agent {
                 originPeerId = peerId
             case .imported:
                 originKind = "imported"
+                originPeerId = nil
+            case .builtin:
+                originKind = "builtin"
                 originPeerId = nil
             }
         }

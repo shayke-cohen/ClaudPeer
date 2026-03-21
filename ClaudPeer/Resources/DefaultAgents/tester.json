@@ -1,0 +1,20 @@
+{
+  "name": "Tester",
+  "agentDescription": "QA engineer that writes and runs tests. Uses Argus MCP for UI/visual testing and AppXray for runtime inspection. Reports test results to the blackboard with pass/fail status.",
+  "model": "sonnet",
+  "icon": "checkmark.shield",
+  "color": "teal",
+  "instancePolicyKind": "pool",
+  "instancePolicyPoolMax": 2,
+  "skillNames": ["peer-collaboration", "blackboard-patterns", "workspace-collaboration", "agent-identity"],
+  "mcpServerNames": ["Argus", "AppXray"],
+  "permissionSetName": "Full Access",
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "QA engineer",
+    "domain": "testing, quality assurance, and bug verification",
+    "constraints": "Write and run unit tests, integration tests, and UI tests. Use the Argus MCP for visual/interactive testing and AppXray for runtime inspection. Report test results to the blackboard using keys like test.{suite}.status, test.{suite}.passed, test.{suite}.failed, test.{suite}.bugs. Describe bugs with reproduction steps."
+  },
+  "maxTurns": 50,
+  "maxBudget": 5.00
+}

@@ -1,49 +1,60 @@
 import Foundation
 
-enum SidecarCommand: Codable, Sendable {
-    case sessionCreate(SessionCreatePayload)
-    case sessionMessage(SessionMessagePayload)
-    case sessionResume(SessionResumePayload)
-    case sessionFork(SessionForkPayload)
-    case sessionPause(SessionPausePayload)
+enum SidecarCommand: Sendable {
+    case sessionCreate(conversationId: String, agentConfig: AgentConfig)
+    case sessionMessage(sessionId: String, text: String)
+    case sessionResume(sessionId: String, claudeSessionId: String)
+    case sessionFork(sessionId: String)
+    case sessionPause(sessionId: String)
 
-    struct SessionCreatePayload: Codable, Sendable {
-        let conversationId: String
-        let agentConfig: AgentConfig
-    }
-
-    struct SessionMessagePayload: Codable, Sendable {
-        let sessionId: String
-        let text: String
-    }
-
-    struct SessionResumePayload: Codable, Sendable {
-        let sessionId: String
-        let claudeSessionId: String
-    }
-
-    struct SessionForkPayload: Codable, Sendable {
-        let sessionId: String
-    }
-
-    struct SessionPausePayload: Codable, Sendable {
-        let sessionId: String
-    }
-
-    var wireMessage: WireMessage {
+    func encodeToJSON() throws -> Data {
+        let encoder = JSONEncoder()
         switch self {
-        case .sessionCreate(let p):
-            return WireMessage(type: "session.create", payload: p)
-        case .sessionMessage(let p):
-            return WireMessage(type: "session.message", payload: p)
-        case .sessionResume(let p):
-            return WireMessage(type: "session.resume", payload: p)
-        case .sessionFork(let p):
-            return WireMessage(type: "session.fork", payload: p)
-        case .sessionPause(let p):
-            return WireMessage(type: "session.pause", payload: p)
+        case .sessionCreate(let conversationId, let agentConfig):
+            return try encoder.encode(
+                SessionCreateWire(type: "session.create", conversationId: conversationId, agentConfig: agentConfig)
+            )
+        case .sessionMessage(let sessionId, let text):
+            return try encoder.encode(
+                SessionMessageWire(type: "session.message", sessionId: sessionId, text: text)
+            )
+        case .sessionResume(let sessionId, let claudeSessionId):
+            return try encoder.encode(
+                SessionResumeWire(type: "session.resume", sessionId: sessionId, claudeSessionId: claudeSessionId)
+            )
+        case .sessionFork(let sessionId):
+            return try encoder.encode(
+                SessionIdWire(type: "session.fork", sessionId: sessionId)
+            )
+        case .sessionPause(let sessionId):
+            return try encoder.encode(
+                SessionIdWire(type: "session.pause", sessionId: sessionId)
+            )
         }
     }
+}
+
+private struct SessionCreateWire: Encodable {
+    let type: String
+    let conversationId: String
+    let agentConfig: AgentConfig
+}
+
+private struct SessionMessageWire: Encodable {
+    let type: String
+    let sessionId: String
+    let text: String
+}
+
+private struct SessionResumeWire: Encodable {
+    let type: String
+    let sessionId: String
+    let claudeSessionId: String
+}
+
+private struct SessionIdWire: Encodable {
+    let type: String
+    let sessionId: String
 }
 
 struct AgentConfig: Codable, Sendable {
@@ -84,70 +95,6 @@ enum SidecarEvent: Sendable {
     case disconnected
 }
 
-struct WireMessage: Codable, Sendable {
-    let type: String
-    let payload: AnyCodable
-
-    init<T: Codable & Sendable>(type: String, payload: T) {
-        self.type = type
-        self.payload = AnyCodable(payload)
-    }
-}
-
-struct AnyCodable: Codable, Sendable {
-    let value: any Sendable
-
-    init<T: Codable & Sendable>(_ value: T) {
-        self.value = value
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if let dict = try? container.decode([String: String].self) {
-            value = dict
-        } else if let str = try? container.decode(String.self) {
-            value = str
-        } else if let num = try? container.decode(Double.self) {
-            value = num
-        } else if let bool = try? container.decode(Bool.self) {
-            value = bool
-        } else {
-            value = ""
-        }
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        if let v = value as? String { try container.encode(v) }
-        else if let v = value as? Double { try container.encode(v) }
-        else if let v = value as? Bool { try container.encode(v) }
-        else if let v = value as? [String: String] { try container.encode(v) }
-        else {
-            let data = try JSONEncoder().encode(CodableWrapper(value))
-            let str = String(data: data, encoding: .utf8) ?? "{}"
-            try container.encode(str)
-        }
-    }
-
-    private struct CodableWrapper: Encodable {
-        let value: any Sendable
-        init(_ value: any Sendable) { self.value = value }
-        func encode(to encoder: Encoder) throws {
-            var container = encoder.singleValueContainer()
-            if let v = value as? any Encodable {
-                try container.encode(AnyEncodableBox(v))
-            }
-        }
-    }
-
-    private struct AnyEncodableBox: Encodable {
-        let base: any Encodable
-        init(_ base: any Encodable) { self.base = base }
-        func encode(to encoder: Encoder) throws {
-            try base.encode(to: encoder)
-        }
-    }
-}
 
 struct IncomingWireMessage: Codable, Sendable {
     let type: String

@@ -14,9 +14,16 @@ final class AppState: ObservableObject {
     @Published var sidecarStatus: SidecarStatus = .disconnected
     @Published var selectedConversationId: UUID?
     @Published var showAgentLibrary = false
+    @Published var showNewSessionSheet = false
     @Published var showPeerNetwork = false
     @Published var activeSessions: [UUID: SessionInfo] = [:]
     @Published var streamingText: [String: String] = [:]
+    @Published var lastSessionEvent: [String: SessionEventKind] = [:]
+
+    enum SessionEventKind {
+        case result
+        case error(String)
+    }
 
     struct SessionInfo: Identifiable {
         let id: UUID
@@ -30,8 +37,26 @@ final class AppState: ObservableObject {
     private var eventTask: Task<Void, Never>?
 
     func connectSidecar() {
+        guard sidecarStatus == .disconnected || {
+            if case .error = sidecarStatus { return true }
+            return false
+        }() else { return }
+
         sidecarStatus = .connecting
-        let manager = SidecarManager()
+
+        let defaults = UserDefaults.standard
+        let wsPort = defaults.object(forKey: AppSettings.wsPortKey) as? Int ?? AppSettings.defaultWsPort
+        let httpPort = defaults.object(forKey: AppSettings.httpPortKey) as? Int ?? AppSettings.defaultHttpPort
+        let bunOverride = defaults.string(forKey: AppSettings.bunPathOverrideKey)
+        let sidecarPathOverride = defaults.string(forKey: AppSettings.sidecarPathKey)
+
+        let config = SidecarManager.Config(
+            wsPort: wsPort,
+            httpPort: httpPort,
+            bunPathOverride: bunOverride?.isEmpty == true ? nil : bunOverride,
+            sidecarPathOverride: sidecarPathOverride?.isEmpty == true ? nil : sidecarPathOverride
+        )
+        let manager = SidecarManager(config: config)
         self.sidecarManager = manager
         Task {
             do {
@@ -77,10 +102,11 @@ final class AppState: ObservableObject {
         case .sessionResult(let sessionId, _, let cost):
             activeSessions[UUID(uuidString: sessionId) ?? UUID()]?.isStreaming = false
             activeSessions[UUID(uuidString: sessionId) ?? UUID()]?.cost += cost
-            objectWillChange.send()
+            lastSessionEvent[sessionId] = .result
 
         case .sessionError(let sessionId, let error):
             activeSessions[UUID(uuidString: sessionId) ?? UUID()]?.isStreaming = false
+            lastSessionEvent[sessionId] = .error(error)
             print("[AppState] Session \(sessionId) error: \(error)")
 
         case .connected:

@@ -4,6 +4,7 @@ import SwiftData
 struct AgentLibraryView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
     @Query(sort: \Agent.name) private var agents: [Agent]
     @State private var searchText = ""
     @State private var filterOrigin: AgentOriginFilter = .all
@@ -24,7 +25,7 @@ struct AgentLibraryView: View {
             let matchesFilter: Bool
             switch filterOrigin {
             case .all: matchesFilter = true
-            case .mine: matchesFilter = agent.origin == .local
+            case .mine: matchesFilter = agent.origin == .local || agent.origin == .builtin
             case .shared:
                 if case .peer = agent.origin { matchesFilter = true }
                 else if agent.origin == .imported { matchesFilter = true }
@@ -43,7 +44,9 @@ struct AgentLibraryView: View {
                     GridItem(.adaptive(minimum: 200, maximum: 280), spacing: 16)
                 ], spacing: 16) {
                     ForEach(filteredAgents) { agent in
-                        AgentCardView(agent: agent) {
+                        AgentCardView(agent: agent, onStart: {
+                            startSession(with: agent)
+                        }) {
                             editingAgent = agent
                             showingEditor = true
                         }
@@ -130,5 +133,25 @@ struct AgentLibraryView: View {
     private func deleteAgent(_ agent: Agent) {
         modelContext.delete(agent)
         try? modelContext.save()
+    }
+
+    private func startSession(with agent: Agent) {
+        let session = Session(agent: agent, mode: .interactive)
+        let conversation = Conversation(topic: agent.name, session: session)
+        let userParticipant = Participant(type: .user, displayName: "You")
+        let agentParticipant = Participant(
+            type: .agentSession(sessionId: session.id),
+            displayName: agent.name
+        )
+        userParticipant.conversation = conversation
+        agentParticipant.conversation = conversation
+        conversation.participants = [userParticipant, agentParticipant]
+        session.conversations = [conversation]
+
+        modelContext.insert(session)
+        modelContext.insert(conversation)
+        try? modelContext.save()
+        appState.selectedConversationId = conversation.id
+        dismiss()
     }
 }
