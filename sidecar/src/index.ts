@@ -29,3 +29,12 @@ process.on("SIGTERM", () => {
   httpServer.close();
   process.exit(0);
 });
+
+process.on("uncaughtException", (err) => {
+  console.error("[sidecar] Uncaught exception (keeping alive):", err.message);
+  console.error(err.stack?.substring(0, 500));
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[sidecar] Unhandled rejection (keeping alive):", reason);
+});

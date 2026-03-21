@@ -102,12 +102,14 @@ struct AgentLibraryView: View {
                 Label("New Agent", systemImage: "plus")
             }
             .buttonStyle(.borderedProminent)
+            .help("Create a new agent")
 
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.borderless)
+            .help("Close")
         }
         .padding()
     }

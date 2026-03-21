@@ -104,6 +104,7 @@ struct AgentEditorView: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.borderless)
+            .help("Close")
         }
         .padding()
     }
@@ -201,6 +202,7 @@ struct AgentEditorView: View {
                                     .foregroundStyle(.red)
                             }
                             .buttonStyle(.borderless)
+                            .help("Remove skill")
                         }
                     }
                 }
@@ -229,6 +231,7 @@ struct AgentEditorView: View {
                                     .foregroundStyle(.green)
                             }
                             .buttonStyle(.borderless)
+                            .help("Add skill")
                         }
                     }
                 }
@@ -261,6 +264,7 @@ struct AgentEditorView: View {
                                 Image(systemName: "minus.circle.fill").foregroundStyle(.red)
                             }
                             .buttonStyle(.borderless)
+                            .help("Remove MCP server")
                         }
                     }
                 }
@@ -289,6 +293,7 @@ struct AgentEditorView: View {
                                     .foregroundStyle(.green)
                             }
                             .buttonStyle(.borderless)
+                            .help("Add MCP server")
                         }
                     }
                 }

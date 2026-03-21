@@ -33,6 +33,7 @@ struct SidebarView: View {
                 } label: {
                     Label("Manage Agents", systemImage: "slider.horizontal.3")
                 }
+                .help("Manage agents")
             }
         }
         .alert("Rename Conversation", isPresented: Binding(
@@ -89,6 +90,7 @@ struct SidebarView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                .help("Start a new session")
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)

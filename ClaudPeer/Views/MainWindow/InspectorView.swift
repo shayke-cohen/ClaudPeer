@@ -76,6 +76,7 @@ struct InspectorView: View {
                                 .font(.caption2)
                         }
                         .buttonStyle(.borderless)
+                        .help("Rename topic")
                     }
                 }
 
@@ -90,6 +91,7 @@ struct InspectorView: View {
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.mini)
+                        .help("Close this conversation")
                     }
                 }
 
@@ -150,6 +152,7 @@ struct InspectorView: View {
                     Label("Pause", systemImage: "pause.fill")
                 }
                 .controlSize(.small)
+                .help("Pause session")
 
                 Button(role: .destructive) {
                     stopCurrentSession()
@@ -157,6 +160,7 @@ struct InspectorView: View {
                     Label("Stop", systemImage: "stop.fill")
                 }
                 .controlSize(.small)
+                .help("Stop session")
 
             case .paused:
                 Button {
@@ -166,6 +170,7 @@ struct InspectorView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                .help("Resume session")
 
             case .completed, .failed:
                 Text(session.status == .completed ? "Session ended" : "Session failed")
@@ -202,6 +207,7 @@ struct InspectorView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .padding(.leading, 84)
+                .help("Open agent in editor")
             }
         }
     }

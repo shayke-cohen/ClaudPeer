@@ -136,37 +136,6 @@ struct ClaudPeerApp: App {
                 text: "What is 2+2? Reply with just the number."
             ))
             print("[Test] Sent test message for session \(sessionId)")
-
-            // Poll for response since ChatView may not be mounted yet
-            for _ in 0..<60 {
-                try? await Task.sleep(for: .milliseconds(500))
-                if let event = await MainActor.run(body: { appState.lastSessionEvent[sessionId] }) {
-                    let streamedText = await MainActor.run { appState.streamingText[sessionId] ?? "" }
-                    await MainActor.run {
-                        let responseText: String
-                        switch event {
-                        case .result:
-                            responseText = streamedText.isEmpty ? "(no response)" : streamedText
-                        case .error(let msg):
-                            responseText = "Error: \(msg)"
-                        }
-                        let response = ConversationMessage(
-                            senderParticipantId: agentParticipant.id,
-                            text: responseText,
-                            type: .chat,
-                            conversation: conversation
-                        )
-                        conversation.messages.append(response)
-                        context.insert(response)
-                        try? context.save()
-                        appState.streamingText.removeValue(forKey: sessionId)
-                        appState.lastSessionEvent.removeValue(forKey: sessionId)
-                        print("[Test] Got response: \(responseText.prefix(100))")
-                    }
-                    return
-                }
-            }
-            print("[Test] Timeout waiting for response")
         }
     }
 }

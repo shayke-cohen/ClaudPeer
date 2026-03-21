@@ -38,6 +38,7 @@ struct MainWindowView: View {
                     Label("New Session", systemImage: "plus.bubble")
                 }
                 .keyboardShortcut("n", modifiers: .command)
+                .help("New session (⌘N)")
 
                 Button {
                     createQuickChat()
@@ -45,18 +46,21 @@ struct MainWindowView: View {
                     Label("Quick Chat", systemImage: "plus.message")
                 }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
+                .help("Quick chat (⌘⇧N)")
 
                 Button {
                     appState.showAgentLibrary = true
                 } label: {
                     Label("Agent Library", systemImage: "cpu")
                 }
+                .help("Agent library")
 
                 Button {
                     appState.showPeerNetwork = true
                 } label: {
                     Label("Peer Network", systemImage: "network")
                 }
+                .help("Peer network")
 
                 sidecarStatusIndicator
             }

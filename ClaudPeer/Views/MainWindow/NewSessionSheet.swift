@@ -51,6 +51,7 @@ struct NewSessionSheet: View {
                     .font(.title3)
             }
             .buttonStyle(.borderless)
+            .help("Close")
         }
         .padding(16)
     }
@@ -129,6 +130,7 @@ struct NewSessionSheet: View {
             }
         }
         .buttonStyle(.plain)
+        .help(name)
     }
 
     // MARK: - Options
@@ -192,6 +194,7 @@ struct NewSessionSheet: View {
                     Image(systemName: "folder")
                 }
                 .buttonStyle(.borderless)
+                .help("Browse for directory")
             }
         }
     }

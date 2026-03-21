@@ -2,38 +2,24 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { randomUUID } from "crypto";
 import type { AgentConfig, SidecarEvent } from "./types.js";
 import { SessionRegistry } from "./stores/session-registry.js";
-import { ChatHandler } from "./chat-handler.js";
 
 type EventEmitter = (event: SidecarEvent) => void;
 
 export class SessionManager {
   private registry = new SessionRegistry();
-  private chatHandler: ChatHandler;
   private emit: EventEmitter;
   private activeAborts = new Map<string, AbortController>();
 
   constructor(emit: EventEmitter) {
     this.emit = emit;
-    this.chatHandler = new ChatHandler(emit);
   }
 
   async createSession(conversationId: string, config: AgentConfig): Promise<void> {
     this.registry.create(conversationId, config);
-
-    if (ChatHandler.isSimpleChat(config)) {
-      this.chatHandler.register(conversationId, config);
-      console.log(`[session] Created SIMPLE CHAT session ${conversationId} for "${config.name}"`);
-    } else {
-      console.log(`[session] Created AGENT session ${conversationId} for "${config.name}"`);
-    }
+    console.log(`[session] Created session ${conversationId} for "${config.name}" (model: ${config.model})`);
   }
 
   async sendMessage(sessionId: string, text: string): Promise<void> {
-    if (this.chatHandler.has(sessionId)) {
-      await this.chatHandler.sendMessage(sessionId, text);
-      return;
-    }
-
     const config = this.registry.getConfig(sessionId);
     if (!config) {
       this.emit({ type: "session.error", sessionId, error: "Session not found" });
@@ -54,7 +40,7 @@ export class SessionManager {
       const options = this.buildQueryOptions(sessionId, config, state.claudeSessionId, abortController);
       const sdkSessionId = options.sessionId ?? options.resume;
 
-      console.log(`[session] Starting Agent SDK query for session ${sessionId}`);
+      console.log(`[session] query() start for ${sessionId} (${config.model})`);
       const stream = query({ prompt: text, options });
       let resultText = "";
 
@@ -63,24 +49,27 @@ export class SessionManager {
         this.handleSDKMessage(sessionId, message, (t) => { resultText += t; });
       }
 
+      console.log(`[session] query() done for ${sessionId} (${resultText.length} chars)`);
+
       if (sdkSessionId && !state.claudeSessionId) {
         this.registry.update(sessionId, { claudeSessionId: sdkSessionId });
       }
 
+      const sessionState = this.registry.get(sessionId);
       this.emit({
         type: "session.result",
         sessionId,
         result: resultText || "(no text response)",
-        cost: 0,
+        cost: sessionState?.cost ?? 0,
       });
+      this.registry.update(sessionId, { status: "completed" });
     } catch (err: any) {
       if (abortController.signal.aborted) {
         this.registry.update(sessionId, { status: "paused" });
       } else {
         const errMsg = err.message ?? String(err);
-        const errStack = err.stack?.substring(0, 500) ?? "";
         console.error(`[session:${sessionId}] Error: ${errMsg}`);
-        if (errStack) console.error(`[session:${sessionId}] Stack: ${errStack}`);
+        if (err.stack) console.error(`[session:${sessionId}] Stack: ${err.stack.substring(0, 500)}`);
         this.emit({
           type: "session.error",
           sessionId,

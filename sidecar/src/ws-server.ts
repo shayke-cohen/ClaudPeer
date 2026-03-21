@@ -32,7 +32,9 @@ export class WsServer {
             const data = typeof message === "string" ? message : new TextDecoder().decode(message);
             console.log("[ws] Received:", data.substring(0, 200));
             const command = JSON.parse(data) as SidecarCommand;
-            this.handleCommand(command);
+            this.handleCommand(command).catch((err) => {
+              console.error("[ws] Command handler error:", err);
+            });
           } catch (err) {
             console.error("[ws] Failed to parse command:", err);
           }

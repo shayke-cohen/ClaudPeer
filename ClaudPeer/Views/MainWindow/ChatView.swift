@@ -46,18 +46,8 @@ struct ChatView: View {
             Divider()
             inputArea
         }
-        .onReceive(appState.$streamingText) { _ in
-            checkForCompletion()
-        }
         .onReceive(appState.$lastSessionEvent) { _ in
             checkForCompletion()
-        }
-        .onAppear {
-            let sessionId = conversationId.uuidString
-            if appState.lastSessionEvent[sessionId] != nil {
-                isProcessing = true
-                checkForCompletion()
-            }
         }
         .alert("Clear Messages?", isPresented: $showClearConfirmation) {
             Button("Clear All", role: .destructive) { clearMessages() }
@@ -235,6 +225,7 @@ struct ChatView: View {
             .accessibilityIdentifier("sendButton")
             .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isProcessing)
             .keyboardShortcut(.return, modifiers: .command)
+            .help("Send message (⌘Return)")
         }
         .padding(12)
         .background(.bar)
@@ -423,7 +414,6 @@ struct ChatView: View {
 
     private func checkForCompletion() {
         let sessionId = conversationId.uuidString
-        guard isProcessing else { return }
         guard let event = appState.lastSessionEvent[sessionId] else { return }
 
         switch event {

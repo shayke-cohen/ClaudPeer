@@ -44,6 +44,7 @@ struct CodeBlockView: View {
                 .foregroundStyle(isCopied ? .green : .secondary)
             }
             .buttonStyle(.borderless)
+            .help("Copy code to clipboard")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)

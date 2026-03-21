@@ -37,6 +37,7 @@ struct ToolCallView: View {
                 .padding(.vertical, 6)
             }
             .buttonStyle(.plain)
+            .help(isExpanded ? "Collapse tool details" : "Expand tool details")
 
             if isExpanded {
                 Divider()
