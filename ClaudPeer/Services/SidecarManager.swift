@@ -6,6 +6,8 @@ final class SidecarManager: ObservableObject, Sendable {
     struct Config: Sendable {
         var wsPort: Int = 9849
         var httpPort: Int = 9850
+        var logDirectory: String?
+        var dataDirectory: String?
         var bunPathOverride: String?
         var sidecarPathOverride: String?
     }
@@ -73,8 +75,11 @@ final class SidecarManager: ObservableObject, Sendable {
         process.environment = ProcessInfo.processInfo.environment
         process.environment?["CLAUDPEER_WS_PORT"] = "\(config.wsPort)"
         process.environment?["CLAUDPEER_HTTP_PORT"] = "\(config.httpPort)"
+        if let dataDir = config.dataDirectory {
+            process.environment?["CLAUDPEER_DATA_DIR"] = dataDir
+        }
 
-        let logDir = "\(NSHomeDirectory())/.claudpeer/logs"
+        let logDir = config.logDirectory ?? "\(NSHomeDirectory())/.claudpeer/instances/default/logs"
         try? FileManager.default.createDirectory(atPath: logDir, withIntermediateDirectories: true)
         let logFile = "\(logDir)/sidecar.log"
         FileManager.default.createFile(atPath: logFile, contents: nil)

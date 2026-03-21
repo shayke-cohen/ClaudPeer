@@ -19,6 +19,9 @@ final class AppState: ObservableObject {
     @Published var activeSessions: [UUID: SessionInfo] = [:]
     @Published var streamingText: [String: String] = [:]
     @Published var lastSessionEvent: [String: SessionEventKind] = [:]
+    @Published private(set) var allocatedWsPort: Int = 0
+    @Published private(set) var allocatedHttpPort: Int = 0
+    var createdSessions: Set<String> = []
 
     enum SessionEventKind {
         case result
@@ -44,15 +47,22 @@ final class AppState: ObservableObject {
 
         sidecarStatus = .connecting
 
-        let defaults = UserDefaults.standard
-        let wsPort = defaults.object(forKey: AppSettings.wsPortKey) as? Int ?? AppSettings.defaultWsPort
-        let httpPort = defaults.object(forKey: AppSettings.httpPortKey) as? Int ?? AppSettings.defaultHttpPort
+        let defaults = InstanceConfig.userDefaults
+        let preferredWsPort = defaults.object(forKey: AppSettings.wsPortKey) as? Int ?? AppSettings.defaultWsPort
+        let preferredHttpPort = defaults.object(forKey: AppSettings.httpPortKey) as? Int ?? AppSettings.defaultHttpPort
         let bunOverride = defaults.string(forKey: AppSettings.bunPathOverrideKey)
         let sidecarPathOverride = defaults.string(forKey: AppSettings.sidecarPathKey)
+
+        let wsPort = InstanceConfig.isDefault ? preferredWsPort : InstanceConfig.findFreePort()
+        let httpPort = InstanceConfig.isDefault ? preferredHttpPort : InstanceConfig.findFreePort()
+        allocatedWsPort = wsPort
+        allocatedHttpPort = httpPort
 
         let config = SidecarManager.Config(
             wsPort: wsPort,
             httpPort: httpPort,
+            logDirectory: InstanceConfig.logDirectory.path,
+            dataDirectory: InstanceConfig.baseDirectory.path,
             bunPathOverride: bunOverride?.isEmpty == true ? nil : bunOverride,
             sidecarPathOverride: sidecarPathOverride?.isEmpty == true ? nil : sidecarPathOverride
         )
@@ -99,9 +109,12 @@ final class AppState: ObservableObject {
             streamingText[sessionId] = current + text
             activeSessions[UUID(uuidString: sessionId) ?? UUID()]?.isStreaming = true
 
-        case .sessionResult(let sessionId, _, let cost):
+        case .sessionResult(let sessionId, let resultText, let cost):
             activeSessions[UUID(uuidString: sessionId) ?? UUID()]?.isStreaming = false
             activeSessions[UUID(uuidString: sessionId) ?? UUID()]?.cost += cost
+            if streamingText[sessionId]?.isEmpty != false, !resultText.isEmpty {
+                streamingText[sessionId] = resultText
+            }
             lastSessionEvent[sessionId] = .result
 
         case .sessionError(let sessionId, let error):

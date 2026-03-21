@@ -7,8 +7,8 @@ import AppXray
 @main
 struct ClaudPeerApp: App {
     @StateObject private var appState = AppState()
-    @AppStorage(AppSettings.appearanceKey) private var appearance = AppAppearance.system.rawValue
-    @AppStorage(AppSettings.autoConnectSidecarKey) private var autoConnectSidecar = true
+    @AppStorage(AppSettings.appearanceKey, store: AppSettings.store) private var appearance = AppAppearance.system.rawValue
+    @AppStorage(AppSettings.autoConnectSidecarKey, store: AppSettings.store) private var autoConnectSidecar = true
 
     let modelContainer: ModelContainer
 
@@ -20,19 +20,25 @@ struct ClaudPeerApp: App {
         ))
         #endif
 
+        InstanceConfig.ensureDirectories()
+
         do {
-            modelContainer = try ModelContainer(for:
-                Agent.self,
-                Session.self,
-                Conversation.self,
-                ConversationMessage.self,
-                MessageAttachment.self,
-                Skill.self,
-                MCPServer.self,
-                PermissionSet.self,
-                SharedWorkspace.self,
-                BlackboardEntry.self,
-                Peer.self
+            let storeURL = InstanceConfig.dataDirectory.appendingPathComponent("ClaudPeer.store")
+            let config = ModelConfiguration(url: storeURL)
+            modelContainer = try ModelContainer(
+                for:
+                    Agent.self,
+                    Session.self,
+                    Conversation.self,
+                    ConversationMessage.self,
+                    MessageAttachment.self,
+                    Skill.self,
+                    MCPServer.self,
+                    PermissionSet.self,
+                    SharedWorkspace.self,
+                    BlackboardEntry.self,
+                    Peer.self,
+                configurations: config
             )
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
@@ -45,8 +51,12 @@ struct ClaudPeerApp: App {
         (AppAppearance(rawValue: appearance) ?? .system).colorScheme
     }
 
+    private var windowTitle: String {
+        InstanceConfig.isDefault ? "ClaudPeer" : "ClaudPeer — \(InstanceConfig.name)"
+    }
+
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(windowTitle) {
             MainWindowView()
                 .environmentObject(appState)
                 .preferredColorScheme(resolvedColorScheme)

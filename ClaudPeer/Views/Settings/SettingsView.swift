@@ -29,11 +29,11 @@ struct SettingsView: View {
 // MARK: - General
 
 private struct GeneralSettingsTab: View {
-    @AppStorage(AppSettings.appearanceKey) private var appearance = AppAppearance.system.rawValue
-    @AppStorage(AppSettings.defaultModelKey) private var defaultModel = AppSettings.defaultModel
-    @AppStorage(AppSettings.defaultMaxTurnsKey) private var defaultMaxTurns = AppSettings.defaultMaxTurns
-    @AppStorage(AppSettings.defaultMaxBudgetKey) private var defaultMaxBudget = AppSettings.defaultMaxBudget
-    @AppStorage(AppSettings.autoConnectSidecarKey) private var autoConnectSidecar = true
+    @AppStorage(AppSettings.appearanceKey, store: AppSettings.store) private var appearance = AppAppearance.system.rawValue
+    @AppStorage(AppSettings.defaultModelKey, store: AppSettings.store) private var defaultModel = AppSettings.defaultModel
+    @AppStorage(AppSettings.defaultMaxTurnsKey, store: AppSettings.store) private var defaultMaxTurns = AppSettings.defaultMaxTurns
+    @AppStorage(AppSettings.defaultMaxBudgetKey, store: AppSettings.store) private var defaultMaxBudget = AppSettings.defaultMaxBudget
+    @AppStorage(AppSettings.autoConnectSidecarKey, store: AppSettings.store) private var autoConnectSidecar = true
 
     private var selectedAppearance: Binding<AppAppearance> {
         Binding(
@@ -97,10 +97,10 @@ private struct GeneralSettingsTab: View {
 // MARK: - Connection
 
 private struct ConnectionSettingsTab: View {
-    @AppStorage(AppSettings.wsPortKey) private var wsPort = AppSettings.defaultWsPort
-    @AppStorage(AppSettings.httpPortKey) private var httpPort = AppSettings.defaultHttpPort
-    @AppStorage(AppSettings.bunPathOverrideKey) private var bunPathOverride = ""
-    @AppStorage(AppSettings.sidecarPathKey) private var sidecarPath = ""
+    @AppStorage(AppSettings.wsPortKey, store: AppSettings.store) private var wsPort = AppSettings.defaultWsPort
+    @AppStorage(AppSettings.httpPortKey, store: AppSettings.store) private var httpPort = AppSettings.defaultHttpPort
+    @AppStorage(AppSettings.bunPathOverrideKey, store: AppSettings.store) private var bunPathOverride = ""
+    @AppStorage(AppSettings.sidecarPathKey, store: AppSettings.store) private var sidecarPath = ""
 
     var body: some View {
         Form {
@@ -198,8 +198,8 @@ private struct ConnectionSettingsTab: View {
 // MARK: - Advanced
 
 private struct AdvancedSettingsTab: View {
-    @AppStorage(AppSettings.dataDirectoryKey) private var dataDirectory = AppSettings.defaultDataDirectory
-    @AppStorage(AppSettings.logLevelKey) private var logLevel = AppSettings.defaultLogLevel
+    @AppStorage(AppSettings.dataDirectoryKey, store: AppSettings.store) private var dataDirectory = AppSettings.defaultDataDirectory
+    @AppStorage(AppSettings.logLevelKey, store: AppSettings.store) private var logLevel = AppSettings.defaultLogLevel
     @State private var showResetConfirmation = false
 
     private var selectedLogLevel: Binding<LogLevel> {

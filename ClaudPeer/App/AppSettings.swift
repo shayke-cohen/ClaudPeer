@@ -27,6 +27,9 @@ enum AppSettings {
     static let defaultDataDirectory = "~/.claudpeer"
     static let defaultLogLevel = "info"
 
+    /// Per-instance UserDefaults store for use with `@AppStorage(_:store:)`.
+    nonisolated(unsafe) static let store: UserDefaults = InstanceConfig.userDefaults
+
     static var allKeys: [String] {
         [
             appearanceKey, defaultModelKey, defaultMaxTurnsKey,
@@ -37,8 +40,9 @@ enum AppSettings {
     }
 
     static func resetAll() {
+        let defaults = InstanceConfig.userDefaults
         for key in allKeys {
-            UserDefaults.standard.removeObject(forKey: key)
+            defaults.removeObject(forKey: key)
         }
     }
 }

@@ -226,7 +226,29 @@ Configurable application preferences accessible via Cmd+, (standard macOS Settin
 | FR-9.16: SidecarManager accepts configured ports and path overrides from settings | Done |
 | FR-9.17: Centralized AppSettings enum with all keys and defaults | Done |
 
-### FR-10: File Attachments
+### FR-10: Multi-Instance Support
+
+**Status:** Implemented
+
+Each app instance runs with fully isolated data, sidecar, and settings. Instances are identified by name via `--instance <name>` launch argument.
+
+| Requirement | Status |
+|---|---|
+| FR-10.1: Parse `--instance <name>` from launch arguments (default: "default") | Done |
+| FR-10.2: Namespace SwiftData store per instance (~/.claudpeer/instances/<name>/data/) | Done |
+| FR-10.3: Namespace blackboard per instance (~/.claudpeer/instances/<name>/blackboard/) | Done |
+| FR-10.4: Namespace sidecar logs per instance (~/.claudpeer/instances/<name>/logs/) | Done |
+| FR-10.5: Per-instance UserDefaults suite (com.claudpeer.app.<name>) | Done |
+| FR-10.6: Dynamic port allocation for non-default instances (avoids port collisions) | Done |
+| FR-10.7: Default instance uses preferred ports from settings for backward compat | Done |
+| FR-10.8: Pass CLAUDPEER_DATA_DIR env var to sidecar process | Done |
+| FR-10.9: Sidecar blackboard reads CLAUDPEER_DATA_DIR for storage path | Done |
+| FR-10.10: Window title shows instance name when not "default" | Done |
+| FR-10.11: @AppStorage uses per-instance UserDefaults store across all views | Done |
+| FR-10.12: DefaultsSeeder uses per-instance UserDefaults | Done |
+| FR-10.13: All instance directories created on startup (ensureDirectories) | Done |
+
+### FR-11: File Attachments
 
 **Status:** Implemented
 
@@ -234,23 +256,23 @@ Users can attach images and documents (txt, md, pdf) to chat messages via the at
 
 | Requirement | Status |
 |---|---|
-| FR-10.1: Attach images (png, jpg, gif, webp) via file picker | Done |
-| FR-10.2: Paste images from clipboard (Cmd+V) | Done |
-| FR-10.3: Drag-and-drop images into chat input | Done |
-| FR-10.4: Attach text files (.txt) via file picker or drag-and-drop | Done |
-| FR-10.5: Attach markdown files (.md) via file picker or drag-and-drop | Done |
-| FR-10.6: Attach PDF files (.pdf) via file picker or drag-and-drop | Done |
-| FR-10.7: Image thumbnails in message bubbles (grid layout) | Done |
-| FR-10.8: Document thumbnails with file icon, name, and size | Done |
-| FR-10.9: Full-size image preview overlay (click to zoom) | Done |
-| FR-10.10: Pending attachment strip above input (with remove buttons) | Done |
-| FR-10.11: Images sent to Claude via temp files + Read tool instruction | Done |
-| FR-10.12: Text/markdown files inlined directly in the prompt | Done |
-| FR-10.13: PDF files sent to Claude via temp files + Read tool instruction | Done |
-| FR-10.14: Attachment indicator in sidebar preview (photo/doc.text/paperclip icon) | Done |
-| FR-10.15: Attachments stored on disk (~/.claudpeer/attachments/) | Done |
-| FR-10.16: File size validation (5MB images, 10MB documents) | Done |
-| FR-10.17: Wire protocol supports attachments with mediaType and fileName | Done |
+| FR-11.1: Attach images (png, jpg, gif, webp) via file picker | Done |
+| FR-11.2: Paste images from clipboard (Cmd+V) | Done |
+| FR-11.3: Drag-and-drop images into chat input | Done |
+| FR-11.4: Attach text files (.txt) via file picker or drag-and-drop | Done |
+| FR-11.5: Attach markdown files (.md) via file picker or drag-and-drop | Done |
+| FR-11.6: Attach PDF files (.pdf) via file picker or drag-and-drop | Done |
+| FR-11.7: Image thumbnails in message bubbles (grid layout) | Done |
+| FR-11.8: Document thumbnails with file icon, name, and size | Done |
+| FR-11.9: Full-size image preview overlay (click to zoom) | Done |
+| FR-11.10: Pending attachment strip above input (with remove buttons) | Done |
+| FR-11.11: Images sent to Claude via temp files + Read tool instruction | Done |
+| FR-11.12: Text/markdown files inlined directly in the prompt | Done |
+| FR-11.13: PDF files sent to Claude via temp files + Read tool instruction | Done |
+| FR-11.14: Attachment indicator in sidebar preview (photo/doc.text/paperclip icon) | Done |
+| FR-11.15: Attachments stored on disk (~/.claudpeer/attachments/) | Done |
+| FR-11.16: File size validation (5MB images, 10MB documents) | Done |
+| FR-11.17: Wire protocol supports attachments with mediaType and fileName | Done |
 
 ---
 
@@ -351,7 +373,18 @@ Users can attach images and documents (txt, md, pdf) to chat messages via the at
 - [x] Image and PDF files are saved to temp directory and Claude reads them via its Read tool
 - [x] Sidebar shows appropriate icon (photo/doc.text/paperclip) when the last message has attachments
 
-### US-10: Read Rich Markdown Responses
+### US-10: Run Multiple Isolated Instances
+**As a** developer, **I want to** run multiple ClaudPeer instances simultaneously with separate data, **so that** I can have isolated agent workspaces per project.
+
+**Acceptance criteria:**
+- [x] Can launch a named instance via `open -n ClaudPeer.app --args --instance my-project`
+- [x] Each instance has its own SwiftData store, blackboard, logs, and UserDefaults
+- [x] Non-default instances allocate dynamic ports to avoid collisions
+- [x] Window title shows instance name for disambiguation
+- [x] Default instance (no flag) is backward compatible with existing behavior
+- [x] Settings changes in one instance do not affect other instances
+
+### US-11: Read Rich Markdown Responses
 **As a** developer, **I want to** see Claude's responses rendered with proper markdown formatting, **so that** code blocks, links, headers, and lists are easy to read and interact with.
 
 **Acceptance criteria:**
@@ -467,7 +500,22 @@ flowchart TD
     Result2 --> Save
 ```
 
-### Flow 7: Attach Files to a Message
+### Flow 7: Launch Named Instance
+
+```mermaid
+flowchart TD
+    Launch(["open -n ClaudPeer.app\n--args --instance project-a"]) --> Parse["InstanceConfig parses\n--instance 'project-a'"]
+    Parse --> Dirs["Ensure directories:\n~/.claudpeer/instances/project-a/\ndata/ blackboard/ logs/"]
+    Dirs --> Store["ModelContainer uses\nproject-a/data/ClaudPeer.store"]
+    Store --> Defaults["UserDefaults suite:\ncom.claudpeer.app.project-a"]
+    Defaults --> Seed["DefaultsSeeder checks\nper-instance seeded flag"]
+    Seed --> Ports["Allocate free ports\n(dynamic, not 9849/9850)"]
+    Ports --> Sidecar["Launch sidecar with:\nCLAUDPEER_WS_PORT=<dynamic>\nCLAUDPEER_HTTP_PORT=<dynamic>\nCLAUDPEER_DATA_DIR=...project-a"]
+    Sidecar --> Title["Window title:\n'ClaudPeer — project-a'"]
+    Title --> Ready([Fully isolated instance])
+```
+
+### Flow 8: Attach Files to a Message
 
 ```mermaid
 flowchart TD
@@ -506,6 +554,7 @@ flowchart TD
 | Persistence | SwiftData (local, CloudKit-ready) | Met |
 | Memory | Graceful with 10+ concurrent sessions | Untested |
 | Security | Hardened runtime, localhost-only sidecar | Met |
+| Multi-instance | Fully isolated data, ports, settings | Met |
 
 ---
 
@@ -517,4 +566,5 @@ flowchart TD
 | 2026-03-21 | Rich markdown chat: MarkdownUI rendering for agent messages, code blocks with copy button, live streaming text, hover copy/timestamp, clickable links. Settings screen: three-tab preferences (General/Connection/Advanced) with dark mode, port/path overrides, reset. SidecarManager accepts configurable settings. | FR-5.18-5.25, FR-9, US-8, US-9, Flow 4, Flow 5 |
 | 2026-03-21 | UX improvements: smart naming, conversation management (rename/pin/close/delete/duplicate), New Session sheet, sidebar polish (timestamps, previews, pinned section, empty state, agent icons, swipe actions), chat header enhancements (rename, close/resume, clear, model pill, cost), inspector actions (pause/resume/stop, editable topic, open in editor), agent card Start button | FR-5, FR-6, US-6, US-7, Flow 1, Flow 3 |
 | 2026-03-21 | File attachments: added txt/md/pdf support alongside images. Text/markdown files inlined in prompt, images/PDFs via temp files. Generalized wire protocol from WireImageAttachment to WireAttachment. Document thumbnails with icon+name+size. Sidebar shows context-aware attachment icons. | FR-5.9, FR-10, US-9, Flow 7 |
+| 2026-03-21 | Multi-instance support: InstanceConfig parses `--instance <name>`, namespaces SwiftData/blackboard/logs/UserDefaults per instance, dynamic port allocation for non-default instances, CLAUDPEER_DATA_DIR env var for sidecar, window title with instance name. | FR-10, US-10, Flow 7, NFR |
 | 2026-03-21 | Initial spec created from implemented codebase | All sections |

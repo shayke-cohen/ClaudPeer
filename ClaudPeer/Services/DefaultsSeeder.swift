@@ -6,7 +6,7 @@ enum DefaultsSeeder {
     static let seededKey = "claudpeer.defaultsSeeded"
 
     static func seedIfNeeded(container: ModelContainer) {
-        guard !UserDefaults.standard.bool(forKey: seededKey) else { return }
+        guard !InstanceConfig.userDefaults.bool(forKey: seededKey) else { return }
 
         let context = ModelContext(container)
         let permCount = (try? context.fetchCount(FetchDescriptor<PermissionSet>())) ?? 0
@@ -17,7 +17,7 @@ enum DefaultsSeeder {
 
         do {
             try context.save()
-            UserDefaults.standard.set(true, forKey: seededKey)
+            InstanceConfig.userDefaults.set(true, forKey: seededKey)
             print("[DefaultsSeeder] Seeding complete")
         } catch {
             print("[DefaultsSeeder] Failed to save: \(error)")
