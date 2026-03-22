@@ -81,10 +81,105 @@ export class WsServer {
         break;
       case "agent.register":
         for (const def of command.agents) {
-          this.ctx.agentDefinitions.set(def.name, def.config);
-          console.log(`[ws] Registered agent definition: ${def.name}`);
+          const config = { ...def.config };
+          if (def.instancePolicy) {
+            if (typeof def.instancePolicy === "string" && def.instancePolicy.startsWith("pool:")) {
+              config.instancePolicy = "pool";
+              config.instancePolicyPoolMax = parseInt(def.instancePolicy.split(":")[1], 10) || 3;
+            } else if (typeof def.instancePolicy === "object" && "pool" in def.instancePolicy) {
+              config.instancePolicy = "pool";
+              config.instancePolicyPoolMax = def.instancePolicy.pool;
+            } else if (def.instancePolicy === "singleton") {
+              config.instancePolicy = "singleton";
+            } else {
+              config.instancePolicy = "spawn";
+            }
+          }
+          this.ctx.agentDefinitions.set(def.name, config);
+          console.log(`[ws] Registered agent definition: ${def.name} (policy: ${config.instancePolicy ?? "spawn"})`);
         }
         break;
+
+      case "delegate.task":
+        await this.handleDelegateTask(command);
+        break;
+    }
+  }
+
+  private async handleDelegateTask(command: Extract<SidecarCommand, { type: "delegate.task" }>): Promise<void> {
+    const config = this.ctx.agentDefinitions.get(command.toAgent);
+    if (!config) {
+      console.error(`[ws] delegate.task: agent definition not found for "${command.toAgent}"`);
+      this.broadcast({
+        type: "session.error",
+        sessionId: command.sessionId,
+        error: `Agent definition not found: ${command.toAgent}`,
+      });
+      return;
+    }
+
+    const policy = config.instancePolicy ?? "spawn";
+    const prompt = command.context
+      ? `${command.task}\n\n## Context\n${command.context}`
+      : command.task;
+
+    let targetSessionId: string | undefined;
+    let method = "spawned";
+
+    if (policy === "singleton") {
+      const existing = this.ctx.sessions.findByAgentName(command.toAgent);
+      if (existing.length > 0) {
+        targetSessionId = existing[0].id;
+        method = "reused_singleton";
+      }
+    } else if (policy === "pool") {
+      const existing = this.ctx.sessions.findByAgentName(command.toAgent);
+      const poolMax = config.instancePolicyPoolMax ?? 3;
+      if (existing.length >= poolMax) {
+        let minMessages = Infinity;
+        for (const s of existing) {
+          const count = this.ctx.messages.peek(s.id);
+          if (count < minMessages) {
+            minMessages = count;
+            targetSessionId = s.id;
+          }
+        }
+        method = "pool_routed";
+      }
+    }
+
+    this.broadcast({
+      type: "peer.delegate",
+      from: this.ctx.sessions.get(command.sessionId)?.agentName ?? command.sessionId,
+      to: command.toAgent,
+      task: command.task,
+    });
+
+    if (targetSessionId) {
+      this.ctx.messages.push(targetSessionId, {
+        id: crypto.randomUUID(),
+        from: command.sessionId,
+        fromAgent: this.ctx.sessions.get(command.sessionId)?.agentName ?? "User",
+        to: targetSessionId,
+        text: `[Delegated Task] ${prompt}`,
+        priority: "urgent",
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
+      console.log(`[ws] delegate.task: routed to existing session ${targetSessionId} (${method})`);
+    } else {
+      const newSessionId = crypto.randomUUID();
+      try {
+        await this.ctx.spawnSession(newSessionId, config, prompt, command.waitForResult);
+        console.log(`[ws] delegate.task: spawned new session ${newSessionId} for ${command.toAgent}`);
+      } catch (err: any) {
+        console.error(`[ws] delegate.task: spawn failed:`, err);
+        this.broadcast({
+          type: "session.error",
+          sessionId: command.sessionId,
+          error: `Delegation to ${command.toAgent} failed: ${err.message}`,
+        });
+      }
     }
   }
 

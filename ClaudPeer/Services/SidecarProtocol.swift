@@ -7,6 +7,7 @@ enum SidecarCommand: Sendable {
     case sessionFork(sessionId: String)
     case sessionPause(sessionId: String)
     case agentRegister(agents: [AgentDefinitionWire])
+    case delegateTask(sessionId: String, toAgent: String, task: String, context: String?, waitForResult: Bool)
 
     func encodeToJSON() throws -> Data {
         let encoder = JSONEncoder()
@@ -39,6 +40,10 @@ enum SidecarCommand: Sendable {
         case .agentRegister(let agents):
             return try encoder.encode(
                 AgentRegisterWire(type: "agent.register", agents: agents)
+            )
+        case .delegateTask(let sessionId, let toAgent, let task, let context, let waitForResult):
+            return try encoder.encode(
+                DelegateTaskWire(type: "delegate.task", sessionId: sessionId, toAgent: toAgent, task: task, context: context, waitForResult: waitForResult)
             )
         }
     }
@@ -85,6 +90,15 @@ private struct SessionIdWire: Encodable {
     let sessionId: String
 }
 
+private struct DelegateTaskWire: Encodable {
+    let type: String
+    let sessionId: String
+    let toAgent: String
+    let task: String
+    let context: String?
+    let waitForResult: Bool
+}
+
 struct AgentConfig: Codable, Sendable {
     let name: String
     let systemPrompt: String
@@ -93,6 +107,7 @@ struct AgentConfig: Codable, Sendable {
     let model: String
     let maxTurns: Int?
     let maxBudget: Double?
+    let maxThinkingTokens: Int?
     let workingDirectory: String
     let skills: [SkillContent]
 
@@ -112,6 +127,7 @@ struct AgentConfig: Codable, Sendable {
 
 enum SidecarEvent: Sendable {
     case streamToken(sessionId: String, text: String)
+    case streamThinking(sessionId: String, text: String)
     case streamToolCall(sessionId: String, tool: String, input: String)
     case streamToolResult(sessionId: String, tool: String, output: String)
     case sessionResult(sessionId: String, result: String, cost: Double)
@@ -148,6 +164,9 @@ struct IncomingWireMessage: Codable, Sendable {
         case "stream.token":
             guard let sid = sessionId, let t = text else { return nil }
             return .streamToken(sessionId: sid, text: t)
+        case "stream.thinking":
+            guard let sid = sessionId, let t = text else { return nil }
+            return .streamThinking(sessionId: sid, text: t)
         case "stream.toolCall":
             guard let sid = sessionId, let t = tool else { return nil }
             return .streamToolCall(sessionId: sid, tool: t, input: input ?? "")

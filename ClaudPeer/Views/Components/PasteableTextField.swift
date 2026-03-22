@@ -21,6 +21,7 @@ struct PasteableTextField: NSViewRepresentable {
         field.cell?.wraps = true
         field.cell?.isScrollable = false
         field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.setAccessibilityIdentifier("pasteableTextField.input")
         return field
     }
 

@@ -165,12 +165,39 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
           };
         }
 
-        const delegateSessionId = randomUUID();
         const prompt = args.context
           ? `${args.task}\n\n## Context\n${args.context}`
           : args.task;
 
         const senderState = ctx.sessions.get(callingSessionId);
+        const waitForResult = args.wait_for_result ?? false;
+        const policy = config.instancePolicy ?? "spawn";
+
+        let targetSessionId: string | undefined;
+        let method = "spawned";
+
+        if (policy === "singleton") {
+          const existing = ctx.sessions.findByAgentName(args.to_agent);
+          if (existing.length > 0) {
+            targetSessionId = existing[0].id;
+            method = "reused_singleton";
+          }
+        } else if (policy === "pool") {
+          const existing = ctx.sessions.findByAgentName(args.to_agent);
+          const poolMax = config.instancePolicyPoolMax ?? 3;
+          if (existing.length >= poolMax) {
+            let minMessages = Infinity;
+            for (const s of existing) {
+              const count = ctx.messages.peek(s.id);
+              if (count < minMessages) {
+                minMessages = count;
+                targetSessionId = s.id;
+              }
+            }
+            method = "pool_routed";
+          }
+        }
+
         ctx.broadcast({
           type: "peer.delegate",
           from: senderState?.agentName ?? callingSessionId,
@@ -178,8 +205,26 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
           task: args.task,
         });
 
-        const waitForResult = args.wait_for_result ?? false;
+        if (targetSessionId) {
+          ctx.messages.push(targetSessionId, {
+            id: randomUUID(),
+            from: callingSessionId,
+            fromAgent: senderState?.agentName ?? callingSessionId,
+            to: targetSessionId,
+            text: `[Delegated Task] ${prompt}`,
+            priority: "urgent",
+            timestamp: new Date().toISOString(),
+            read: false,
+          });
+          return {
+            content: [{
+              type: "text" as const,
+              text: JSON.stringify({ delegated: true, method, sessionId: targetSessionId }),
+            }],
+          };
+        }
 
+        const delegateSessionId = randomUUID();
         try {
           const result = await ctx.spawnSession(
             delegateSessionId,
@@ -192,6 +237,7 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
               type: "text" as const,
               text: JSON.stringify({
                 delegated: true,
+                method,
                 sessionId: result.sessionId,
                 waitedForResult: waitForResult,
                 result: result.result,

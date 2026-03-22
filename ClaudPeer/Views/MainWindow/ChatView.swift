@@ -18,9 +18,12 @@ struct ChatView: View {
     @State private var showFileImporter = false
     @State private var previewAttachment: MessageAttachment?
     @State private var previewImageFromPending: (data: Data, mediaType: String)?
+    @State private var delegateTarget: Agent?
+    @State private var isStreamingThinkingExpanded = false
     @FocusState private var topicFieldFocused: Bool
 
     @Query private var allConversations: [Conversation]
+    @Query private var allAgents: [Agent]
 
     private var conversation: Conversation? {
         allConversations.first { $0.id == conversationId }
@@ -40,6 +43,12 @@ struct ChatView: View {
 
     private var liveStreamingText: String? {
         let text = appState.streamingText[conversationId.uuidString]
+        guard let text, !text.isEmpty else { return nil }
+        return text
+    }
+
+    private var liveThinkingText: String? {
+        let text = appState.thinkingText[conversationId.uuidString]
         guard let text, !text.isEmpty else { return nil }
         return text
     }
@@ -125,6 +134,16 @@ struct ChatView: View {
             allowsMultipleSelection: true
         ) { result in
             handleFileImport(result)
+        }
+        .sheet(item: $delegateTarget) { agent in
+            DelegateSheet(
+                agent: agent,
+                initialTask: inputText.trimmingCharacters(in: .whitespacesAndNewlines),
+                conversationId: conversationId
+            ) {
+                inputText = ""
+            }
+            .environmentObject(appState)
         }
     }
 
@@ -343,6 +362,8 @@ struct ChatView: View {
                 .help("Attach file")
                 .disabled(isProcessing)
 
+                delegateMenu
+
                 PasteableTextField(
                     text: $inputText,
                     onImagePaste: { data, mediaType in
@@ -428,6 +449,33 @@ struct ChatView: View {
         .accessibilityIdentifier("chat.pendingAttachments")
     }
 
+    @ViewBuilder
+    private var delegateMenu: some View {
+        let currentAgentId = conversation?.session?.agent?.id
+        let eligibleAgents = allAgents.filter { $0.id != currentAgentId }
+
+        Menu {
+            Section("Delegate to...") {
+                ForEach(eligibleAgents, id: \.id) { agent in
+                    Button {
+                        delegateTarget = agent
+                    } label: {
+                        Label(agent.name, systemImage: agent.icon)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "arrow.triangle.branch")
+                .font(.body)
+        }
+        .menuStyle(.borderlessButton)
+        .frame(width: 20)
+        .accessibilityIdentifier("chat.delegateButton")
+        .accessibilityLabel("Delegate to agent")
+        .help("Delegate task to another agent")
+        .disabled(isProcessing || appState.sidecarStatus != .connected || eligibleAgents.isEmpty)
+    }
+
     private func iconForMediaType(_ mediaType: String) -> String {
         switch mediaType {
         case "text/plain", "text/markdown": return "doc.text"
@@ -509,9 +557,13 @@ struct ChatView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                if let thinking = liveThinkingText {
+                    streamingThinkingSection(thinking)
+                }
+
                 if let text = liveStreamingText {
                     MarkdownContent(text: text)
-                } else {
+                } else if liveThinkingText == nil {
                     StreamingIndicator()
                 }
             }
@@ -519,6 +571,58 @@ struct ChatView: View {
             Spacer(minLength: 60)
         }
         .accessibilityIdentifier("chat.streamingBubble")
+    }
+
+    @ViewBuilder
+    private func streamingThinkingSection(_ thinking: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isStreamingThinkingExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "brain")
+                        .font(.caption2)
+                        .foregroundStyle(.indigo)
+                    Text("Thinking...")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.indigo)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .rotationEffect(.degrees(isStreamingThinkingExpanded ? 90 : 0))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("chat.streamingThinkingToggle")
+            .accessibilityLabel(isStreamingThinkingExpanded ? "Collapse thinking" : "Expand thinking")
+
+            if isStreamingThinkingExpanded {
+                Divider()
+                ScrollView {
+                    Text(thinking)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .italic()
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                }
+                .frame(maxHeight: 200)
+            }
+        }
+        .background(.indigo.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(.indigo.opacity(0.15), lineWidth: 0.5)
+        )
     }
 
     // MARK: - Helpers
@@ -680,6 +784,7 @@ struct ChatView: View {
                     model: "claude-sonnet-4-6",
                     maxTurns: 1,
                     maxBudget: nil,
+                    maxThinkingTokens: 10000,
                     workingDirectory: appState.instanceWorkingDirectory ?? NSHomeDirectory(),
                     skills: []
                 )
@@ -772,11 +877,17 @@ struct ChatView: View {
             type: .chat,
             conversation: convo
         )
+        let thinking = appState.thinkingText[sessionId]
+        if let thinking, !thinking.isEmpty {
+            response.thinkingText = thinking
+        }
         convo.messages.append(response)
         modelContext.insert(response)
         try? modelContext.save()
         appState.streamingText.removeValue(forKey: sessionId)
+        appState.thinkingText.removeValue(forKey: sessionId)
         appState.lastSessionEvent.removeValue(forKey: sessionId)
+        isStreamingThinkingExpanded = false
         isProcessing = false
     }
 

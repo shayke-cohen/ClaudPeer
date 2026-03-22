@@ -217,6 +217,10 @@ export class SessionManager {
       options.maxBudgetUsd = config.maxBudget;
     }
 
+    if (config.maxThinkingTokens) {
+      options.maxThinkingTokens = config.maxThinkingTokens;
+    }
+
     const mcpServers: Record<string, any> = {};
 
     for (const mcp of config.mcpServers) {
@@ -330,7 +334,9 @@ export class SessionManager {
       case "assistant":
         if (message.message?.content) {
           for (const block of message.message.content) {
-            if (block.type === "text" && block.text) {
+            if (block.type === "thinking" && block.thinking) {
+              this.emit({ type: "stream.thinking", sessionId, text: block.thinking });
+            } else if (block.type === "text" && block.text) {
               collectText(block.text);
               this.emit({ type: "stream.token", sessionId, text: block.text });
             }

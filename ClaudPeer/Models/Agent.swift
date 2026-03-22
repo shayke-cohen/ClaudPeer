@@ -27,6 +27,7 @@ final class Agent {
     var model: String
     var maxTurns: Int?
     var maxBudget: Double?
+    var maxThinkingTokens: Int?
     var icon: String
     var color: String
 
@@ -122,6 +123,7 @@ final class Agent {
         self.catalogId = nil
         self.maxTurns = nil
         self.maxBudget = nil
+        self.maxThinkingTokens = 10000
         self.icon = icon
         self.color = color
         self.instancePolicyKind = "spawn"

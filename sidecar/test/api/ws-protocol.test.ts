@@ -56,86 +56,9 @@ afterAll(() => {
   wsServer.close();
 });
 
-/**
- * Wrapper around WebSocket that buffers all incoming messages so we never
- * miss events due to race conditions between connect and listener setup.
- */
-class BufferedWs {
-  ws: WebSocket;
-  buffer: any[] = [];
-  private listeners: Array<(msg: any) => void> = [];
+import { wsConnectDirect } from "../helpers.js";
 
-  constructor(ws: WebSocket) {
-    this.ws = ws;
-    ws.onmessage = (event: MessageEvent) => {
-      const msg = JSON.parse(typeof event.data === "string" ? event.data : "{}");
-      this.buffer.push(msg);
-      for (const fn of this.listeners) fn(msg);
-    };
-  }
-
-  send(data: any) {
-    this.ws.send(JSON.stringify(data));
-  }
-
-  close() {
-    this.ws.close();
-  }
-
-  waitFor(predicate: (msg: any) => boolean, timeoutMs = 5000): Promise<any> {
-    const existing = this.buffer.find(predicate);
-    if (existing) return Promise.resolve(existing);
-
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.listeners = this.listeners.filter((fn) => fn !== listener);
-        reject(new Error("waitFor timeout"));
-      }, timeoutMs);
-
-      const listener = (msg: any) => {
-        if (predicate(msg)) {
-          clearTimeout(timer);
-          this.listeners = this.listeners.filter((fn) => fn !== listener);
-          resolve(msg);
-        }
-      };
-      this.listeners.push(listener);
-    });
-  }
-
-  collectNew(count: number, timeoutMs = 5000): Promise<any[]> {
-    const startIdx = this.buffer.length;
-    return new Promise((resolve) => {
-      const timer = setTimeout(() => {
-        resolve(this.buffer.slice(startIdx));
-      }, timeoutMs);
-
-      const listener = () => {
-        if (this.buffer.length - startIdx >= count) {
-          clearTimeout(timer);
-          this.listeners = this.listeners.filter((fn) => fn !== listener);
-          resolve(this.buffer.slice(startIdx, startIdx + count));
-        }
-      };
-      this.listeners.push(listener);
-    });
-  }
-}
-
-function wsConnect(timeoutMs = 5000): Promise<BufferedWs> {
-  return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`ws://localhost:${WS_PORT}`);
-    const timer = setTimeout(() => reject(new Error("connect timeout")), timeoutMs);
-    ws.onopen = () => {
-      clearTimeout(timer);
-      resolve(new BufferedWs(ws));
-    };
-    ws.onerror = () => {
-      clearTimeout(timer);
-      reject(new Error("connect failed"));
-    };
-  });
-}
+function wsConnect(timeoutMs = 5000) { return wsConnectDirect(WS_PORT, timeoutMs); }
 
 // ─── Connection ─────────────────────────────────────────────────────
 
@@ -246,6 +169,330 @@ describe("WebSocket Command Dispatch", () => {
       await new Promise((r) => setTimeout(r, 200));
       expect(ctx.agentDefinitions.has("WsTestCoder")).toBe(true);
       expect(ctx.agentDefinitions.get("WsTestCoder")!.name).toBe("WsTestCoder");
+    } finally {
+      ws.close();
+    }
+  });
+
+  test("agent.register parses singleton policy", async () => {
+    const ws = await wsConnect();
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+
+      ws.send({
+        type: "agent.register",
+        agents: [
+          {
+            name: "WsSingleton",
+            config: {
+              name: "WsSingleton",
+              systemPrompt: "test",
+              allowedTools: [],
+              mcpServers: [],
+              model: "claude-sonnet-4-6",
+              workingDirectory: "/tmp",
+              skills: [],
+            },
+            instancePolicy: "singleton",
+          },
+        ],
+      });
+
+      await new Promise((r) => setTimeout(r, 200));
+      const config = ctx.agentDefinitions.get("WsSingleton");
+      expect(config).toBeDefined();
+      expect(config!.instancePolicy).toBe("singleton");
+    } finally {
+      ws.close();
+    }
+  });
+
+  test("agent.register parses pool:N policy format", async () => {
+    const ws = await wsConnect();
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+
+      ws.send({
+        type: "agent.register",
+        agents: [
+          {
+            name: "WsPoolAgent",
+            config: {
+              name: "WsPoolAgent",
+              systemPrompt: "test",
+              allowedTools: [],
+              mcpServers: [],
+              model: "claude-sonnet-4-6",
+              workingDirectory: "/tmp",
+              skills: [],
+            },
+            instancePolicy: "pool:3",
+          },
+        ],
+      });
+
+      await new Promise((r) => setTimeout(r, 200));
+      const config = ctx.agentDefinitions.get("WsPoolAgent");
+      expect(config).toBeDefined();
+      expect(config!.instancePolicy).toBe("pool");
+      expect(config!.instancePolicyPoolMax).toBe(3);
+    } finally {
+      ws.close();
+    }
+  });
+
+  test("delegate.task broadcasts peer.delegate event", async () => {
+    const ws = await wsConnect();
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+
+      // Register an agent definition first
+      const delegateAgentName = `DelegateTarget-${Date.now()}`;
+      ctx.agentDefinitions.set(delegateAgentName, {
+        name: delegateAgentName,
+        systemPrompt: "test delegate",
+        allowedTools: [],
+        mcpServers: [],
+        model: "claude-sonnet-4-6",
+        workingDirectory: "/tmp",
+        skills: [],
+        instancePolicy: "spawn",
+      });
+
+      // Create a source session so peer.delegate has a "from" name
+      ctx.sessions.create("delegate-src", {
+        name: "Orchestrator",
+        systemPrompt: "test",
+        allowedTools: [],
+        mcpServers: [],
+        model: "claude-sonnet-4-6",
+        workingDirectory: "/tmp",
+        skills: [],
+      });
+
+      ws.send({
+        type: "delegate.task",
+        sessionId: "delegate-src",
+        toAgent: delegateAgentName,
+        task: "implement login",
+        context: "Use OAuth",
+        waitForResult: false,
+      });
+
+      const event = await ws.waitFor(
+        (m) => m.type === "peer.delegate" && m.to === delegateAgentName,
+        3000,
+      );
+      expect(event.type).toBe("peer.delegate");
+      expect(event.from).toBe("Orchestrator");
+      expect(event.to).toBe(delegateAgentName);
+      expect(event.task).toBe("implement login");
+    } finally {
+      ws.close();
+    }
+  });
+
+  test("delegate.task errors for unknown agent", async () => {
+    const ws = await wsConnect();
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+
+      ws.send({
+        type: "delegate.task",
+        sessionId: "some-session",
+        toAgent: "NonExistentAgent",
+        task: "do something",
+        waitForResult: false,
+      });
+
+      const event = await ws.waitFor((m) => m.type === "session.error", 3000);
+      expect(event.type).toBe("session.error");
+      expect(event.error).toContain("not found");
+    } finally {
+      ws.close();
+    }
+  });
+});
+
+// ─── Delegation Policy Routing ──────────────────────────────────────
+
+describe("WebSocket Delegation Policy Routing", () => {
+  test("delegate.task with singleton reuses existing session inbox", async () => {
+    const ws = await wsConnect();
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+
+      const agentName = `WsSingletonRoute-${Date.now()}`;
+      const existingSessionId = `existing-singleton-${Date.now()}`;
+
+      ctx.agentDefinitions.set(agentName, {
+        name: agentName,
+        systemPrompt: "test",
+        allowedTools: [],
+        mcpServers: [],
+        model: "claude-sonnet-4-6",
+        workingDirectory: "/tmp",
+        skills: [],
+        instancePolicy: "singleton",
+      } as any);
+
+      ctx.sessions.create(existingSessionId, {
+        name: agentName,
+        systemPrompt: "test",
+        allowedTools: [],
+        mcpServers: [],
+        model: "claude-sonnet-4-6",
+        workingDirectory: "/tmp",
+        skills: [],
+      });
+
+      const srcSid = `singleton-src-${Date.now()}`;
+      ctx.sessions.create(srcSid, {
+        name: "Orchestrator",
+        systemPrompt: "test",
+        allowedTools: [],
+        mcpServers: [],
+        model: "claude-sonnet-4-6",
+        workingDirectory: "/tmp",
+        skills: [],
+      });
+
+      ws.send({
+        type: "delegate.task",
+        sessionId: srcSid,
+        toAgent: agentName,
+        task: "reuse singleton",
+        waitForResult: false,
+      });
+
+      const event = await ws.waitFor((m) => m.type === "peer.delegate" && m.to === agentName, 3000);
+      expect(event).toBeDefined();
+
+      await new Promise((r) => setTimeout(r, 300));
+      const inbox = ctx.messages.peek(existingSessionId);
+      expect(inbox).toBeGreaterThanOrEqual(1);
+    } finally {
+      ws.close();
+    }
+  });
+
+  test("delegate.task with pool at capacity routes to least-busy inbox", async () => {
+    const ws = await wsConnect();
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+
+      const agentName = `WsPoolRoute-${Date.now()}`;
+      ctx.agentDefinitions.set(agentName, {
+        name: agentName,
+        systemPrompt: "test",
+        allowedTools: [],
+        mcpServers: [],
+        model: "claude-sonnet-4-6",
+        workingDirectory: "/tmp",
+        skills: [],
+        instancePolicy: "pool",
+        instancePolicyPoolMax: 2,
+      } as any);
+
+      const sid1 = `pool-1-${Date.now()}`;
+      const sid2 = `pool-2-${Date.now()}`;
+      ctx.sessions.create(sid1, { name: agentName, systemPrompt: "t", allowedTools: [], mcpServers: [], model: "claude-sonnet-4-6", workingDirectory: "/tmp", skills: [] });
+      ctx.sessions.create(sid2, { name: agentName, systemPrompt: "t", allowedTools: [], mcpServers: [], model: "claude-sonnet-4-6", workingDirectory: "/tmp", skills: [] });
+
+      ctx.messages.push(sid1, {
+        id: "busy-1", from: "x", fromAgent: "X", to: sid1,
+        text: "busy", priority: "normal", timestamp: new Date().toISOString(), read: false,
+      });
+      ctx.messages.push(sid1, {
+        id: "busy-2", from: "x", fromAgent: "X", to: sid1,
+        text: "busier", priority: "normal", timestamp: new Date().toISOString(), read: false,
+      });
+
+      const srcSid = `pool-src-${Date.now()}`;
+      ctx.sessions.create(srcSid, { name: "PoolOrch", systemPrompt: "t", allowedTools: [], mcpServers: [], model: "claude-sonnet-4-6", workingDirectory: "/tmp", skills: [] });
+
+      ws.send({
+        type: "delegate.task",
+        sessionId: srcSid,
+        toAgent: agentName,
+        task: "pool task",
+        waitForResult: false,
+      });
+
+      await ws.waitFor((m) => m.type === "peer.delegate" && m.to === agentName, 3000);
+      await new Promise((r) => setTimeout(r, 300));
+
+      const inbox2 = ctx.messages.peek(sid2);
+      expect(inbox2).toBeGreaterThanOrEqual(1);
+    } finally {
+      ws.close();
+    }
+  });
+
+  test("session.pause and session.resume dispatch to SessionManager", async () => {
+    const ws = await wsConnect();
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+      const sid = `pause-resume-${Date.now()}`;
+
+      ws.send({
+        type: "session.create",
+        conversationId: sid,
+        agentConfig: {
+          name: "PauseResumeBot",
+          systemPrompt: "test",
+          allowedTools: [],
+          mcpServers: [],
+          model: "claude-sonnet-4-6",
+          maxTurns: 1,
+          workingDirectory: "/tmp",
+          skills: [],
+        },
+      });
+      await new Promise((r) => setTimeout(r, 300));
+
+      ws.send({ type: "session.pause", sessionId: sid });
+      await new Promise((r) => setTimeout(r, 200));
+
+      ws.send({ type: "session.resume", sessionId: sid, claudeSessionId: "fake-id" });
+      await new Promise((r) => setTimeout(r, 200));
+      // Mock SessionManager accepted both commands without error (no session.error broadcast)
+      const errors = ws.buffer.filter((m) => m.type === "session.error" && m.sessionId === sid);
+      expect(errors).toHaveLength(0);
+    } finally {
+      ws.close();
+    }
+  });
+
+  test("session.create with full config including skills and maxBudget", async () => {
+    const ws = await wsConnect();
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+      const prevCount = sessionCreateCalls.length;
+
+      ws.send({
+        type: "session.create",
+        conversationId: `full-config-${Date.now()}`,
+        agentConfig: {
+          name: "FullConfigBot",
+          systemPrompt: "test with skills",
+          allowedTools: ["Read", "Write", "Shell"],
+          mcpServers: [{ name: "TestMCP", command: "echo", args: ["hi"] }],
+          model: "claude-sonnet-4-6",
+          maxTurns: 20,
+          maxBudget: 5.0,
+          workingDirectory: "/tmp",
+          skills: [{ name: "test-skill", content: "# Test Skill\nDo something special." }],
+        },
+      });
+
+      await new Promise((r) => setTimeout(r, 300));
+      expect(sessionCreateCalls.length).toBe(prevCount + 1);
+      const call = sessionCreateCalls[sessionCreateCalls.length - 1];
+      expect(call.config.name).toBe("FullConfigBot");
+      expect(call.config.maxBudget).toBe(5.0);
+      expect(call.config.skills).toHaveLength(1);
+      expect(call.config.allowedTools).toHaveLength(3);
     } finally {
       ws.close();
     }

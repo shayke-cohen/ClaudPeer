@@ -41,13 +41,16 @@ struct AgentCommsView: View {
 
             if filteredEvents.isEmpty {
                 emptyState
+                    .accessibilityIdentifier("agentComms.emptyState")
             } else {
                 ScrollViewReader { proxy in
                     List(filteredEvents.reversed()) { event in
                         CommsTimelineEntry(event: event)
                             .listRowSeparator(.visible)
+                            .accessibilityIdentifier("agentComms.event.\(event.id.uuidString)")
                     }
                     .listStyle(.plain)
+                    .accessibilityIdentifier("agentComms.eventList")
                 }
             }
         }
@@ -59,10 +62,12 @@ struct AgentCommsView: View {
             HStack {
                 Label("Agent Comms", systemImage: "antenna.radiowaves.left.and.right")
                     .font(.headline)
+                    .accessibilityIdentifier("agentComms.title")
                 Spacer()
                 Text("\(filteredEvents.count) events")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("agentComms.eventCount")
             }
 
             Picker("Filter", selection: $filter) {
@@ -71,6 +76,7 @@ struct AgentCommsView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .accessibilityIdentifier("agentComms.filterPicker")
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -92,6 +98,8 @@ struct CommsTimelineEntry: View {
         HStack(alignment: .top, spacing: 10) {
             eventIcon
                 .frame(width: 24)
+                .accessibilityIdentifier("agentComms.eventIcon.\(event.id.uuidString)")
+                .accessibilityLabel(eventKindLabel)
 
             VStack(alignment: .leading, spacing: 4) {
                 eventHeader
@@ -103,8 +111,17 @@ struct CommsTimelineEntry: View {
             Text(event.timestamp, style: .time)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
+                .accessibilityIdentifier("agentComms.eventTimestamp.\(event.id.uuidString)")
         }
         .padding(.vertical, 4)
+    }
+
+    private var eventKindLabel: String {
+        switch event.kind {
+        case .chat: return "Chat"
+        case .delegation: return "Delegation"
+        case .blackboardUpdate: return "Blackboard update"
+        }
     }
 
     @ViewBuilder

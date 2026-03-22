@@ -2,8 +2,8 @@
 
 Living specification tracking implemented features, user flows, and requirements.
 
-**Version:** 0.6.0
-**Status:** Phase 6 complete (UX Redesign + Inspector Toggle)
+**Version:** 0.7.0
+**Status:** Phase 7 complete (Agent Communication Wiring + Delegation UI)
 
 ---
 
@@ -93,11 +93,12 @@ All sessions use the Claude Agent SDK. Every session gets PeerBus tools injected
 | FR-3.11: Fork sessions (branch conversation) | Done |
 | FR-3.12: Pause/abort running sessions | Done |
 | FR-3.13: Track session status (active/paused/completed/failed) | Done |
-| FR-3.14: Instance policy enforcement (delegation respects definitions) | Partial |
+| FR-3.14: Instance policy enforcement (delegation respects definitions) | Done |
 | FR-3.15: All sessions use Agent SDK with PeerBus MCP server injected | Done |
 | FR-3.16: Agent definitions registered with sidecar on connect (agent.register) | Done |
 | FR-3.17: Response polling in Swift to capture agent replies and save to SwiftData | Done |
 | FR-3.18: Autonomous session spawning for delegation (spawnAutonomous) | Done |
+| FR-3.19: User-initiated delegation via delegate.task sidecar command | Done |
 
 ### FR-4: Conversation Model
 
@@ -148,6 +149,10 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 | FR-5.23: Clickable links in agent responses (opens in default browser) | Done |
 | FR-5.24: Inline images rendered via MarkdownUI | Done |
 | FR-5.25: Custom MarkdownUI theme (.claudPeer) with styled headings, blockquotes, tables, code | Done |
+| FR-5.26: Delegate-to-agent button in chat input area (arrow.triangle.branch icon) | Done |
+| FR-5.27: Agent picker menu listing installed agents for delegation target selection | Done |
+| FR-5.28: DelegateSheet with task editor, context field, wait-for-result toggle | Done |
+| FR-5.29: Delegation message bubble in parent chat (pending + completed states) | Done |
 
 ### FR-6: Main Window Layout
 
@@ -383,6 +388,8 @@ Full suite of PeerBus tools injected as in-process MCP server into every Agent S
 | FR-14.20: ChatChannelStore with deadlock detection (circular wait prevention) | Done |
 | FR-14.21: MessageStore with per-session inboxes and drain/peek | Done |
 | FR-14.22: agent.register command — Swift sends agent definitions to sidecar on connect | Done |
+| FR-14.23: Instance policy enforcement in peer_delegate_task (singleton reuse, pool cap, spawn default) | Done |
+| FR-14.24: peer_chat_listen included in agent allowedTools list | Done |
 
 ### FR-15: Agent Comms View
 
@@ -399,6 +406,8 @@ Unified timeline UI for observing all inter-agent communication.
 | FR-15.5: Sidebar conversation tree with parent-child nesting (DisclosureGroup) | Done |
 | FR-15.6: Type-specific conversation icons (delegation, agent-to-agent, user+agent, group) | Done |
 | FR-15.7: Root conversations filtered to exclude children from top-level lists | Done |
+| FR-15.8: Agent Comms toolbar button with antenna icon and event count badge (⌘⇧A) | Done |
+| FR-15.9: Agent Comms sheet dismissible, re-openable, real-time event updates | Done |
 
 ### FR-16: Built-in Ecosystem Seeding
 
@@ -616,12 +625,14 @@ Backend services supporting the file explorer.
 - [x] Agents can create and join shared workspaces (workspace_create/join/list)
 - [x] Deadlock detection prevents circular blocking waits between agents
 - [x] Agent definitions are registered with the sidecar on connect for delegation lookup
+- [x] Instance policies enforced (singleton/pool/spawn) during delegation
 
 ### US-13: View Inter-Agent Communication
 **As a** developer, **I want** to see all inter-agent messages, delegations, and blackboard updates in a unified timeline, **so that** I can observe how agents collaborate and debug their interactions.
 
 **Acceptance criteria:**
-- [x] Agent Comms view accessible from toolbar
+- [x] Agent Comms view accessible from toolbar (antenna icon with event count badge, ⌘⇧A)
+- [x] Agent Comms opens as dismissible sheet with real-time event updates
 - [x] Filter tabs: All, Chats, Delegations, Blackboard
 - [x] Each event shows icon, participants, message/task text, and timestamp
 - [x] Peer chat events, delegation events, and blackboard updates all appear in timeline
@@ -654,6 +665,19 @@ Backend services supporting the file explorer.
 - [x] File tree auto-refreshes when agent modifies files (tool calls)
 - [x] Can open files in default editor or copy path to clipboard
 - [x] Can reveal working directory in Finder or open in Terminal
+
+### US-17: Manually Delegate Task to Another Agent
+**As a** developer, **I want to** delegate a task to a specific agent directly from my chat, **so that** I can orchestrate multi-agent work without relying on the current agent to initiate delegation.
+
+**Acceptance criteria:**
+- [x] Delegate button (arrow.triangle.branch) in chat input area
+- [x] Agent picker menu lists installed agents (excludes current agent)
+- [x] DelegateSheet shows agent identity, task editor, optional context, wait-for-result toggle
+- [x] Input text auto-fills as task description
+- [x] Delegation creates child conversation in sidebar
+- [x] Delegation bubble appears in parent chat
+- [x] Wait-for-result mode shows progress and returns result in parent chat
+- [x] Instance policies respected (singleton reused, pool capped, spawn default)
 
 ### US-14: Read Rich Markdown Responses
 **As a** developer, **I want to** see Claude's responses rendered with proper markdown formatting, **so that** code blocks, links, headers, and lists are easy to read and interact with.
@@ -868,6 +892,60 @@ flowchart TD
     Diff --> Back["Back button returns\nto file tree"]
 ```
 
+### Flow 12: User-Initiated Delegation
+
+```mermaid
+flowchart TD
+    Chat([User in active chat session]) --> Click["Clicks delegate button\n(arrow.triangle.branch)\nin input bar"]
+    Click --> Menu["Agent picker menu appears\nShows installed agents"]
+    Menu --> Pick["User picks target agent\ne.g. 'Coder'"]
+    Pick --> Sheet["DelegateSheet opens"]
+    Sheet --> PreFill{"inputText non-empty?"}
+    PreFill -->|Yes| TaskFilled["Task pre-filled\nfrom input text"]
+    PreFill -->|No| TaskEmpty["Task field empty\nuser must type"]
+    TaskFilled --> Edit["User optionally edits\ntask and context"]
+    TaskEmpty --> Edit
+    Edit --> Toggle["User sets wait-for-result\n(default: true)"]
+    Toggle --> Send["Clicks 'Delegate' button"]
+    Send --> Wire["AppState.delegateTask()\nsends delegate.task\nvia WebSocket"]
+    Wire --> Sidecar["ws-server.ts receives command"]
+    Sidecar --> Policy{"Instance policy?"}
+    Policy -->|spawn| NewSession["spawnAutonomous()\nnew UUID session"]
+    Policy -->|singleton| Reuse["Route to existing\nsession's inbox"]
+    Policy -->|pool full| LeastBusy["Route to session with\nfewest inbox messages"]
+    Policy -->|pool under cap| NewSession
+    NewSession --> Broadcast["Broadcast peer.delegate event"]
+    Reuse --> Broadcast
+    LeastBusy --> Broadcast
+    Broadcast --> UIUpdates["Swift receives event"]
+    UIUpdates --> Bubble["Delegation bubble\nin parent chat"]
+    UIUpdates --> ChildConvo["Child conversation\ncreated in sidebar"]
+    UIUpdates --> CommsEvent["Event added to\nAgent Comms timeline"]
+```
+
+### Flow 13: Observe Agent Collaboration
+
+```mermaid
+flowchart TD
+    Start([Orchestrator agent running]) --> Delegate["Orchestrator calls\npeer_delegate_task('Coder', task)"]
+    Delegate --> SpawnEvent["peer.delegate event broadcast"]
+    SpawnEvent --> UIParallel["Three UI updates in parallel"]
+    UIParallel --> Bubble["Chat: delegation bubble\n'Delegated to Coder'"]
+    UIParallel --> Sidebar["Sidebar: child conversation\nnested under parent"]
+    UIParallel --> Comms["Agent Comms: new\ndelegation entry"]
+    Bubble --> CoderRuns["Coder agent runs autonomously"]
+    CoderRuns --> CoderChat["Coder calls\npeer_chat_start('Reviewer',\n'Can you review this?')"]
+    CoderChat --> ChatEvent["peer.chat event broadcast"]
+    ChatEvent --> CommsChat["Agent Comms shows:\nCoder → Reviewer chat"]
+    CoderRuns --> CoderBB["Coder calls\nblackboard_write(\n'impl.login.status',\n'{status: done}')"]
+    CoderBB --> BBEvent["blackboard.update event"]
+    BBEvent --> CommsBB["Agent Comms shows:\nblackboard update entry"]
+    CoderRuns --> Done["Coder session completes"]
+    Done --> ResultEvent["session.result broadcast"]
+    ResultEvent --> ParentChat["Result injected into\nparent Orchestrator chat"]
+    ParentChat --> User([User sees full\ncollaboration in real-time])
+```
+
 ---
 
 ## 5. Non-Functional Requirements
@@ -903,3 +981,4 @@ flowchart TD
 | 2026-03-22 | Phase 4.5: Built-in Ecosystem. Full first-launch seeding: DefaultsSeeder expanded from permissions-only to 5 categories (permissions, MCPs, skills, agents, templates). Created 3 system prompt templates (specialist.md, worker.md, coordinator.md) with variable resolution. Agent seeding resolves cross-entity references by name (skills, MCPs, permissions). All 30 catalog agents updated with PeerBus system skills (peer-collaboration, blackboard-patterns, agent-identity) in requiredSkills — every agent in ClaudPeer knows how to collaborate via PeerBus. 131 Swift tests + 96 sidecar tests passing. | FR-16, US-15 |
 | 2026-03-22 | Phase 6: UX Redesign + Inspector Toggle. Comprehensive UX overhaul: Settings reorganized into General/Connection (with live sidecar status and action buttons)/Developer tabs. Sidebar toolbar replaced with bottom bar (Catalog, Agents, + buttons). Main toolbar simplified to New Session + Quick Chat + status pill + inspector toggle. Chat header: tappable agent icon opens library, mission preview, Fork/Rename moved to overflow menu. Inspector transformed into monitoring dashboard with usage section (tokens, cost, turns progress bar), workspace section with Open in Terminal, and removed duplicate controls. New Session sheet: recent agents row, collapsible options DisclosureGroup, "Inherit from Agent" model default, mode tooltips. Agent Editor consolidated from 5 steps to 3 (Identity, Capabilities with Skills/MCPs/Permissions DisclosureGroups, System Prompt). Inspector toggle: toolbar button (sidebar.trailing, ⌘⌥0) shows/hides right inspector pane; chat expands to fill freed space via 2-column NavigationSplitView + HStack layout. Fixed macOS state restoration crash (WorkingDirectoryPicker environment object). Fixed FileNode Swift 6 concurrency (nonisolated init, @unchecked Sendable). | FR-6.14-6.21, FR-9.1, US-7, US-8, Flow 4 |
 | 2026-03-22 | Phase 5: Inspector File Explorer. Tabbed Inspector (Info/Files) with file tree browser for agent working directories. FileSystemService, GitService, FileNode model. FileTreeView with DisclosureGroup, git badges, changes-only filter. FileContentView with three modes: Markdown preview, syntax-highlighted source (Highlightr), git diff (NSTextView). Async I/O, auto-refresh on tool calls, HighlightedCodeView for chat code blocks, dynamic git path, full a11y identifiers. | FR-17, FR-18, US-16, Flow 11 |
+| 2026-03-22 | Phase 7: Agent Communication Wiring + Delegation UI. Wired AgentCommsView into MainWindowView (toolbar button with antenna icon + event badge, ⌘⇧A shortcut, sheet presentation). Added user-initiated delegation from chat: delegate menu button in input bar, agent picker menu, DelegateSheet (task editor, context field, wait-for-result toggle). New delegate.task sidecar command with full wire protocol (SidecarProtocol → ws-server.ts). Instance policy enforcement in both peer_delegate_task and delegate.task handler: singleton reuses existing session, pool caps at max then routes to least-busy, spawn always creates new. Added findByAgentName to SessionRegistry. Fixed pool serialization to pool:N format in AppState. Added peer_chat_listen to AgentProvisioner allowedTools. | FR-3.14, FR-3.19, FR-5.26-5.29, FR-14.23-14.24, FR-15.8-15.9, US-12, US-13, US-17, Flow 12, Flow 13 |

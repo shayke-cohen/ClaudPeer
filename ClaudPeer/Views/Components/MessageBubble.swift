@@ -7,6 +7,7 @@ struct MessageBubble: View {
     var onTapAttachment: ((MessageAttachment) -> Void)?
     @State private var isHovered = false
     @State private var isCopied = false
+    @State private var isThinkingExpanded = false
 
     private var sender: Participant? {
         guard let senderId = message.senderParticipantId else { return nil }
@@ -64,6 +65,9 @@ struct MessageBubble: View {
 
                 HStack(alignment: .top, spacing: 4) {
                     VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
+                        if !isUser, let thinking = message.thinkingText, !thinking.isEmpty {
+                            thinkingSection(thinking)
+                        }
                         if !message.attachments.isEmpty {
                             attachmentGrid
                         }
@@ -135,6 +139,55 @@ struct MessageBubble: View {
         } else {
             MarkdownContent(text: message.text)
         }
+    }
+
+    @ViewBuilder
+    private func thinkingSection(_ thinking: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isThinkingExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "brain")
+                        .font(.caption2)
+                        .foregroundStyle(.indigo)
+                    Text("Thinking")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.indigo)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .rotationEffect(.degrees(isThinkingExpanded ? 90 : 0))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("messageBubble.thinkingToggle.\(message.id.uuidString)")
+            .accessibilityLabel(isThinkingExpanded ? "Collapse thinking" : "Expand thinking")
+
+            if isThinkingExpanded {
+                Divider()
+                Text(thinking)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .italic()
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .frame(maxHeight: 200)
+            }
+        }
+        .background(.indigo.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(.indigo.opacity(0.15), lineWidth: 0.5)
+        )
     }
 
     private func copyMessage() {

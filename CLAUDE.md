@@ -135,7 +135,8 @@ Dot-separated `viewName.elementName` in camelCase:
 | NewSessionSheet | `newSession.*` |
 | AgentLibraryView | `agentLibrary.*` |
 | AgentEditorView | `agentEditor.*` |
-| SettingsView | `settings.{general,connection,advanced}.*` |
+| AgentCommsView | `agentComms.*` |
+| SettingsView | `settings.{general,connection,developer}.*` |
 | AgentCardView | `agentCard.*` |
 | MessageBubble | `messageBubble.*` |
 | ToolCallView | `toolCall.*` |
@@ -143,6 +144,12 @@ Dot-separated `viewName.elementName` in camelCase:
 | StatusBadge | `statusBadge.*` |
 | StreamingIndicator | `streamingIndicator` |
 | InfoRow | `infoRow.*` |
+| DelegateSheet | `delegate.*` |
+| ImagePreviewOverlay | `imagePreview.*` |
+| ConversationTreeNode | `conversationTree.*` |
+| MarkdownContent | `markdownContent` |
+| HighlightedCodeView | `highlightedCode.*` |
+| PasteableTextField | `pasteableTextField.*` |
 | CatalogBrowserView | `catalog.*` |
 | CatalogDetailView | `catalogDetail.*` |
 | MCPEditorView | `mcpEditor.*` |
@@ -151,6 +158,10 @@ Dot-separated `viewName.elementName` in camelCase:
 | SkillEditorView | `skillEditor.*` |
 | SkillLibraryView | `skillLibrary.*` |
 | AttachmentThumbnail | `attachmentThumbnail.*` |
+| FileExplorerView | `inspector.fileTree.*` |
+| FileContentView | `inspector.fileContent.*` |
+| FileTreeView | `inspector.fileTree.*` |
+| WorkingDirectoryPicker | `directoryPicker.*` |
 
 When adding new views, pick a unique camelCase prefix and annotate every interactive element.
 

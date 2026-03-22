@@ -27,6 +27,8 @@ struct HighlightedCodeView: NSViewRepresentable {
         textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
 
         scrollView.documentView = textView
+        scrollView.setAccessibilityIdentifier("highlightedCode.scrollView")
+        textView.setAccessibilityIdentifier("highlightedCode.textView")
         context.coordinator.textView = textView
 
         applyHighlighting(to: textView, coordinator: context.coordinator)

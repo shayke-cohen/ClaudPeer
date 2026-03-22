@@ -79,5 +79,6 @@ struct ToolCallView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(.secondary.opacity(0.2), lineWidth: 0.5)
         )
+        .accessibilityIdentifier("toolCall.container.\(message.id.uuidString)")
     }
 }

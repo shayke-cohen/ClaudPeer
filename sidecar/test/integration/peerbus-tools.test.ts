@@ -261,6 +261,161 @@ describe("Messaging Tools (integration)", () => {
     const result = await call(findTool(tools, "peer_delegate_task"), { to_agent: "Ghost", task: "nothing" });
     expect(parseToolResult(result).error).toBe("agent_not_found");
   });
+
+  test("peer_delegate_task with singleton policy reuses existing session", async () => {
+    const singletonConfig = { ...agentConfig, name: "DevOps", instancePolicy: "singleton" as const };
+    ctx.agentDefinitions.set("DevOps", singletonConfig);
+    ctx.sessions.create("devops-1", singletonConfig);
+
+    const tools = createMessagingTools(ctx, "session-a");
+    const result = await call(findTool(tools, "peer_delegate_task"), {
+      to_agent: "DevOps",
+      task: "setup CI",
+    });
+    const parsed = parseToolResult(result);
+
+    expect(parsed.delegated).toBe(true);
+    expect(parsed.method).toBe("reused_singleton");
+    expect(parsed.sessionId).toBe("devops-1");
+    expect(spawnCalls).toHaveLength(0);
+    expect(ctx.messages.peek("devops-1")).toBe(1);
+  });
+
+  test("peer_delegate_task with singleton spawns when no active session", async () => {
+    const singletonConfig = { ...agentConfig, name: "DevOps", instancePolicy: "singleton" as const };
+    ctx.agentDefinitions.set("DevOps", singletonConfig);
+
+    const tools = createMessagingTools(ctx, "session-a");
+    const result = await call(findTool(tools, "peer_delegate_task"), {
+      to_agent: "DevOps",
+      task: "deploy",
+      wait_for_result: true,
+    });
+    const parsed = parseToolResult(result);
+
+    expect(parsed.delegated).toBe(true);
+    expect(parsed.method).toBe("spawned");
+    expect(spawnCalls).toHaveLength(1);
+    expect(spawnCalls[0].config.name).toBe("DevOps");
+  });
+
+  test("peer_delegate_task with pool spawns when under cap", async () => {
+    const poolConfig = { ...agentConfig, name: "Tester", instancePolicy: "pool" as const, instancePolicyPoolMax: 2 };
+    ctx.agentDefinitions.set("Tester", poolConfig);
+    ctx.sessions.create("tester-1", poolConfig);
+
+    const tools = createMessagingTools(ctx, "session-a");
+    const result = await call(findTool(tools, "peer_delegate_task"), {
+      to_agent: "Tester",
+      task: "test login",
+      wait_for_result: false,
+    });
+    const parsed = parseToolResult(result);
+
+    expect(parsed.delegated).toBe(true);
+    expect(parsed.method).toBe("spawned");
+    expect(spawnCalls).toHaveLength(1);
+  });
+
+  test("peer_delegate_task with pool routes to inbox when at cap", async () => {
+    const poolConfig = { ...agentConfig, name: "Tester", instancePolicy: "pool" as const, instancePolicyPoolMax: 2 };
+    ctx.agentDefinitions.set("Tester", poolConfig);
+    ctx.sessions.create("tester-1", poolConfig);
+    ctx.sessions.create("tester-2", poolConfig);
+
+    const tools = createMessagingTools(ctx, "session-a");
+    const result = await call(findTool(tools, "peer_delegate_task"), {
+      to_agent: "Tester",
+      task: "test checkout",
+    });
+    const parsed = parseToolResult(result);
+
+    expect(parsed.delegated).toBe(true);
+    expect(parsed.method).toBe("pool_routed");
+    expect(spawnCalls).toHaveLength(0);
+    const totalInbox = ctx.messages.peek("tester-1") + ctx.messages.peek("tester-2");
+    expect(totalInbox).toBe(1);
+  });
+
+  test("peer_delegate_task pool routes to least-busy session", async () => {
+    const poolConfig = { ...agentConfig, name: "Tester", instancePolicy: "pool" as const, instancePolicyPoolMax: 2 };
+    ctx.agentDefinitions.set("Tester", poolConfig);
+    ctx.sessions.create("tester-1", poolConfig);
+    ctx.sessions.create("tester-2", poolConfig);
+
+    // Give tester-1 some messages to make it busier
+    ctx.messages.push("tester-1", {
+      id: "existing-1", from: "x", fromAgent: "X", to: "tester-1",
+      text: "busy", priority: "normal", timestamp: new Date().toISOString(), read: false,
+    });
+    ctx.messages.push("tester-1", {
+      id: "existing-2", from: "x", fromAgent: "X", to: "tester-1",
+      text: "busier", priority: "normal", timestamp: new Date().toISOString(), read: false,
+    });
+
+    const tools = createMessagingTools(ctx, "session-a");
+    const result = await call(findTool(tools, "peer_delegate_task"), {
+      to_agent: "Tester",
+      task: "test signup",
+    });
+    const parsed = parseToolResult(result);
+
+    expect(parsed.delegated).toBe(true);
+    expect(parsed.method).toBe("pool_routed");
+    expect(parsed.sessionId).toBe("tester-2");
+  });
+
+  test("peer_delegate_task includes context in prompt", async () => {
+    ctx.agentDefinitions.set("Coder", { ...agentConfig, name: "Coder" });
+    const tools = createMessagingTools(ctx, "session-a");
+    await call(findTool(tools, "peer_delegate_task"), {
+      to_agent: "Coder",
+      task: "implement sorting",
+      context: "Use mergesort. See blackboard research.sorting",
+      wait_for_result: true,
+    });
+
+    expect(spawnCalls).toHaveLength(1);
+    expect(spawnCalls[0].prompt).toContain("implement sorting");
+    expect(spawnCalls[0].prompt).toContain("## Context");
+    expect(spawnCalls[0].prompt).toContain("Use mergesort");
+  });
+
+  test("peer_delegate_task spawn policy creates unique session IDs each call", async () => {
+    ctx.agentDefinitions.set("Worker", { ...agentConfig, name: "Worker", instancePolicy: "spawn" as const });
+    const tools = createMessagingTools(ctx, "session-a");
+
+    await call(findTool(tools, "peer_delegate_task"), {
+      to_agent: "Worker",
+      task: "task-1",
+      wait_for_result: false,
+    });
+    await call(findTool(tools, "peer_delegate_task"), {
+      to_agent: "Worker",
+      task: "task-2",
+      wait_for_result: false,
+    });
+
+    expect(spawnCalls).toHaveLength(2);
+    expect(spawnCalls[0].sessionId).not.toBe(spawnCalls[1].sessionId);
+  });
+
+  test("peer_list_agents returns registered definitions separately from sessions", async () => {
+    ctx.agentDefinitions.set("RegisteredCoder", { ...agentConfig, name: "RegisteredCoder" });
+    ctx.agentDefinitions.set("RegisteredReviewer", { ...agentConfig, name: "RegisteredReviewer" });
+    const tools = createMessagingTools(ctx, "session-a");
+    const result = await call(findTool(tools, "peer_list_agents"), {});
+    const parsed = parseToolResult(result);
+
+    const regNames = parsed.registeredAgents.map((a: any) => a.name);
+    expect(regNames).toContain("RegisteredCoder");
+    expect(regNames).toContain("RegisteredReviewer");
+
+    const sessionNames = parsed.activeSessions.map((a: any) => a.name);
+    expect(sessionNames).toContain("AgentA");
+    expect(sessionNames).toContain("AgentB");
+    expect(sessionNames).not.toContain("RegisteredCoder");
+  });
 });
 
 // ─── Chat Tools ─────────────────────────────────────────────────────
@@ -378,6 +533,27 @@ describe("Chat Tools (integration)", () => {
     const tools = createChatTools(ctx, "session-a");
     const result = await call(findTool(tools, "peer_chat_invite"), { channel_id: ch.id, agent: "ghost" });
     expect(parseToolResult(result).error).toBe("agent_not_found");
+  });
+
+  test("peer_chat_listen succeeds when message arrives before timeout", async () => {
+    const toolsB = createChatTools(ctx, "session-b");
+    const listenPromise = call(findTool(toolsB, "peer_chat_listen"), { timeout_ms: 3000 });
+
+    await new Promise((r) => setTimeout(r, 50));
+    ctx.channels.create("session-a", "AgentA", "session-b", "delayed question");
+
+    const parsed = parseToolResult(await listenPromise);
+    expect(parsed.channel_id).toBeTruthy();
+    expect(parsed.from_agent).toBe("AgentA");
+    expect(parsed.message).toBe("delayed question");
+  });
+
+  test("peer_chat_listen times out gracefully with no incoming", async () => {
+    ctx.sessions.create("session-lonely", { ...agentConfig, name: "LonelyAgent" });
+    const tools = createChatTools(ctx, "session-lonely");
+    const result = await call(findTool(tools, "peer_chat_listen"), { timeout_ms: 100 });
+    const parsed = parseToolResult(result);
+    expect(parsed.timeout).toBe(true);
   });
 });
 

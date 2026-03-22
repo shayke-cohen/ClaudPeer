@@ -145,6 +145,7 @@ struct ClaudPeerApp: App {
             model: "claude-sonnet-4-6",
             maxTurns: 1,
             maxBudget: nil,
+            maxThinkingTokens: 10000,
             workingDirectory: appState.instanceWorkingDirectory ?? NSHomeDirectory(),
             skills: []
         )

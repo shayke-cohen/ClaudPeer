@@ -111,12 +111,14 @@ struct AgentLibraryView: View {
                 Text("Browse Catalog")
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("agentLibrary.emptyState.browseCatalogButton")
             Text("or")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
             Button("Create Custom Agent") {
                 showingNewAgent = true
             }
+            .accessibilityIdentifier("agentLibrary.emptyState.createAgentButton")
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

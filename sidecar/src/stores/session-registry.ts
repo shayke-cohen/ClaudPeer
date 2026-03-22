@@ -45,4 +45,10 @@ export class SessionRegistry {
   listActive(): SessionState[] {
     return this.list().filter((s) => s.status === "active");
   }
+
+  findByAgentName(name: string): SessionState[] {
+    return this.listActive().filter(
+      (s) => s.agentName.toLowerCase() === name.toLowerCase(),
+    );
+  }
 }

@@ -21,6 +21,7 @@ import { spawn, type Subprocess } from "bun";
 import { mkdtempSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
+import { BufferedWs, wsConnect as wsConnectHelper, waitForHealth as waitForHealthHelper } from "../helpers.js";
 
 const WS_PORT = 29849 + Math.floor(Math.random() * 500);
 const HTTP_PORT = 29850 + Math.floor(Math.random() * 500);
@@ -29,111 +30,8 @@ const isLive = process.env.CLAUDPEER_E2E_LIVE === "1";
 
 let proc: Subprocess;
 
-class BufferedWs {
-  ws: WebSocket;
-  buffer: any[] = [];
-  private listeners: Array<(msg: any) => void> = [];
-
-  constructor(ws: WebSocket) {
-    this.ws = ws;
-    ws.onmessage = (event: MessageEvent) => {
-      const msg = JSON.parse(typeof event.data === "string" ? event.data : "{}");
-      this.buffer.push(msg);
-      for (const fn of this.listeners) fn(msg);
-    };
-  }
-
-  send(data: any) { this.ws.send(JSON.stringify(data)); }
-  close() { this.ws.close(); }
-
-  waitFor(predicate: (msg: any) => boolean, timeoutMs = 10000): Promise<any> {
-    const existing = this.buffer.find(predicate);
-    if (existing) return Promise.resolve(existing);
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.listeners = this.listeners.filter((fn) => fn !== listener);
-        reject(new Error("waitFor timeout"));
-      }, timeoutMs);
-      const listener = (msg: any) => {
-        if (predicate(msg)) {
-          clearTimeout(timer);
-          this.listeners = this.listeners.filter((fn) => fn !== listener);
-          resolve(msg);
-        }
-      };
-      this.listeners.push(listener);
-    });
-  }
-
-  collectNew(count: number, timeoutMs = 5000): Promise<any[]> {
-    const startIdx = this.buffer.length;
-    return new Promise((resolve) => {
-      const timer = setTimeout(() => resolve(this.buffer.slice(startIdx)), timeoutMs);
-      const listener = () => {
-        if (this.buffer.length - startIdx >= count) {
-          clearTimeout(timer);
-          this.listeners = this.listeners.filter((fn) => fn !== listener);
-          resolve(this.buffer.slice(startIdx, startIdx + count));
-        }
-      };
-      this.listeners.push(listener);
-    });
-  }
-
-  collectUntil(predicate: (msg: any) => boolean, timeoutMs = 30000): Promise<any[]> {
-    const startIdx = this.buffer.length;
-    // Check buffer first
-    for (let i = startIdx; i < this.buffer.length; i++) {
-      if (predicate(this.buffer[i])) return Promise.resolve(this.buffer.slice(startIdx, i + 1));
-    }
-    return new Promise((resolve) => {
-      const timer = setTimeout(() => {
-        this.listeners = this.listeners.filter((fn) => fn !== listener);
-        resolve(this.buffer.slice(startIdx));
-      }, timeoutMs);
-      const listener = (msg: any) => {
-        if (predicate(msg)) {
-          clearTimeout(timer);
-          this.listeners = this.listeners.filter((fn) => fn !== listener);
-          resolve(this.buffer.slice(startIdx));
-        }
-      };
-      this.listeners.push(listener);
-    });
-  }
-}
-
-function wsConnect(timeoutMs = 10000): Promise<BufferedWs> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("WS connect timeout")), timeoutMs);
-    const tryConnect = () => {
-      try {
-        const ws = new WebSocket(`ws://localhost:${WS_PORT}`);
-        ws.onopen = () => {
-          clearTimeout(timer);
-          resolve(new BufferedWs(ws));
-        };
-        ws.onerror = () => {
-          setTimeout(tryConnect, 300);
-        };
-      } catch {
-        setTimeout(tryConnect, 300);
-      }
-    };
-    tryConnect();
-  });
-}
-
-async function waitForHealth(maxRetries = 30): Promise<void> {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const res = await fetch(`http://127.0.0.1:${HTTP_PORT}/health`);
-      if (res.ok) return;
-    } catch {}
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  throw new Error("Sidecar HTTP did not become ready");
-}
+function wsConnect(timeoutMs = 10000) { return wsConnectHelper(WS_PORT, timeoutMs); }
+async function waitForHealth(maxRetries = 30) { return waitForHealthHelper(HTTP_PORT, maxRetries); }
 
 // ─── Lifecycle ──────────────────────────────────────────────────────
 

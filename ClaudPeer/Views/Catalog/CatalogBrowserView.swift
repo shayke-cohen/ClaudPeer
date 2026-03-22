@@ -239,6 +239,7 @@ struct CatalogBrowserView: View {
                     Spacer()
                     installCapsule(
                         installed: installed,
+                        catalogId: agent.catalogId,
                         install: { beginAgentInstall(agent) }
                     )
                 }
@@ -290,6 +291,7 @@ struct CatalogBrowserView: View {
                     Spacer()
                     installCapsule(
                         installed: installed,
+                        catalogId: skill.catalogId,
                         install: {
                             CatalogService.shared.installSkill(skill.catalogId, into: modelContext)
                             try? modelContext.save()
@@ -355,6 +357,7 @@ struct CatalogBrowserView: View {
                     Spacer()
                     installCapsule(
                         installed: installed,
+                        catalogId: mcp.catalogId,
                         install: {
                             CatalogService.shared.installMCP(mcp.catalogId, into: modelContext)
                             try? modelContext.save()
@@ -384,7 +387,7 @@ struct CatalogBrowserView: View {
     }
 
     @ViewBuilder
-    private func installCapsule(installed: Bool, install: @escaping () -> Void) -> some View {
+    private func installCapsule(installed: Bool, catalogId: String, install: @escaping () -> Void) -> some View {
         if installed {
             Text("Installed")
                 .font(.caption2)
@@ -398,7 +401,7 @@ struct CatalogBrowserView: View {
             Button("Install", action: install)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .accessibilityIdentifier("catalog.installButton")
+                .accessibilityIdentifier("catalog.installButton.\(catalogId)")
         }
     }
 

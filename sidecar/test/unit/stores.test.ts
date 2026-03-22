@@ -178,6 +178,36 @@ describe("SessionRegistry", () => {
     expect(active).toHaveLength(1);
     expect(active[0].id).toBe("s1");
   });
+
+  test("findByAgentName returns active sessions matching name", () => {
+    reg.create("s1", { ...mockConfig, name: "Coder" });
+    reg.create("s2", { ...mockConfig, name: "Reviewer" });
+    reg.create("s3", { ...mockConfig, name: "Coder" });
+
+    const coders = reg.findByAgentName("Coder");
+    expect(coders).toHaveLength(2);
+    expect(coders.map((s) => s.id).sort()).toEqual(["s1", "s3"]);
+  });
+
+  test("findByAgentName is case-insensitive", () => {
+    reg.create("s1", { ...mockConfig, name: "DevOps" });
+    expect(reg.findByAgentName("devops")).toHaveLength(1);
+    expect(reg.findByAgentName("DEVOPS")).toHaveLength(1);
+  });
+
+  test("findByAgentName excludes non-active sessions", () => {
+    reg.create("s1", { ...mockConfig, name: "Tester" });
+    reg.create("s2", { ...mockConfig, name: "Tester" });
+    reg.update("s2", { status: "completed" });
+
+    expect(reg.findByAgentName("Tester")).toHaveLength(1);
+    expect(reg.findByAgentName("Tester")[0].id).toBe("s1");
+  });
+
+  test("findByAgentName returns empty for no matches", () => {
+    reg.create("s1", mockConfig);
+    expect(reg.findByAgentName("Ghost")).toHaveLength(0);
+  });
 });
 
 // ─── MessageStore ───────────────────────────────────────────────────

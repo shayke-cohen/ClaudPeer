@@ -21,6 +21,7 @@ final class AppState: ObservableObject {
     @Published private(set) var instanceWorkingDirectory: String?
     @Published var activeSessions: [UUID: SessionInfo] = [:]
     @Published var streamingText: [String: String] = [:]
+    @Published var thinkingText: [String: String] = [:]
     @Published var lastSessionEvent: [String: SessionEventKind] = [:]
     @Published private(set) var allocatedWsPort: Int = 0
     @Published private(set) var allocatedHttpPort: Int = 0
@@ -143,6 +144,16 @@ final class AppState: ObservableObject {
         }
     }
 
+    func delegateTask(conversationId: UUID, toAgent: String, task: String, context: String?, waitForResult: Bool) {
+        sendToSidecar(.delegateTask(
+            sessionId: conversationId.uuidString,
+            toAgent: toAgent,
+            task: task,
+            context: context,
+            waitForResult: waitForResult
+        ))
+    }
+
     private func registerAgentDefinitions() {
         guard let ctx = modelContext else { return }
         let descriptor = FetchDescriptor<Agent>()
@@ -155,7 +166,7 @@ final class AppState: ObservableObject {
             switch agent.instancePolicy {
             case .spawn: policyStr = "spawn"
             case .singleton: policyStr = "singleton"
-            case .pool: policyStr = "pool"
+            case .pool(let max): policyStr = "pool:\(max)"
             }
             return AgentDefinitionWire(name: agent.name, config: config, instancePolicy: policyStr)
         }
@@ -177,6 +188,11 @@ final class AppState: ObservableObject {
         case .streamToken(let sessionId, let text):
             let current = streamingText[sessionId] ?? ""
             streamingText[sessionId] = current + text
+            activeSessions[UUID(uuidString: sessionId) ?? UUID()]?.isStreaming = true
+
+        case .streamThinking(let sessionId, let text):
+            let current = thinkingText[sessionId] ?? ""
+            thinkingText[sessionId] = current + text
             activeSessions[UUID(uuidString: sessionId) ?? UUID()]?.isStreaming = true
 
         case .streamToolCall(let sessionId, let tool, let input):
@@ -201,10 +217,12 @@ final class AppState: ObservableObject {
                 streamingText[sessionId] = resultText
             }
             lastSessionEvent[sessionId] = .result
+            thinkingText.removeValue(forKey: sessionId)
 
         case .sessionError(let sessionId, let error):
             activeSessions[UUID(uuidString: sessionId) ?? UUID()]?.isStreaming = false
             lastSessionEvent[sessionId] = .error(error)
+            thinkingText.removeValue(forKey: sessionId)
             print("[AppState] Session \(sessionId) error: \(error)")
 
         case .peerChat(let channelId, let from, let message):
@@ -235,6 +253,13 @@ final class AppState: ObservableObject {
             sidecarStatus = .disconnected
         }
     }
+
+    #if DEBUG
+    /// Exposed for unit testing — calls handleEvent directly.
+    func handleEventForTesting(_ event: SidecarEvent) {
+        handleEvent(event)
+    }
+    #endif
 
     // MARK: - Persistence helpers for inter-agent events
 

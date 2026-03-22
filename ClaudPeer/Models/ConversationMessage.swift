@@ -20,6 +20,7 @@ final class ConversationMessage {
     var toolName: String?
     var toolInput: String?
     var toolOutput: String?
+    var thinkingText: String?
     var isStreaming: Bool
     var conversation: Conversation?
 

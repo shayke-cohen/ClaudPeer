@@ -28,7 +28,8 @@ final class AgentProvisioner {
             if !allowedTools.contains("Bash(git *)") { allowedTools.append("Bash(git *)") }
         }
         allowedTools.append(contentsOf: [
-            "peer_chat_start", "peer_chat_reply", "peer_chat_close", "peer_chat_invite",
+            "peer_chat_start", "peer_chat_reply", "peer_chat_listen",
+            "peer_chat_close", "peer_chat_invite",
             "peer_send_message", "peer_delegate_task", "peer_receive_messages",
             "peer_list_agents", "peer_broadcast",
             "blackboard_read", "blackboard_write", "blackboard_query", "blackboard_subscribe",
@@ -72,6 +73,7 @@ final class AgentProvisioner {
             model: agent.model,
             maxTurns: agent.maxTurns,
             maxBudget: agent.maxBudget,
+            maxThinkingTokens: agent.maxThinkingTokens,
             workingDirectory: session.workingDirectory,
             skills: skills.map { AgentConfig.SkillContent(name: $0.name, content: $0.content) }
         )

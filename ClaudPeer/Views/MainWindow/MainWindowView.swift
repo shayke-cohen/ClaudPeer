@@ -76,6 +76,18 @@ struct MainWindowView: View {
 
             ToolbarItem(placement: .automatic) {
                 Button {
+                    appState.showAgentComms = true
+                } label: {
+                    Label("Agent Comms", systemImage: "antenna.radiowaves.left.and.right")
+                }
+                .keyboardShortcut("a", modifiers: [.command, .shift])
+                .help("Agent comms (⌘⇧A)")
+                .accessibilityIdentifier("mainWindow.agentCommsButton")
+                .badge(appState.commsEvents.count)
+            }
+
+            ToolbarItem(placement: .automatic) {
+                Button {
                     inspectorVisible.toggle()
                 } label: {
                     Label(
@@ -94,6 +106,11 @@ struct MainWindowView: View {
         .sheet(isPresented: $appState.showAgentLibrary) {
             AgentLibraryView()
                 .frame(minWidth: 700, minHeight: 500)
+        }
+        .sheet(isPresented: $appState.showAgentComms) {
+            AgentCommsView()
+                .environmentObject(appState)
+                .frame(minWidth: 600, minHeight: 400)
         }
         .onAppear {
             appState.connectSidecar()

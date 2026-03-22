@@ -102,6 +102,8 @@ struct ImagePreviewOverlay: View {
                         .frame(minWidth: 40)
                 }
                 .buttonStyle(.borderless)
+                .accessibilityIdentifier("imagePreview.resetZoomButton")
+                .accessibilityLabel("Reset zoom")
                 .help("Reset zoom")
 
                 Divider().frame(height: 16)

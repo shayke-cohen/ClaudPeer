@@ -5,7 +5,8 @@ export type SidecarCommand =
   | { type: "session.resume"; sessionId: string; claudeSessionId: string }
   | { type: "session.fork"; sessionId: string }
   | { type: "session.pause"; sessionId: string }
-  | { type: "agent.register"; agents: AgentDefinition[] };
+  | { type: "agent.register"; agents: AgentDefinition[] }
+  | { type: "delegate.task"; sessionId: string; toAgent: string; task: string; context?: string; waitForResult: boolean };
 
 export interface AgentDefinition {
   name: string;
@@ -21,8 +22,11 @@ export interface AgentConfig {
   model: string;
   maxTurns?: number;
   maxBudget?: number;
+  maxThinkingTokens?: number;
   workingDirectory: string;
   skills: SkillContent[];
+  instancePolicy?: "spawn" | "singleton" | "pool";
+  instancePolicyPoolMax?: number;
 }
 
 export interface MCPServerConfig {
@@ -47,6 +51,7 @@ export interface FileAttachment {
 // Events from Sidecar -> Swift
 export type SidecarEvent =
   | { type: "stream.token"; sessionId: string; text: string }
+  | { type: "stream.thinking"; sessionId: string; text: string }
   | { type: "stream.toolCall"; sessionId: string; tool: string; input: string }
   | { type: "stream.toolResult"; sessionId: string; tool: string; output: string }
   | { type: "session.result"; sessionId: string; result: string; cost: number }
