@@ -4,7 +4,7 @@ enum SidecarCommand: Sendable {
     case sessionCreate(conversationId: String, agentConfig: AgentConfig)
     case sessionMessage(sessionId: String, text: String, attachments: [WireAttachment] = [])
     case sessionResume(sessionId: String, claudeSessionId: String)
-    case sessionFork(sessionId: String)
+    case sessionFork(parentSessionId: String, childSessionId: String)
     case sessionPause(sessionId: String)
     case agentRegister(agents: [AgentDefinitionWire])
     case delegateTask(sessionId: String, toAgent: String, task: String, context: String?, waitForResult: Bool)
@@ -29,9 +29,9 @@ enum SidecarCommand: Sendable {
             return try encoder.encode(
                 SessionResumeWire(type: "session.resume", sessionId: sessionId, claudeSessionId: claudeSessionId)
             )
-        case .sessionFork(let sessionId):
+        case .sessionFork(let parentSessionId, let childSessionId):
             return try encoder.encode(
-                SessionIdWire(type: "session.fork", sessionId: sessionId)
+                SessionForkWire(type: "session.fork", sessionId: parentSessionId, childSessionId: childSessionId)
             )
         case .sessionPause(let sessionId):
             return try encoder.encode(
@@ -90,6 +90,12 @@ private struct SessionIdWire: Encodable {
     let sessionId: String
 }
 
+private struct SessionForkWire: Encodable {
+    let type: String
+    let sessionId: String
+    let childSessionId: String
+}
+
 private struct DelegateTaskWire: Encodable {
     let type: String
     let sessionId: String
@@ -135,6 +141,7 @@ enum SidecarEvent: Sendable {
     case peerChat(channelId: String, from: String, message: String)
     case peerDelegate(from: String, to: String, task: String)
     case blackboardUpdate(key: String, value: String, writtenBy: String)
+    case sessionForked(parentSessionId: String, childSessionId: String)
     case connected
     case disconnected
 }
@@ -158,6 +165,8 @@ struct IncomingWireMessage: Codable, Sendable {
     let key: String?
     let value: String?
     let writtenBy: String?
+    let parentSessionId: String?
+    let childSessionId: String?
 
     func toEvent() -> SidecarEvent? {
         switch type {
@@ -188,6 +197,9 @@ struct IncomingWireMessage: Codable, Sendable {
         case "blackboard.update":
             guard let k = key, let v = value, let w = writtenBy else { return nil }
             return .blackboardUpdate(key: k, value: v, writtenBy: w)
+        case "session.forked":
+            guard let p = parentSessionId, let c = childSessionId else { return nil }
+            return .sessionForked(parentSessionId: p, childSessionId: c)
         default:
             return nil
         }

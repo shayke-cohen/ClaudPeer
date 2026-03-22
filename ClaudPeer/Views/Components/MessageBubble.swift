@@ -5,6 +5,8 @@ struct MessageBubble: View {
     let message: ConversationMessage
     let participants: [Participant]
     var onTapAttachment: ((MessageAttachment) -> Void)?
+    /// When set, shows “Fork from here” in the context menu (chat bubbles only).
+    var onForkFromHere: (() -> Void)?
     @State private var isHovered = false
     @State private var isCopied = false
     @State private var isThinkingExpanded = false
@@ -104,6 +106,21 @@ struct MessageBubble: View {
 
             if !isUser {
                 Spacer(minLength: 60)
+            }
+        }
+        .contextMenu {
+            if message.type == .chat, let fork = onForkFromHere {
+                Button {
+                    fork()
+                } label: {
+                    Label("Fork from here", systemImage: "arrow.branch")
+                }
+                .accessibilityIdentifier("messageBubble.forkFromHere.\(message.id.uuidString)")
+            }
+            Button {
+                copyMessage()
+            } label: {
+                Label("Copy", systemImage: "doc.on.doc")
             }
         }
         .onHover { hovering in

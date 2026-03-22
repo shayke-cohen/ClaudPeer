@@ -361,7 +361,7 @@ struct SidebarView: View {
         let isChild = convo.parentConversationId != nil
         let isDelegation = convo.messages.contains { $0.type == .delegation }
 
-        if let agent = convo.session?.agent, hasUser {
+        if let agent = convo.primarySession?.agent, hasUser {
             Image(systemName: agent.icon)
                 .foregroundStyle(agentColor(agent.color))
                 .font(.caption)
@@ -472,8 +472,8 @@ struct SidebarView: View {
     private func closeConversation(_ convo: Conversation) {
         convo.status = .closed
         convo.closedAt = Date()
-        if let session = convo.session {
-            appState.sendToSidecar(.sessionPause(sessionId: convo.id.uuidString))
+        for session in convo.sessions {
+            appState.sendToSidecar(.sessionPause(sessionId: session.id.uuidString))
             session.status = .paused
         }
         try? modelContext.save()
@@ -490,12 +490,13 @@ struct SidebarView: View {
         userParticipant.conversation = newConvo
         newConvo.participants.append(userParticipant)
 
-        if let session = convo.session, let agent = session.agent {
+        for session in convo.sessions {
+            guard let agent = session.agent else { continue }
             let newSession = Session(agent: agent, mode: session.mode)
             newSession.mission = session.mission
             newSession.workingDirectory = session.workingDirectory
             newSession.workspaceType = session.workspaceType
-            newConvo.session = newSession
+            newConvo.sessions.append(newSession)
             newSession.conversations = [newConvo]
 
             let agentParticipant = Participant(
@@ -514,7 +515,7 @@ struct SidebarView: View {
 
     private func startSession(with agent: Agent) {
         let session = Session(agent: agent, mode: .interactive)
-        let conversation = Conversation(topic: agent.name, session: session)
+        let conversation = Conversation(topic: agent.name, sessions: [session])
         let userParticipant = Participant(type: .user, displayName: "You")
         let agentParticipant = Participant(
             type: .agentSession(sessionId: session.id),

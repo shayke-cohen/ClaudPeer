@@ -110,8 +110,13 @@ struct ClaudPeerApp: App {
         userParticipant.conversation = conversation
         conversation.participants.append(userParticipant)
 
+        let testSession = Session(agent: nil, mode: .interactive, workingDirectory: appState.instanceWorkingDirectory ?? NSHomeDirectory())
+        testSession.conversations = [conversation]
+        conversation.sessions.append(testSession)
+        context.insert(testSession)
+
         let agentParticipant = Participant(
-            type: .agentSession(sessionId: conversation.id),
+            type: .agentSession(sessionId: testSession.id),
             displayName: "Claude"
         )
         agentParticipant.conversation = conversation
@@ -136,7 +141,7 @@ struct ClaudPeerApp: App {
             return
         }
 
-        let sessionId = conversation.id.uuidString
+        let sessionId = testSession.id.uuidString
         let config = AgentConfig(
             name: "Claude",
             systemPrompt: "You are a helpful assistant. Be concise and clear.",

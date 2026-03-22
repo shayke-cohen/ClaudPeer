@@ -205,7 +205,7 @@ struct AgentLibraryView: View {
 
     private func startSession(with agent: Agent) {
         let session = Session(agent: agent, mode: .interactive)
-        let conversation = Conversation(topic: agent.name, session: session)
+        let conversation = Conversation(topic: agent.name, sessions: [session])
         let userParticipant = Participant(type: .user, displayName: "You")
         let agentParticipant = Participant(
             type: .agentSession(sessionId: session.id),

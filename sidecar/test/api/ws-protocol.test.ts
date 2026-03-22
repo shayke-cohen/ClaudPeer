@@ -21,6 +21,7 @@ let wsServer: WsServer;
 let ctx: ToolContext;
 let sessionCreateCalls: Array<{ id: string; config: any }>;
 let sessionMessageCalls: Array<{ id: string; text: string }>;
+let forkSessionCalls: Array<{ parent: string; child: string }>;
 
 const mockSessionManager = {
   createSession: async (id: string, config: any) => {
@@ -30,13 +31,16 @@ const mockSessionManager = {
     sessionMessageCalls.push({ id, text });
   },
   resumeSession: async () => {},
-  forkSession: async () => "forked-id",
+  forkSession: async (parent: string, child: string) => {
+    forkSessionCalls.push({ parent, child });
+  },
   pauseSession: async () => {},
 } as any;
 
 beforeAll(() => {
   sessionCreateCalls = [];
   sessionMessageCalls = [];
+  forkSessionCalls = [];
 
   ctx = {
     blackboard: new BlackboardStore(`ws-test-${Date.now()}`),
@@ -137,6 +141,29 @@ describe("WebSocket Command Dispatch", () => {
       await new Promise((r) => setTimeout(r, 200));
       expect(sessionMessageCalls.length).toBe(prevCount + 1);
       expect(sessionMessageCalls[sessionMessageCalls.length - 1].text).toBe("hello from ws test");
+    } finally {
+      ws.close();
+    }
+  });
+
+  test("session.fork dispatches parent and child session ids to SessionManager", async () => {
+    const ws = await wsConnect();
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+
+      const prev = forkSessionCalls.length;
+      ws.send({
+        type: "session.fork",
+        sessionId: "ws-fork-parent",
+        childSessionId: "ws-fork-child",
+      });
+
+      await new Promise((r) => setTimeout(r, 200));
+      expect(forkSessionCalls.length).toBe(prev + 1);
+      expect(forkSessionCalls[forkSessionCalls.length - 1]).toEqual({
+        parent: "ws-fork-parent",
+        child: "ws-fork-child",
+      });
     } finally {
       ws.close();
     }

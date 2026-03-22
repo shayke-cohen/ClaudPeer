@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import AppKit
 
 enum InspectorTab: String, CaseIterable, Identifiable {
     case info = "Info"
@@ -22,20 +23,20 @@ struct InspectorView: View {
         allConversations.first { $0.id == conversationId }
     }
 
-    private var session: Session? {
-        conversation?.session
+    private var orderedSessions: [Session] {
+        (conversation?.sessions ?? []).sorted { $0.startedAt < $1.startedAt }
     }
 
-    private var agent: Agent? {
-        session?.agent
+    private var primarySession: Session? {
+        conversation?.primarySession
     }
 
-    private var liveInfo: AppState.SessionInfo? {
-        appState.activeSessions[conversationId]
+    private func liveInfo(for session: Session) -> AppState.SessionInfo? {
+        appState.activeSessions[session.id]
     }
 
     private var hasWorkingDirectory: Bool {
-        guard let session = session else { return false }
+        guard let session = primarySession else { return false }
         return !session.workingDirectory.isEmpty
     }
 
@@ -57,7 +58,7 @@ struct InspectorView: View {
             case .info:
                 infoContent
             case .files:
-                if let dir = session?.workingDirectory, !dir.isEmpty {
+                if let dir = primarySession?.workingDirectory, !dir.isEmpty {
                     FileExplorerView(
                         workingDirectory: dir,
                         refreshTrigger: appState.fileTreeRefreshTrigger
@@ -78,15 +79,19 @@ struct InspectorView: View {
     private var infoContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                if session != nil {
-                    sessionSection
-                    usageSection
+                if orderedSessions.isEmpty {
+                    EmptyView()
+                } else if orderedSessions.count == 1, let session = orderedSessions.first {
+                    sessionSection(session: session)
+                    usageSection(session: session, agent: session.agent)
+                    if let agent = session.agent {
+                        agentSection(agent: agent)
+                    }
+                } else {
+                    multiSessionsSection
                 }
                 if hasWorkingDirectory {
                     workspaceSection
-                }
-                if agent != nil {
-                    agentSection
                 }
                 historySection
             }
@@ -98,61 +103,103 @@ struct InspectorView: View {
     // MARK: - Session Section
 
     @ViewBuilder
-    private var sessionSection: some View {
-        if let session = session {
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Session", systemImage: "terminal")
-                    .font(.headline)
-                    .accessibilityIdentifier("inspector.sessionHeading")
+    private func sessionSection(session: Session) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Session", systemImage: "terminal")
+                .font(.headline)
+                .accessibilityIdentifier("inspector.sessionHeading")
 
-                InfoRow(label: "Status", value: session.status.rawValue.capitalized)
-                InfoRow(label: "Model", value: modelShortName(session.agent?.model ?? ""))
-                InfoRow(label: "Mode", value: session.mode.rawValue.capitalized)
+            InfoRow(label: "Status", value: session.status.rawValue.capitalized)
+            InfoRow(label: "Model", value: modelShortName(session.agent?.model ?? ""))
+            InfoRow(label: "Mode", value: session.mode.rawValue.capitalized)
 
-                if let convo = conversation {
-                    InfoRow(label: "Duration", value: durationString(from: convo.startedAt))
-                }
+            if let convo = conversation {
+                InfoRow(label: "Duration", value: durationString(from: convo.startedAt))
             }
         }
+    }
+
+    @ViewBuilder
+    private var multiSessionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Sessions in this conversation", systemImage: "person.3")
+                .font(.headline)
+                .accessibilityIdentifier("inspector.sessionsListHeading")
+
+            ForEach(orderedSessions, id: \.id) { session in
+                multiSessionRow(session: session)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func multiSessionRow(session: Session) -> some View {
+        let live = liveInfo(for: session)
+        let agent = session.agent
+        let liveTokens = live?.tokenCount ?? session.tokenCount
+        let liveCost = live?.cost ?? session.totalCost
+        let streaming = live?.isStreaming == true ? "active" : session.status.rawValue.capitalized
+
+        VStack(alignment: .leading, spacing: 6) {
+            Text(agent?.name ?? "Agent")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+            InfoRow(label: "Status", value: streaming)
+            InfoRow(label: "Model", value: modelShortName(agent?.model ?? ""))
+            InfoRow(label: "Tokens", value: formatNumber(liveTokens))
+            InfoRow(label: "Cost", value: String(format: "$%.4f", liveCost))
+            InfoRow(label: "Tool Calls", value: "\(session.toolCallCount)")
+            if let agent {
+                Button {
+                    appState.showAgentLibrary = true
+                } label: {
+                    Text("Open \(agent.name) in editor")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("inspector.sessionRow.agentLink.\(session.id.uuidString)")
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityIdentifier("inspector.sessionRow.\(session.id.uuidString)")
     }
 
     // MARK: - Usage Section
 
     @ViewBuilder
-    private var usageSection: some View {
-        if let session = session {
-            Divider()
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Usage", systemImage: "chart.bar")
-                    .font(.headline)
-                    .accessibilityIdentifier("inspector.usageHeading")
+    private func usageSection(session: Session, agent: Agent?) -> some View {
+        Divider()
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Usage", systemImage: "chart.bar")
+                .font(.headline)
+                .accessibilityIdentifier("inspector.usageHeading")
 
-                let liveTokens = liveInfo?.tokenCount ?? session.tokenCount
-                let liveCost = liveInfo?.cost ?? session.totalCost
-                let maxTurns = agent?.maxTurns ?? 30
-                let toolCalls = session.toolCallCount
+            let live = liveInfo(for: session)
+            let liveTokens = live?.tokenCount ?? session.tokenCount
+            let liveCost = live?.cost ?? session.totalCost
+            let maxTurns = agent?.maxTurns ?? 30
+            let toolCalls = session.toolCallCount
 
-                InfoRow(label: "Tokens", value: formatNumber(liveTokens))
-                InfoRow(label: "Cost", value: String(format: "$%.4f", liveCost))
-                InfoRow(label: "Tool Calls", value: "\(toolCalls)")
+            InfoRow(label: "Tokens", value: formatNumber(liveTokens))
+            InfoRow(label: "Cost", value: String(format: "$%.4f", liveCost))
+            InfoRow(label: "Tool Calls", value: "\(toolCalls)")
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Turns")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 80, alignment: .trailing)
-                        Text("\(toolCalls) / \(maxTurns)")
-                            .font(.caption)
-                            .monospacedDigit()
-                    }
-                    .accessibilityIdentifier("inspector.turnsLabel")
-
-                    ProgressView(value: min(Double(toolCalls), Double(maxTurns)), total: Double(maxTurns))
-                        .tint(turnProgressColor(used: toolCalls, max: maxTurns))
-                        .padding(.leading, 84)
-                        .accessibilityIdentifier("inspector.turnsProgress")
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Turns")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 80, alignment: .trailing)
+                    Text("\(toolCalls) / \(maxTurns)")
+                        .font(.caption)
+                        .monospacedDigit()
                 }
+                .accessibilityIdentifier("inspector.turnsLabel")
+
+                ProgressView(value: min(Double(toolCalls), Double(maxTurns)), total: Double(maxTurns))
+                    .tint(turnProgressColor(used: toolCalls, max: maxTurns))
+                    .padding(.leading, 84)
+                    .accessibilityIdentifier("inspector.turnsProgress")
             }
         }
     }
@@ -161,29 +208,39 @@ struct InspectorView: View {
 
     @ViewBuilder
     private var workspaceSection: some View {
-        if let session = session, !session.workingDirectory.isEmpty {
+        if let session = primarySession, !session.workingDirectory.isEmpty {
             Divider()
             VStack(alignment: .leading, spacing: 8) {
-                Label("Workspace", systemImage: "folder")
+                Label("Working directory", systemImage: "folder")
                     .font(.headline)
                     .accessibilityIdentifier("inspector.workspaceHeading")
 
-                Text(abbreviatePath(session.workingDirectory))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .accessibilityIdentifier("inspector.workspacePath")
+                InfoRow(label: "Path", value: abbreviatePath(session.workingDirectory))
 
-                Button {
-                    openInTerminal(session.workingDirectory)
-                } label: {
-                    Label("Open in Terminal", systemImage: "terminal")
-                        .font(.caption)
+                HStack(spacing: 8) {
+                    Button {
+                        revealInFinder(session.workingDirectory)
+                    } label: {
+                        Label("Finder", systemImage: "arrow.up.right.square")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Reveal working directory in Finder")
+                    .accessibilityLabel("Reveal in Finder")
+                    .accessibilityIdentifier("inspector.openFinderButton")
+
+                    Button {
+                        openInTerminal(session.workingDirectory)
+                    } label: {
+                        Label("Open in Terminal", systemImage: "terminal")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Open working directory in Terminal")
+                    .accessibilityIdentifier("inspector.openTerminalButton")
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .help("Open working directory in Terminal")
-                .accessibilityIdentifier("inspector.openTerminalButton")
             }
         }
     }
@@ -191,42 +248,40 @@ struct InspectorView: View {
     // MARK: - Agent Section
 
     @ViewBuilder
-    private var agentSection: some View {
-        if let agent = agent {
-            Divider()
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Agent", systemImage: agent.icon)
-                    .font(.headline)
-                    .foregroundStyle(Color.fromAgentColor(agent.color))
-                    .accessibilityIdentifier("inspector.agentHeading")
+    private func agentSection(agent: Agent) -> some View {
+        Divider()
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Agent", systemImage: agent.icon)
+                .font(.headline)
+                .foregroundStyle(Color.fromAgentColor(agent.color))
+                .accessibilityIdentifier("inspector.agentHeading")
 
-                Button {
-                    appState.showAgentLibrary = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: agent.icon)
-                            .foregroundStyle(Color.fromAgentColor(agent.color))
-                        Text(agent.name)
-                            .font(.callout)
-                            .fontWeight(.medium)
-                    }
+            Button {
+                appState.showAgentLibrary = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: agent.icon)
+                        .foregroundStyle(Color.fromAgentColor(agent.color))
+                    Text(agent.name)
+                        .font(.callout)
+                        .fontWeight(.medium)
                 }
-                .buttonStyle(.plain)
-                .help("Open \(agent.name) in editor")
-                .accessibilityIdentifier("inspector.agentNameButton")
-
-                HStack(spacing: 12) {
-                    Label("\(agent.skillIds.count) skills", systemImage: "book")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Label("\(agent.extraMCPServerIds.count) MCPs", systemImage: "server.rack")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .accessibilityIdentifier("inspector.agentCapabilities")
-
-                InfoRow(label: "Policy", value: policyLabel(agent.instancePolicy))
             }
+            .buttonStyle(.plain)
+            .help("Open \(agent.name) in editor")
+            .accessibilityIdentifier("inspector.agentNameButton")
+
+            HStack(spacing: 12) {
+                Label("\(agent.skillIds.count) skills", systemImage: "book")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Label("\(agent.extraMCPServerIds.count) MCPs", systemImage: "server.rack")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityIdentifier("inspector.agentCapabilities")
+
+            InfoRow(label: "Policy", value: policyLabel(agent.instancePolicy))
         }
     }
 
@@ -303,6 +358,10 @@ struct InspectorView: View {
             return "~" + path.dropFirst(home.count)
         }
         return path
+    }
+
+    private func revealInFinder(_ path: String) {
+        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
     }
 
     private func openInTerminal(_ path: String) {

@@ -1,0 +1,65 @@
+name: ClaudPeer UI Tests
+description: Interactive UI tests for sidebar, chat, agents, comms, and orchestration
+
+tests:
+  - name: "UI-1: Sidebar shows Active conversations"
+    steps:
+      - interact:
+          action: screenshot
+      - inspect:
+          target: tree
+          depth: 2
+    assert:
+      screenshot_contains: "Active"
+
+  - name: "UI-2: Sidebar shows Agents section"
+    steps:
+      - interact:
+          action: screenshot
+    assert:
+      screenshot_contains: "Agents"
+
+  - name: "UI-3: Bottom bar has Catalog, Agents, + buttons"
+    steps:
+      - interact:
+          action: screenshot
+    assert:
+      screenshot_contains: "Catalog"
+
+  - name: "UI-4: Click + button opens New Session sheet"
+    steps:
+      - interact:
+          action: tap
+          x: 157
+          y: 670
+      - interact:
+          action: screenshot
+    assert:
+      screenshot_contains: "New Session"
+
+  - name: "UI-5: New Session sheet shows agent cards"
+    steps:
+      - interact:
+          action: screenshot
+    assert:
+      screenshot_contains: "All Agents"
+
+  - name: "UI-6: Click Orchestrator agent card"
+    steps:
+      - interact:
+          action: tap
+          x: 650
+          y: 290
+      - interact:
+          action: screenshot
+
+  - name: "UI-7: Start Session creates conversation"
+    steps:
+      - interact:
+          action: tap
+          x: 760
+          y: 504
+      - interact:
+          action: screenshot
+    assert:
+      screenshot_contains: "Orchestrator"

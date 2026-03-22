@@ -131,6 +131,13 @@ final class AppStateEventTests: XCTestCase {
         }
     }
 
+    func testEH7_sessionForked_doesNotTouchCommsOrStreaming() {
+        let before = appState.commsEvents.count
+        appState.handleEventForTesting(.sessionForked(parentSessionId: "parent-uuid", childSessionId: "child-uuid"))
+        XCTAssertEqual(appState.commsEvents.count, before)
+        XCTAssertTrue(appState.streamingText.isEmpty)
+    }
+
     // MARK: - DW: Delegation Wiring
 
     func testDW2_registerAgentDefinitions_serializesPoolPolicy() {

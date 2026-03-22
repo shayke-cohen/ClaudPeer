@@ -241,6 +241,9 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Message scroll view | `chat.messageScrollView` | — | `@testId("chat.messageScrollView")` |
 | Attach button | `chat.attachButton` | `Attach file` | `@testId("chat.attachButton")` |
 | Message input | `chat.messageInput` | — | `@testId("chat.messageInput")` |
+| Group “Sending to” hint | `chat.sendingToHint` | — | `@testId("chat.sendingToHint")` |
+| Mention suggestion strip | `chat.mentionSuggestions` | — | `@testId("chat.mentionSuggestions")` |
+| Mention suggestion row | `chat.mentionSuggestion.{agentUuid}` | — | `@testId("chat.mentionSuggestion.{agentUuid}")` |
 | Send button | `chat.sendButton` | `Send message` | `@testId("chat.sendButton")` |
 | Pending attachments strip | `chat.pendingAttachments` | — | `@testId("chat.pendingAttachments")` |
 | Pending attachment thumb | `chat.pendingAttachment.{index}` | — | `@testId("chat.pendingAttachment.{index}")` |
@@ -249,7 +252,7 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Streaming bubble | `chat.streamingBubble` | — | `@testId("chat.streamingBubble")` |
 | Streaming thinking toggle | `chat.streamingThinkingToggle` | `Expand/Collapse thinking` | `@testId("chat.streamingThinkingToggle")` |
 
-**Note:** The inner `NSTextField` of `PasteableTextField` also exposes `pasteableTextField.input` at the AppKit level.
+**Note:** The inner `NSTextField` of `PasteableTextField` also exposes `pasteableTextField.input` at the AppKit level. **Return** submits when there is text or pending attachments (and the session is not processing); **Shift+Return** inserts a newline; **⌘↩** also submits; the Send button submits as well.
 
 ---
 
@@ -263,6 +266,7 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Title | `newSession.title` | — | `@testId("newSession.title")` |
 | Close button | `newSession.closeButton` | `Close` | `@testId("newSession.closeButton")` |
 | Recent agent chip | `newSession.recentAgent.{uuid}` | — | `@testId("newSession.recentAgent.{uuid}")` |
+| Selected agents summary (multi-select) | `newSession.selectedAgentsSummary` | — | `@testId("newSession.selectedAgentsSummary")` |
 | Freeform agent card | `newSession.agentCard.freeform` | — | `@testId("newSession.agentCard.freeform")` |
 | Agent card | `newSession.agentCard.{uuid}` | — | `@testId("newSession.agentCard.{uuid}")` |
 | Model picker | `newSession.modelPicker` | — | `@testId("newSession.modelPicker")` |
@@ -274,6 +278,15 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Mode description | `newSession.modeDescription` | — | `@testId("newSession.modeDescription")` |
 | Quick Chat button | `newSession.quickChatButton` | — | `@testId("newSession.quickChatButton")` |
 | Start Session button | `newSession.startSessionButton` | — | `@testId("newSession.startSessionButton")` |
+
+#### Add agents to chat (`/agents`)
+
+| Control | Identifier | Label (if icon-only) | AppXray |
+|---|---|---|---|
+| Title | `addAgents.title` | — | `@testId("addAgents.title")` |
+| Toggle per agent | `addAgents.toggle.{agentUuid}` | — | `@testId("addAgents.toggle.{agentUuid}")` |
+| Cancel | `addAgents.cancelButton` | — | `@testId("addAgents.cancelButton")` |
+| Confirm | `addAgents.confirmButton` | — | `@testId("addAgents.confirmButton")` |
 
 ---
 
@@ -287,11 +300,15 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Tab picker (Info / Files) | `inspector.tabPicker` | — | `@testId("inspector.tabPicker")` |
 | Info scroll view | `inspector.scrollView` | — | `@testId("inspector.scrollView")` |
 | Session heading | `inspector.sessionHeading` | — | `@testId("inspector.sessionHeading")` |
+| Multi-session list heading | `inspector.sessionsListHeading` | — | `@testId("inspector.sessionsListHeading")` |
+| Multi-session row | `inspector.sessionRow.{sessionUuid}` | — | `@testId("inspector.sessionRow.{sessionUuid}")` |
+| Session row agent link | `inspector.sessionRow.agentLink.{sessionUuid}` | — | `@testId("inspector.sessionRow.agentLink.{sessionUuid}")` |
 | Usage heading | `inspector.usageHeading` | — | `@testId("inspector.usageHeading")` |
 | Turns label | `inspector.turnsLabel` | — | `@testId("inspector.turnsLabel")` |
 | Turns progress | `inspector.turnsProgress` | — | `@testId("inspector.turnsProgress")` |
-| Workspace heading | `inspector.workspaceHeading` | — | `@testId("inspector.workspaceHeading")` |
-| Workspace path | `inspector.workspacePath` | — | `@testId("inspector.workspacePath")` |
+| Working directory heading | `inspector.workspaceHeading` | — | `@testId("inspector.workspaceHeading")` |
+| Working directory path | `infoRow.path` | `Path: {abbreviated path}` | `@testId("infoRow.path")` |
+| Reveal in Finder | `inspector.openFinderButton` | `Reveal in Finder` | `@testId("inspector.openFinderButton")` |
 | Open in Terminal | `inspector.openTerminalButton` | — | `@testId("inspector.openTerminalButton")` |
 | Agent heading | `inspector.agentHeading` | — | `@testId("inspector.agentHeading")` |
 | Agent name button | `inspector.agentNameButton` | — | `@testId("inspector.agentNameButton")` |
@@ -674,6 +691,7 @@ These components appear inside multiple screens.
 | Root | `messageBubble.{type}.{uuid}` | — | `@testId("messageBubble.{type}.{uuid}")` |
 | Sender label | `messageBubble.senderLabel.{uuid}` | — | `@testId("messageBubble.senderLabel.{uuid}")` |
 | Copy button (hover) | `messageBubble.copyButton.{uuid}` | `Copy message` | `@testId("messageBubble.copyButton.{uuid}")` |
+| Fork from here (context menu) | `messageBubble.forkFromHere.{uuid}` | — | `@testId("messageBubble.forkFromHere.{uuid}")` |
 | Attachment | `messageBubble.attachment.{attachmentUuid}` | — | `@testId("messageBubble.attachment.{attachmentUuid}")` |
 | Thinking toggle | `messageBubble.thinkingToggle.{uuid}` | expand/collapse | `@testId("messageBubble.thinkingToggle.{uuid}")` |
 
@@ -955,6 +973,7 @@ Used for any SwiftData entity row/card. The UUID is the entity's `id.uuidString`
 | `messageBubble.{type}.{uuid}` | MessageBubble |
 | `messageBubble.senderLabel.{uuid}` | MessageBubble |
 | `messageBubble.copyButton.{uuid}` | MessageBubble |
+| `messageBubble.forkFromHere.{uuid}` | MessageBubble |
 | `messageBubble.thinkingToggle.{uuid}` | MessageBubble |
 | `messageBubble.attachment.{uuid}` | MessageBubble |
 | `toolCall.container.{uuid}` | ToolCallView |

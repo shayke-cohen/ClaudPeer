@@ -285,13 +285,14 @@ describe("E2E: Session Pause & Fork", () => {
       ws.send({
         type: "session.fork",
         sessionId: "e2e-fork-parent",
+        childSessionId: "e2e-fork-child",
       });
 
       const forkMsg = await ws.waitFor(
-        (m) => m.type === "stream.token" && m.text?.includes("Forked"),
+        (m) => m.type === "session.forked" && m.childSessionId === "e2e-fork-child",
         5000,
       );
-      expect(forkMsg.text).toContain("Forked");
+      expect(forkMsg.parentSessionId).toBe("e2e-fork-parent");
     } finally {
       ws.close();
     }

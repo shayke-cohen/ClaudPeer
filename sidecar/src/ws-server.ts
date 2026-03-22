@@ -74,7 +74,7 @@ export class WsServer {
         );
         break;
       case "session.fork":
-        await this.sessionManager.forkSession(command.sessionId);
+        await this.sessionManager.forkSession(command.sessionId, command.childSessionId);
         break;
       case "session.pause":
         await this.sessionManager.pauseSession(command.sessionId);

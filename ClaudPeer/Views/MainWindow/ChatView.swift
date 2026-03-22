@@ -20,6 +20,15 @@ struct ChatView: View {
     @State private var previewImageFromPending: (data: Data, mediaType: String)?
     @State private var delegateTarget: Agent?
     @State private var isStreamingThinkingExpanded = false
+    /// Sidecar `Session.id` string currently receiving stream (sequential multi-agent).
+    @State private var activeStreamSessionKey: String?
+    @State private var streamingDisplayName: String = "Claude"
+    @State private var showSlashHelp = false
+    @State private var showUnknownSlash = false
+    @State private var unknownSlashName = ""
+    @State private var showMentionError = false
+    @State private var mentionErrorDetail = ""
+    @State private var showAddAgentsSheet = false
     @FocusState private var topicFieldFocused: Bool
 
     @Query private var allConversations: [Conversation]
@@ -33,24 +42,57 @@ struct ChatView: View {
         (conversation?.messages ?? []).sorted { $0.timestamp < $1.timestamp }
     }
 
+    private var primarySession: Session? {
+        conversation?.primarySession
+    }
+
     private var currentModel: String? {
-        conversation?.session?.agent?.model
+        primarySession?.agent?.model
+    }
+
+    private var aggregatedLiveCost: Double {
+        guard let convo = conversation else { return 0 }
+        var sum = 0.0
+        for s in convo.sessions {
+            sum += appState.activeSessions[s.id]?.cost ?? s.totalCost
+        }
+        return sum
     }
 
     private var liveCost: Double? {
-        appState.activeSessions[conversationId]?.cost
+        let c = aggregatedLiveCost
+        return c > 0 ? c : nil
+    }
+
+    private var streamSessionKeyForUI: String? {
+        activeStreamSessionKey ?? primarySession?.id.uuidString
     }
 
     private var liveStreamingText: String? {
-        let text = appState.streamingText[conversationId.uuidString]
+        guard let key = streamSessionKeyForUI else { return nil }
+        let text = appState.streamingText[key]
         guard let text, !text.isEmpty else { return nil }
         return text
     }
 
     private var liveThinkingText: String? {
-        let text = appState.thinkingText[conversationId.uuidString]
+        guard let key = streamSessionKeyForUI else { return nil }
+        let text = appState.thinkingText[key]
         guard let text, !text.isEmpty else { return nil }
         return text
+    }
+
+    private var mentionAutocompleteAgents: [Agent] {
+        guard let r = inputText.range(of: #"@([^\s@]*)$"#, options: .regularExpression) else { return [] }
+        let token = String(inputText[r]).dropFirst().lowercased()
+        guard !token.isEmpty else { return Array(allAgents.prefix(8)) }
+        return allAgents.filter { $0.name.lowercased().hasPrefix(token) }.prefix(8).map { $0 }
+    }
+
+    private var sendingToSubtitle: String? {
+        guard let c = conversation, c.sessions.count > 1 else { return nil }
+        let names = c.sessions.compactMap { $0.agent?.name ?? "Assistant" }
+        return "Group — " + names.joined(separator: ", ")
     }
 
     var body: some View {
@@ -69,8 +111,7 @@ struct ChatView: View {
             checkForCompletion(events: events)
         }
         .onReceive(appState.$streamingText) { texts in
-            let sessionId = conversationId.uuidString
-            if texts[sessionId] != nil {
+            if let key = streamSessionKeyForUI, texts[key] != nil {
                 lastTokenTime = Date()
             }
         }
@@ -83,13 +124,15 @@ struct ChatView: View {
         .onReceive(Timer.publish(every: 5, on: .main, in: .common).autoconnect()) { _ in
             guard isProcessing, let start = processingStartTime else { return }
             let elapsed = Date().timeIntervalSince(start)
-            let sessionId = conversationId.uuidString
-            let hasStreamingText = !(appState.streamingText[sessionId]?.isEmpty ?? true)
+            let key = streamSessionKeyForUI ?? ""
+            let hasStreamingText = !(appState.streamingText[key]?.isEmpty ?? true)
             if elapsed > 120 && !hasStreamingText {
-                print("[ChatView] Timeout: no response after \(Int(elapsed))s for \(sessionId)")
+                print("[ChatView] Timeout: no response after \(Int(elapsed))s for \(key)")
                 isProcessing = false
                 processingStartTime = nil
-                appState.lastSessionEvent[sessionId] = .error("No response received (timeout)")
+                if !key.isEmpty {
+                    appState.lastSessionEvent[key] = .error("No response received (timeout)")
+                }
             }
         }
         .onChange(of: sortedMessages.count) { oldCount, newCount in
@@ -102,11 +145,11 @@ struct ChatView: View {
             while isProcessing {
                 try? await Task.sleep(for: .seconds(3))
                 guard isProcessing else { return }
-                let sessionId = conversationId.uuidString
-                let hasText = appState.streamingText[sessionId] != nil
+                let key = streamSessionKeyForUI ?? ""
+                let hasText = appState.streamingText[key] != nil
                 let stale = lastTokenTime.map { Date().timeIntervalSince($0) > 3 } ?? false
                 if hasText && stale {
-                    collectResponse()
+                    collectResponseIfSingle()
                     return
                 }
             }
@@ -139,11 +182,31 @@ struct ChatView: View {
             DelegateSheet(
                 agent: agent,
                 initialTask: inputText.trimmingCharacters(in: .whitespacesAndNewlines),
-                conversationId: conversationId
+                sourceSessionId: primarySession?.id ?? conversationId
             ) {
                 inputText = ""
             }
             .environmentObject(appState)
+        }
+        .sheet(isPresented: $showAddAgentsSheet) {
+            AddAgentsToChatSheet(conversationId: conversationId)
+                .environmentObject(appState)
+                .environment(\.modelContext, modelContext)
+        }
+        .alert("Commands", isPresented: $showSlashHelp) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("/help — this list\n/topic <name> or /rename <name> — rename conversation\n/agents — add agents to this chat")
+        }
+        .alert("Unknown command", isPresented: $showUnknownSlash) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Unknown command /\(unknownSlashName). Try /help.")
+        }
+        .alert("Mention", isPresented: $showMentionError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(mentionErrorDetail)
         }
     }
 
@@ -197,7 +260,7 @@ struct ChatView: View {
                 }
             }
 
-            if let mission = conversation?.session?.mission, !mission.isEmpty {
+            if let mission = primarySession?.mission, !mission.isEmpty {
                 HStack {
                     Text(mission)
                         .font(.caption)
@@ -216,7 +279,25 @@ struct ChatView: View {
 
     @ViewBuilder
     private var agentIconButton: some View {
-        if let agent = conversation?.session?.agent {
+        if let convo = conversation, convo.sessions.count > 1 {
+            HStack(spacing: -6) {
+                ForEach(convo.sessions.prefix(4), id: \.id) { s in
+                    if let ag = s.agent {
+                        Image(systemName: ag.icon)
+                            .foregroundStyle(Color.fromAgentColor(ag.color))
+                            .font(.caption)
+                            .padding(4)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                }
+                if convo.sessions.count > 4 {
+                    Text("+\(convo.sessions.count - 4)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .accessibilityIdentifier("chat.groupAgentIcons")
+        } else if let agent = primarySession?.agent {
             Button {
                 appState.showAgentLibrary = true
             } label: {
@@ -253,7 +334,7 @@ struct ChatView: View {
                 .help("Close session")
                 .accessibilityIdentifier("chat.closeSessionButton")
                 .accessibilityLabel("Close session")
-            } else if convo.session?.status == .paused {
+            } else if convo.sessions.contains(where: { $0.status == .paused }) {
                 Button { resumeSession() } label: {
                     Image(systemName: "play.fill")
                 }
@@ -263,7 +344,7 @@ struct ChatView: View {
             }
 
             Menu {
-                if convo.session != nil {
+                if !convo.sessions.isEmpty {
                     Button { forkConversation() } label: {
                         Label("Fork Conversation", systemImage: "arrow.branch")
                     }
@@ -311,6 +392,9 @@ struct ChatView: View {
                             participants: conversation?.participants ?? [],
                             onTapAttachment: { attachment in
                                 previewAttachment = attachment
+                            },
+                            onForkFromHere: {
+                                forkFromMessage(message)
                             }
                         )
                         .id(message.id)
@@ -349,6 +433,44 @@ struct ChatView: View {
                 pendingAttachmentStrip
             }
 
+            if let sub = sendingToSubtitle {
+                Text(sub)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 6)
+                    .accessibilityIdentifier("chat.sendingToHint")
+            }
+
+            if !mentionAutocompleteAgents.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(mentionAutocompleteAgents) { agent in
+                            Button {
+                                insertMentionCompletion(agentName: agent.name)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(agent.name)
+                                        .font(.caption)
+                                    Text(agentMentionHint(for: agent))
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(.quaternary, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("chat.mentionSuggestion.\(agent.id.uuidString)")
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                }
+                .accessibilityIdentifier("chat.mentionSuggestions")
+            }
+
             HStack(alignment: .bottom, spacing: 8) {
                 Button {
                     showFileImporter = true
@@ -370,9 +492,11 @@ struct ChatView: View {
                         guard AttachmentStore.validate(data: data, mediaType: mediaType) else { return }
                         pendingAttachments.append((id: UUID(), data: data, mediaType: mediaType, fileName: "pasted.png"))
                     },
-                    onSubmit: { if canSend { sendMessage() } }
+                    onSubmit: { if canSend { sendMessage() } },
+                    canSubmitOnReturn: { canSend }
                 )
                 .accessibilityIdentifier("chat.messageInput")
+                .help("Return sends when there is text or attachments. Shift-Return inserts a new line. ⌘↩ also sends.")
 
                 Button {
                     sendMessage()
@@ -385,7 +509,7 @@ struct ChatView: View {
                 .accessibilityLabel("Send message")
                 .disabled(!canSend)
                 .keyboardShortcut(.return, modifiers: .command)
-                .help("Send message (⌘Return)")
+                .help("Send message (Return or ⌘Return)")
             }
             .padding(12)
         }
@@ -451,8 +575,8 @@ struct ChatView: View {
 
     @ViewBuilder
     private var delegateMenu: some View {
-        let currentAgentId = conversation?.session?.agent?.id
-        let eligibleAgents = allAgents.filter { $0.id != currentAgentId }
+        let inChatAgentIds = Set((conversation?.sessions ?? []).compactMap(\.agent?.id))
+        let eligibleAgents = allAgents.filter { !inChatAgentIds.contains($0.id) }
 
         Menu {
             Section("Delegate to...") {
@@ -552,7 +676,7 @@ struct ChatView: View {
                     Image(systemName: "cpu")
                         .font(.caption2)
                         .foregroundStyle(.purple)
-                    Text("Claude")
+                    Text(streamingDisplayName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -680,45 +804,145 @@ struct ChatView: View {
             }
         }
 
-        let agentName = convo.session?.agent?.name
+        let agentName = convo.primarySession?.agent?.name
         convo.topic = agentName.map { "\($0): \(truncated)" } ?? truncated
     }
 
-    // MARK: - Agent Participant
+    private func agentMentionHint(for agent: Agent) -> String {
+        conversation?.sessions.contains(where: { $0.agent?.id == agent.id }) == true ? "In chat" : "Adds on send"
+    }
 
-    private func ensureAgentParticipant(in convo: Conversation) -> Participant {
-        if let existing = convo.participants.first(where: {
-            if case .agentSession = $0.type { return true }
-            return false
-        }) {
+    private func insertMentionCompletion(agentName: String) {
+        guard let r = inputText.range(of: #"@([^\s@]*)$"#, options: .regularExpression) else { return }
+        inputText.replaceSubrange(r, with: "@\(agentName) ")
+    }
+
+    /// Freeform / quick chat: ensure one `Session` + Claude participant exist before first model call.
+    private func ensureFreeformSidecarSession(in convo: Conversation) -> Session? {
+        if let existing = convo.primarySession, convo.sessions.count == 1, existing.agent == nil {
             return existing
         }
+        if let s = convo.primarySession, s.agent != nil { return s }
+        let session = Session(
+            agent: nil,
+            mission: nil,
+            mode: .interactive,
+            workingDirectory: appState.instanceWorkingDirectory ?? NSHomeDirectory()
+        )
+        session.conversations = [convo]
+        convo.sessions.append(session)
         let agentParticipant = Participant(
-            type: .agentSession(sessionId: convo.id),
+            type: .agentSession(sessionId: session.id),
             displayName: "Claude"
         )
         agentParticipant.conversation = convo
         convo.participants.append(agentParticipant)
+        modelContext.insert(session)
         modelContext.insert(agentParticipant)
         try? modelContext.save()
-        return agentParticipant
+        return session
+    }
+
+    private func participantForSession(_ session: Session, in convo: Conversation) -> Participant? {
+        convo.participants.first {
+            if case .agentSession(let sid) = $0.type { return sid == session.id }
+            return false
+        }
     }
 
     // MARK: - Send Message
 
     private func sendMessage() {
-        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rawInput = inputText
+        let text = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let attachments = pendingAttachments
         guard !text.isEmpty || !attachments.isEmpty, let convo = conversation else {
-            print("[ChatView] sendMessage guard failed: text='\(inputText)' attachments=\(pendingAttachments.count) convo=\(conversation != nil)")
             return
         }
-        print("[ChatView] sendMessage: text='\(text)' convo=\(convo.id) sidecar=\(appState.sidecarStatus)")
+
+        if text.first == "/", !text.hasPrefix("//"), let slash = ChatSendRouting.parseSlashCommand(rawInput) {
+            switch slash {
+            case .help:
+                showSlashHelp = true
+            case .topic(let title):
+                let t = title.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !t.isEmpty {
+                    convo.topic = t
+                    try? modelContext.save()
+                }
+            case .agents:
+                showAddAgentsSheet = true
+            case .unknown(let name):
+                unknownSlashName = name
+                showUnknownSlash = true
+            }
+            if case .topic = slash, text.split(separator: " ").count <= 1, slash != .help {
+                // /topic with no title — still consume input? skip clear
+            }
+            inputText = ""
+            pendingAttachments = []
+            return
+        }
+
         inputText = ""
         pendingAttachments = []
 
-        let isFirstMessage = convo.messages.filter({ $0.type == .chat }).isEmpty
+        let mentionNames = ChatSendRouting.mentionedAgentNames(in: text)
+        let (resolvedMentionAgents, unknownMentions) = ChatSendRouting.resolveMentionedAgents(
+            names: mentionNames,
+            agents: allAgents
+        )
+        if !unknownMentions.isEmpty {
+            mentionErrorDetail = "Unknown agent(s): \(unknownMentions.joined(separator: ", "))"
+            showMentionError = true
+            return
+        }
+
+        for ag in resolvedMentionAgents {
+            if convo.sessions.contains(where: { $0.agent?.id == ag.id }) { continue }
+            let baseDir = convo.primarySession?.workingDirectory ?? appState.instanceWorkingDirectory ?? ""
+            let wd = !baseDir.isEmpty ? baseDir : (ag.defaultWorkingDirectory ?? appState.instanceWorkingDirectory ?? "")
+            let session = Session(
+                agent: ag,
+                mission: convo.primarySession?.mission,
+                mode: convo.primarySession?.mode ?? .interactive,
+                workingDirectory: wd
+            )
+            session.conversations = [convo]
+            convo.sessions.append(session)
+            let p = Participant(type: .agentSession(sessionId: session.id), displayName: ag.name)
+            p.conversation = convo
+            convo.participants.append(p)
+            modelContext.insert(session)
+            modelContext.insert(p)
+        }
+        try? modelContext.save()
+
+        var targetSessions: [Session] = convo.sessions.sorted(by: { $0.startedAt < $1.startedAt })
+        if targetSessions.isEmpty {
+            if let s = ensureFreeformSidecarSession(in: convo) {
+                targetSessions = [s]
+            }
+        }
+        if convo.sessions.count > 1 {
+            if !resolvedMentionAgents.isEmpty {
+                let ids = Set(resolvedMentionAgents.map(\.id))
+                targetSessions = targetSessions.filter { sess in
+                    guard let ag = sess.agent else { return true }
+                    return ids.contains(ag.id)
+                }
+            }
+        }
+
+        guard !targetSessions.isEmpty else {
+            mentionErrorDetail = "No agent session to send to. Pick an agent or use New Session."
+            showMentionError = true
+            return
+        }
+
         let userParticipant = convo.participants.first { $0.type == .user }
+        let isFirstChat = convo.messages.filter({ $0.type == .chat }).isEmpty
+
         let message = ConversationMessage(
             senderParticipantId: userParticipant?.id,
             text: text,
@@ -741,8 +965,7 @@ struct ChatView: View {
 
         convo.messages.append(message)
         modelContext.insert(message)
-
-        if isFirstMessage {
+        if isFirstChat {
             let nameHint: String
             if text.isEmpty {
                 let fileCount = attachments.count
@@ -755,161 +978,318 @@ struct ChatView: View {
 
         try? modelContext.save()
 
-        isProcessing = true
-        processingStartTime = Date()
-
-        let sessionId = convo.id.uuidString
         guard appState.sidecarStatus == .connected,
               let manager = appState.sidecarManager else {
-            print("[ChatView] sidecar not connected: status=\(appState.sidecarStatus)")
             isProcessing = false
             return
         }
-        print("[ChatView] sidecar connected, sessionId=\(sessionId), alreadyCreated=\(appState.createdSessions.contains(sessionId))")
 
-        _ = ensureAgentParticipant(in: convo)
-
-        var createConfig: AgentConfig?
-        if !appState.createdSessions.contains(sessionId) {
-            if let session = convo.session, let agent = session.agent {
-                let provisioner = AgentProvisioner(modelContext: modelContext)
-                let (provConfig, _) = provisioner.provision(agent: agent, mission: session.mission)
-                createConfig = provConfig
-            } else {
-                createConfig = AgentConfig(
-                    name: "Claude",
-                    systemPrompt: "You are a helpful assistant. Be concise and clear.",
-                    allowedTools: [],
-                    mcpServers: [],
-                    model: "claude-sonnet-4-6",
-                    maxTurns: 1,
-                    maxBudget: nil,
-                    maxThinkingTokens: 10000,
-                    workingDirectory: appState.instanceWorkingDirectory ?? NSHomeDirectory(),
-                    skills: []
-                )
-            }
-        }
-
-        appState.streamingText.removeValue(forKey: sessionId)
-        appState.lastSessionEvent.removeValue(forKey: sessionId)
+        isProcessing = true
+        processingStartTime = Date()
 
         Task {
-            do {
-                if let config = createConfig {
-                    print("[ChatView] Sending session.create for \(sessionId) agent=\(config.name)")
-                    try await manager.send(.sessionCreate(
-                        conversationId: sessionId,
-                        agentConfig: config
-                    ))
-                    await MainActor.run { appState.createdSessions.insert(sessionId) }
-                }
-                print("[ChatView] Sending session.message for \(sessionId): '\(text)'")
-                try await manager.send(.sessionMessage(
-                    sessionId: sessionId,
-                    text: text,
-                    attachments: wireAttachments
-                ))
-                print("[ChatView] Message sent successfully for \(sessionId)")
-            } catch {
-                print("[ChatView] Send failed for \(sessionId): \(error)")
-                await MainActor.run {
-                    isProcessing = false
-                    appState.lastSessionEvent[sessionId] = .error("Failed to send: \(error.localizedDescription)")
+            await runSequentialAgentTurns(
+                convo: convo,
+                targetSessions: targetSessions,
+                latestUserText: text,
+                wireAttachments: wireAttachments,
+                manager: manager
+            )
+        }
+    }
+
+    @MainActor
+    private func runSequentialAgentTurns(
+        convo: Conversation,
+        targetSessions: [Session],
+        latestUserText: String,
+        wireAttachments: [WireAttachment],
+        manager: SidecarManager
+    ) async {
+        let participants = convo.participants
+        let provisioner = AgentProvisioner(modelContext: modelContext)
+
+        for session in targetSessions {
+            let sidecarKey = session.id.uuidString
+            activeStreamSessionKey = sidecarKey
+            streamingDisplayName = session.agent?.name ?? "Claude"
+
+            appState.streamingText.removeValue(forKey: sidecarKey)
+            appState.thinkingText.removeValue(forKey: sidecarKey)
+            appState.lastSessionEvent.removeValue(forKey: sidecarKey)
+
+            var createConfig: AgentConfig?
+            if !appState.createdSessions.contains(sidecarKey) {
+                if let agent = session.agent {
+                    let (cfg, _) = provisioner.provision(agent: agent, mission: session.mission)
+                    createConfig = cfg
+                } else {
+                    createConfig = AgentConfig(
+                        name: "Claude",
+                        systemPrompt: "You are a helpful assistant. Be concise and clear.",
+                        allowedTools: [],
+                        mcpServers: [],
+                        model: "claude-sonnet-4-6",
+                        maxTurns: 1,
+                        maxBudget: nil,
+                        maxThinkingTokens: 10000,
+                        workingDirectory: appState.instanceWorkingDirectory ?? NSHomeDirectory(),
+                        skills: []
+                    )
                 }
             }
+
+            let promptText = GroupPromptBuilder.buildMessageText(
+                conversation: convo,
+                targetSession: session,
+                latestUserMessageText: latestUserText,
+                participants: participants
+            )
+
+            do {
+                if let config = createConfig {
+                    try await manager.send(.sessionCreate(
+                        conversationId: sidecarKey,
+                        agentConfig: config
+                    ))
+                    appState.createdSessions.insert(sidecarKey)
+                }
+                try await manager.send(.sessionMessage(
+                    sessionId: sidecarKey,
+                    text: promptText,
+                    attachments: wireAttachments
+                ))
+            } catch {
+                isProcessing = false
+                activeStreamSessionKey = nil
+                appState.lastSessionEvent[sidecarKey] = .error("Failed to send: \(error.localizedDescription)")
+                return
+            }
+
+            await waitForSessionCompletion(sidecarKey: sidecarKey)
+
+            guard let stillConvo = conversation, stillConvo.id == convo.id else {
+                isProcessing = false
+                activeStreamSessionKey = nil
+                return
+            }
+
+            collectResponseForSession(
+                convo: stillConvo,
+                session: session,
+                sidecarKey: sidecarKey
+            )
+        }
+
+        isProcessing = false
+        activeStreamSessionKey = nil
+        streamingDisplayName = "Claude"
+    }
+
+    private func waitForSessionCompletion(sidecarKey: String) async {
+        let maxWait = 600
+        var iterations = 0
+        while iterations < maxWait {
+            if let ev = await MainActor.run(body: { appState.lastSessionEvent[sidecarKey] }) {
+                switch ev {
+                case .result, .error:
+                    return
+                }
+            }
+            try? await Task.sleep(for: .milliseconds(100))
+            iterations += 1
         }
     }
 
     // MARK: - Session Events
 
     private func checkForPendingResponse() {
-        let sessionId = conversationId.uuidString
-        if let event = appState.lastSessionEvent[sessionId] {
+        guard let key = streamSessionKeyForUI else { return }
+        if let event = appState.lastSessionEvent[key] {
             isProcessing = true
             switch event {
             case .result:
-                collectResponse()
+                collectResponseIfSingle()
             case .error(let msg):
-                collectResponse(errorMessage: msg)
+                collectResponseIfSingle(errorMessage: msg)
             }
             return
         }
 
-        if let text = appState.streamingText[sessionId], !text.isEmpty, !isProcessing {
+        if let text = appState.streamingText[key], !text.isEmpty, !isProcessing {
             isProcessing = true
         }
     }
 
     private func checkForCompletion(events: [String: AppState.SessionEventKind]? = nil) {
-        let sessionId = conversationId.uuidString
+        guard let key = streamSessionKeyForUI else { return }
         let source = events ?? appState.lastSessionEvent
-        guard let event = source[sessionId] else { return }
+        guard let event = source[key] else { return }
 
         isProcessing = true
         switch event {
         case .result:
-            collectResponse()
+            collectResponseIfSingle()
         case .error(let msg):
-            collectResponse(errorMessage: msg)
+            collectResponseIfSingle(errorMessage: msg)
         }
     }
 
-    private func collectResponse(errorMessage: String? = nil) {
-        guard isProcessing else { return }
-        let sessionId = conversationId.uuidString
-        guard let convo = conversation else { return }
-
-        let streamedText = appState.streamingText[sessionId] ?? ""
-        guard !streamedText.isEmpty || errorMessage != nil else {
+    /// Legacy path when not using sequential multi-send (e.g. recovery).
+    private func collectResponseIfSingle(errorMessage: String? = nil) {
+        guard let key = streamSessionKeyForUI,
+              let convo = conversation,
+              let session = convo.sessions.first(where: { $0.id.uuidString == key }) else {
             isProcessing = false
             return
         }
-        let responseText = !streamedText.isEmpty ? streamedText : (errorMessage ?? "(no response)")
+        collectResponseForSession(convo: convo, session: session, sidecarKey: key, errorMessage: errorMessage)
+        isProcessing = false
+        activeStreamSessionKey = nil
+    }
 
-        let agentParticipant = convo.participants.first {
-            if case .agentSession = $0.type { return true }
-            return false
+    private func collectResponseForSession(
+        convo: Conversation,
+        session: Session,
+        sidecarKey: String,
+        errorMessage: String? = nil
+    ) {
+        var err = errorMessage
+        if err == nil, case .error(let m) = appState.lastSessionEvent[sidecarKey] {
+            err = m
         }
+        let streamedText = appState.streamingText[sidecarKey] ?? ""
+        guard !streamedText.isEmpty || err != nil else {
+            return
+        }
+        let responseText = !streamedText.isEmpty ? streamedText : (err ?? "(no response)")
+
+        let agentParticipant = participantForSession(session, in: convo)
         let response = ConversationMessage(
             senderParticipantId: agentParticipant?.id,
             text: responseText,
             type: .chat,
             conversation: convo
         )
-        let thinking = appState.thinkingText[sessionId]
+        let thinking = appState.thinkingText[sidecarKey]
         if let thinking, !thinking.isEmpty {
             response.thinkingText = thinking
         }
         convo.messages.append(response)
         modelContext.insert(response)
+        GroupPromptBuilder.advanceWatermark(session: session, assistantMessage: response)
         try? modelContext.save()
-        appState.streamingText.removeValue(forKey: sessionId)
-        appState.thinkingText.removeValue(forKey: sessionId)
-        appState.lastSessionEvent.removeValue(forKey: sessionId)
+        appState.streamingText.removeValue(forKey: sidecarKey)
+        appState.thinkingText.removeValue(forKey: sidecarKey)
+        appState.lastSessionEvent.removeValue(forKey: sidecarKey)
         isStreamingThinkingExpanded = false
-        isProcessing = false
     }
 
     // MARK: - Actions
 
     private func forkConversation() {
-        let sessionId = conversationId.uuidString
-        appState.sendToSidecar(.sessionFork(sessionId: sessionId))
+        guard let newConvo = cloneConversationForFork(from: conversation, throughMessage: nil),
+              let oldPrimary = conversation?.primarySession,
+              let newPrimary = newConvo.primarySession else { return }
+        appState.selectedConversationId = newConvo.id
+        Task {
+            try? await appState.sidecarManager?.send(.sessionFork(
+                parentSessionId: oldPrimary.id.uuidString,
+                childSessionId: newPrimary.id.uuidString
+            ))
+        }
+    }
+
+    private func forkFromMessage(_ pivot: ConversationMessage) {
+        guard let newConvo = cloneConversationForFork(from: conversation, throughMessage: pivot),
+              let oldPrimary = conversation?.primarySession,
+              let newPrimary = newConvo.primarySession else { return }
+        appState.selectedConversationId = newConvo.id
+        Task {
+            try? await appState.sidecarManager?.send(.sessionFork(
+                parentSessionId: oldPrimary.id.uuidString,
+                childSessionId: newPrimary.id.uuidString
+            ))
+        }
+    }
+
+    /// Duplicate conversation structure and optionally copy messages up to `throughMessage` (inclusive).
+    private func cloneConversationForFork(from source: Conversation?, throughMessage: ConversationMessage?) -> Conversation? {
+        guard let source else { return nil }
+        let topicBase = source.topic ?? "Chat"
+        let newConvo = Conversation(topic: topicBase + " (fork)")
+        newConvo.parentConversationId = source.id
+
+        let userParticipant = Participant(type: .user, displayName: "You")
+        userParticipant.conversation = newConvo
+        newConvo.participants.append(userParticipant)
+
+        var oldToNewSession: [UUID: Session] = [:]
+        for oldSession in source.sessions.sorted(by: { $0.startedAt < $1.startedAt }) {
+            let newSession = Session(
+                agent: oldSession.agent,
+                mission: oldSession.mission,
+                mode: oldSession.mode,
+                workingDirectory: oldSession.workingDirectory,
+                workspaceType: oldSession.workspaceType
+            )
+            let agent = oldSession.agent
+            newSession.conversations = [newConvo]
+            newConvo.sessions.append(newSession)
+            oldToNewSession[oldSession.id] = newSession
+
+            let p = Participant(type: .agentSession(sessionId: newSession.id), displayName: agent?.name ?? "Agent")
+            p.conversation = newConvo
+            newConvo.participants.append(p)
+            modelContext.insert(newSession)
+        }
+
+        let ordered = source.messages.sorted { $0.timestamp < $1.timestamp }
+        let slice: [ConversationMessage]
+        if let pivot = throughMessage, let idx = ordered.firstIndex(where: { $0.id == pivot.id }) {
+            slice = Array(ordered[...idx])
+        } else {
+            slice = ordered
+        }
+
+        for oldMsg in slice where oldMsg.type == .chat {
+            let newSender: UUID? = {
+                guard let sid = oldMsg.senderParticipantId,
+                      let oldP = source.participants.first(where: { $0.id == sid }) else { return userParticipant.id }
+                if oldP.type == .user { return userParticipant.id }
+                if case .agentSession(let osid) = oldP.type,
+                   let ns = oldToNewSession[osid],
+                   let np = participantForSession(ns, in: newConvo) {
+                    return np.id
+                }
+                return userParticipant.id
+            }()
+            let nm = ConversationMessage(senderParticipantId: newSender, text: oldMsg.text, type: .chat, conversation: newConvo)
+            nm.timestamp = oldMsg.timestamp
+            nm.thinkingText = oldMsg.thinkingText
+            newConvo.messages.append(nm)
+            modelContext.insert(nm)
+        }
+
+        modelContext.insert(newConvo)
+        try? modelContext.save()
+        return newConvo
     }
 
     private func pauseSession() {
-        let sessionId = conversationId.uuidString
-        appState.sendToSidecar(.sessionPause(sessionId: sessionId))
-        conversation?.session?.status = .paused
+        guard let convo = conversation else { return }
+        for session in convo.sessions {
+            appState.sendToSidecar(.sessionPause(sessionId: session.id.uuidString))
+            session.status = .paused
+        }
         try? modelContext.save()
     }
 
     private func resumeSession() {
         guard let convo = conversation,
-              let session = convo.session,
+              let session = convo.primarySession,
               let claudeSessionId = session.claudeSessionId else { return }
-        let sessionId = convo.id.uuidString
+        let sessionId = session.id.uuidString
         appState.sendToSidecar(.sessionResume(sessionId: sessionId, claudeSessionId: claudeSessionId))
         session.status = .active
         convo.status = .active
@@ -919,8 +1299,8 @@ struct ChatView: View {
     private func closeConversation(_ convo: Conversation) {
         convo.status = .closed
         convo.closedAt = Date()
-        if let session = convo.session {
-            appState.sendToSidecar(.sessionPause(sessionId: convo.id.uuidString))
+        for session in convo.sessions {
+            appState.sendToSidecar(.sessionPause(sessionId: session.id.uuidString))
             session.status = .paused
         }
         try? modelContext.save()
@@ -941,17 +1321,21 @@ struct ChatView: View {
         userParticipant.conversation = newConvo
         newConvo.participants.append(userParticipant)
 
-        if let session = convo.session, let agent = session.agent {
-            let newSession = Session(agent: agent, mode: session.mode)
-            newSession.mission = session.mission
-            newSession.workingDirectory = session.workingDirectory
-            newSession.workspaceType = session.workspaceType
-            newConvo.session = newSession
+        for session in convo.sessions.sorted(by: { $0.startedAt < $1.startedAt }) {
+            let newSession = Session(
+                agent: session.agent,
+                mission: session.mission,
+                mode: session.mode,
+                workingDirectory: session.workingDirectory,
+                workspaceType: session.workspaceType
+            )
             newSession.conversations = [newConvo]
+            newConvo.sessions.append(newSession)
 
+            let displayName = session.agent?.name ?? "Agent"
             let agentParticipant = Participant(
                 type: .agentSession(sessionId: newSession.id),
-                displayName: agent.name
+                displayName: displayName
             )
             agentParticipant.conversation = newConvo
             newConvo.participants.append(agentParticipant)

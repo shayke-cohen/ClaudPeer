@@ -88,7 +88,11 @@ final class AgentProvisioner {
             return "\(NSHomeDirectory())/.claudpeer/repos/\(repoName)"
         }
         if let defaultDir = agent.defaultWorkingDirectory, !defaultDir.isEmpty { return defaultDir }
-        return "\(NSHomeDirectory())/.claudpeer/sandboxes/\(UUID().uuidString)"
+        let sandboxPath = "\(NSHomeDirectory())/.claudpeer/sandboxes/\(UUID().uuidString)"
+        try? FileManager.default.createDirectory(
+            atPath: sandboxPath, withIntermediateDirectories: true, attributes: nil
+        )
+        return sandboxPath
     }
 
     private func resolveWorkspaceType(agent: Agent, override: String?) -> WorkspaceType {

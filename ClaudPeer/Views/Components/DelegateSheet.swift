@@ -4,7 +4,8 @@ import SwiftData
 struct DelegateSheet: View {
     let agent: Agent
     let initialTask: String
-    let conversationId: UUID
+    /// Sidecar `delegate.task` source session (primary agent session in this conversation).
+    let sourceSessionId: UUID
     var onDelegate: (() -> Void)?
 
     @EnvironmentObject private var appState: AppState
@@ -112,7 +113,7 @@ struct DelegateSheet: View {
 
         let context = contextText.trimmingCharacters(in: .whitespacesAndNewlines)
         appState.delegateTask(
-            conversationId: conversationId,
+            sourceSessionId: sourceSessionId,
             toAgent: agent.name,
             task: task,
             context: context.isEmpty ? nil : context,

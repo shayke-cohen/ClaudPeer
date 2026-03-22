@@ -6,12 +6,14 @@ struct PasteableTextField: NSViewRepresentable {
     @Binding var text: String
     var onImagePaste: (Data, String) -> Void
     var onSubmit: () -> Void
+    /// When plain Return should submit (Shift+Return always inserts a newline).
+    var canSubmitOnReturn: () -> Bool = { true }
 
     func makeNSView(context: Context) -> NSTextField {
         let field = ImagePasteTextField()
         field.delegate = context.coordinator
         field.onImagePaste = onImagePaste
-        field.placeholderString = "Type a message..."
+        field.placeholderString = "Message… (↩ send, ⇧↩ newline)"
         field.isBordered = false
         field.backgroundColor = .clear
         field.focusRingType = .none
@@ -26,6 +28,7 @@ struct PasteableTextField: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSTextField, context: Context) {
+        context.coordinator.parent = self
         if nsView.stringValue != text {
             nsView.stringValue = text
         }
@@ -36,7 +39,7 @@ struct PasteableTextField: NSViewRepresentable {
     }
 
     class Coordinator: NSObject, NSTextFieldDelegate {
-        let parent: PasteableTextField
+        var parent: PasteableTextField
 
         init(_ parent: PasteableTextField) {
             self.parent = parent
@@ -49,8 +52,22 @@ struct PasteableTextField: NSViewRepresentable {
 
         func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             if commandSelector == #selector(NSResponder.insertNewline(_:)) {
-                parent.onSubmit()
-                return true
+                if textView.hasMarkedText() {
+                    return false
+                }
+                let flags = NSApp.currentEvent?.modifierFlags ?? []
+                if flags.contains(.shift) {
+                    return false
+                }
+                if flags.contains(.command) {
+                    parent.onSubmit()
+                    return true
+                }
+                if parent.canSubmitOnReturn() {
+                    parent.onSubmit()
+                    return true
+                }
+                return false
             }
             return false
         }

@@ -8,7 +8,8 @@
     "test:unit": "CLAUDPEER_DATA_DIR=/tmp/claudpeer-test-$(date +%s) bun test test/unit/",
     "test:integration": "CLAUDPEER_DATA_DIR=/tmp/claudpeer-test-$(date +%s) bun test test/integration/",
     "test:api": "CLAUDPEER_DATA_DIR=/tmp/claudpeer-test-$(date +%s) bun test test/api/",
-    "test:e2e": "bun test test/e2e/"
+    "test:e2e": "bun test test/e2e/",
+    "test:repo-all": "bash ../scripts/run-all-tests.sh"
   },
   "type": "module",
   "dependencies": {

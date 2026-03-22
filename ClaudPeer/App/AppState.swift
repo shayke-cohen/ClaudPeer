@@ -144,9 +144,9 @@ final class AppState: ObservableObject {
         }
     }
 
-    func delegateTask(conversationId: UUID, toAgent: String, task: String, context: String?, waitForResult: Bool) {
+    func delegateTask(sourceSessionId: UUID, toAgent: String, task: String, context: String?, waitForResult: Bool) {
         sendToSidecar(.delegateTask(
-            sessionId: conversationId.uuidString,
+            sessionId: sourceSessionId.uuidString,
             toAgent: toAgent,
             task: task,
             context: context,
@@ -245,6 +245,9 @@ final class AppState: ObservableObject {
                 kind: .blackboardUpdate(key: key, value: value, writtenBy: writtenBy)
             ))
             persistBlackboardUpdate(key: key, value: value, writtenBy: writtenBy)
+
+        case .sessionForked(let parentSessionId, let childSessionId):
+            print("[AppState] session.forked parent=\(parentSessionId) child=\(childSessionId)")
 
         case .connected:
             sidecarStatus = .connected

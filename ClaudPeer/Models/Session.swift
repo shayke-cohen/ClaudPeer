@@ -44,7 +44,11 @@ final class Session {
     var workspaceTypeKind: String
     var workspaceTypeValue: String?
 
-    @Relationship(deleteRule: .cascade, inverse: \Conversation.session)
+    /// Watermark for group transcript injection: last `ConversationMessage.id` included in a prompt to this session.
+    var lastInjectedMessageId: UUID?
+
+    /// Inverse is declared on `Conversation.sessions`; omitting `inverse` here avoids a SwiftData macro cycle (SDK 26).
+    @Relationship(deleteRule: .nullify)
     var conversations: [Conversation] = []
 
     @Transient
@@ -101,5 +105,6 @@ final class Session {
         self.workspaceTypeKind = "ephemeral"
         self.workspaceTypeValue = nil
         self.workspaceType = workspaceType
+        self.lastInjectedMessageId = nil
     }
 }

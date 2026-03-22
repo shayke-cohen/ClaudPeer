@@ -16,7 +16,9 @@ final class Conversation {
     var isPinned: Bool = false
     var startedAt: Date
     var closedAt: Date?
-    var session: Session?
+
+    @Relationship(deleteRule: .cascade, inverse: \Session.conversations)
+    var sessions: [Session] = []
 
     @Relationship(deleteRule: .cascade, inverse: \Participant.conversation)
     var participants: [Participant] = []
@@ -24,12 +26,17 @@ final class Conversation {
     @Relationship(deleteRule: .cascade, inverse: \ConversationMessage.conversation)
     var messages: [ConversationMessage] = []
 
-    init(topic: String? = nil, session: Session? = nil) {
+    init(topic: String? = nil, sessions: [Session] = []) {
         self.id = UUID()
         self.topic = topic
         self.status = .active
         self.isPinned = false
         self.startedAt = Date()
-        self.session = session
+        self.sessions = sessions
+    }
+
+    /// First session by start time; used for inspector, delegate source, and single-agent UX.
+    var primarySession: Session? {
+        sessions.min(by: { $0.startedAt < $1.startedAt })
     }
 }

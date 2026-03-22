@@ -6,12 +6,12 @@
  * - Blackboard HTTP API (write, read, query, keys)
  * - Streaming events (stream.token, stream.toolCall, stream.toolResult, session.result, session.error)
  *
- * Usage: bun test/sidecar-api.test.ts
- * Requires: sidecar running on ports 9849 (WS) and 9850 (HTTP)
+ * Usage: CLAUDPEER_WS_PORT=9849 CLAUDPEER_HTTP_PORT=9850 bun test/sidecar-api.test.ts
+ * Requires: sidecar listening on the same ports (defaults 9849 WS / 9850 HTTP).
  */
 
-const WS_PORT = 9849;
-const HTTP_PORT = 9850;
+const WS_PORT = Number(process.env.CLAUDPEER_WS_PORT ?? "9849");
+const HTTP_PORT = Number(process.env.CLAUDPEER_HTTP_PORT ?? "9850");
 const HTTP_BASE = `http://127.0.0.1:${HTTP_PORT}`;
 
 interface TestResult {
@@ -110,10 +110,7 @@ async function testSessionCreateAndMessage() {
       },
     });
 
-    // Collect the create confirmation
-    const createMsgs = await wsCollectUntil(ws, (m) =>
-      m.type === "stream.token" && m.sessionId === "test-create-msg", 5000);
-    assert(createMsgs.length > 0, "should receive create confirmation token");
+    // createSession only registers state; streaming starts on session.message.
 
     // Send a message
     wsSend(ws, {
@@ -170,41 +167,49 @@ async function testSessionPause() {
       conversationId: "test-pause",
       agentConfig: {
         name: "PauseBot",
-        systemPrompt: "Write a very long story about a cat.",
+        systemPrompt:
+          "List the numbers from 1 to 500, each on a new line. Do not stop until you reach 500.",
         allowedTools: [],
         mcpServers: [],
         model: "claude-sonnet-4-6",
-        maxTurns: 5,
+        maxTurns: 1,
         workingDirectory: "/tmp",
         skills: [],
       },
     });
 
-    await wsCollectUntil(ws, (m) =>
-      m.type === "stream.token" && m.sessionId === "test-pause", 3000);
-
-    // Start a long message
     wsSend(ws, {
       type: "session.message",
       sessionId: "test-pause",
-      text: "Write a 500 word story.",
+      text: "start",
     });
 
-    // Wait a bit for streaming to start, then pause
-    await new Promise((r) => setTimeout(r, 3000));
+    const started = await wsCollectUntil(
+      ws,
+      (m) => m.type === "stream.token" && m.sessionId === "test-pause",
+      60000,
+    );
+    assert(started.length > 0, "should see stream tokens before pause");
+
+    await new Promise((r) => setTimeout(r, 2000));
 
     wsSend(ws, {
       type: "session.pause",
       sessionId: "test-pause",
     });
 
-    // Collect remaining messages — should get result or error (from abort)
-    const msgs = await wsCollectUntil(ws, (m) =>
-      m.sessionId === "test-pause" &&
-      (m.type === "session.result" || m.type === "session.error"), 15000);
-
-    // The session should have been paused (abort may cause error or result)
-    assert(msgs.length > 0, "should receive messages after pause");
+    // After abort, SessionManager may emit nothing (matches e2e S-2).
+    const after = await wsCollectUntil(
+      ws,
+      (m) =>
+        m.sessionId === "test-pause" &&
+        (m.type === "session.result" || m.type === "session.error"),
+      8000,
+    );
+    const hasDone = after.some(
+      (m: any) => m.type === "session.result" || m.type === "session.error",
+    );
+    assert(hasDone || after.length === 0, "pause should complete (optional result/error after abort)");
   } finally {
     ws.close();
   }
@@ -230,15 +235,15 @@ async function testSessionFork() {
       },
     });
 
-    await wsCollectUntil(ws, (m) =>
-      m.type === "stream.token" && m.sessionId === "test-fork-parent", 3000);
+    wsSend(ws, {
+      type: "session.fork",
+      sessionId: "test-fork-parent",
+      childSessionId: "test-fork-child",
+    });
 
-    wsSend(ws, { type: "session.fork", sessionId: "test-fork-parent" });
-
-    // Should get a fork confirmation token
     const forkMsgs = await wsCollectUntil(ws, (m) =>
-      m.type === "stream.token" && m.text?.includes("Forked"), 5000);
-    assert(forkMsgs.length > 0, "should receive fork confirmation");
+      m.type === "session.forked" && m.childSessionId === "test-fork-child", 5000);
+    assert(forkMsgs.length > 0, "should receive session.forked");
   } finally {
     ws.close();
   }

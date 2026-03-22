@@ -8,7 +8,9 @@ struct NewSessionSheet: View {
     @Query(sort: \Agent.name) private var agents: [Agent]
     @Query(sort: \Session.startedAt, order: .reverse) private var recentSessions: [Session]
 
-    @State private var selectedAgent: Agent?
+    /// Agents selected for this conversation (one or more = group-capable).
+    @State private var selectedAgentIds: Set<UUID> = []
+    @State private var isFreeformChat = false
     @State private var modelOverride = ""
     @State private var sessionMode: SessionMode = .interactive
     @State private var mission = ""
@@ -28,11 +30,13 @@ struct NewSessionSheet: View {
         return result
     }
 
-    private var effectiveModel: String {
-        if modelOverride.isEmpty, let agent = selectedAgent {
-            return agent.model
-        }
-        return modelOverride.isEmpty ? "claude-sonnet-4-6" : modelOverride
+    private var orderedSelectedAgents: [Agent] {
+        agents.filter { selectedAgentIds.contains($0.id) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    private var canStartSession: Bool {
+        isFreeformChat || !selectedAgentIds.isEmpty
     }
 
     var body: some View {
@@ -45,6 +49,12 @@ struct NewSessionSheet: View {
                         recentAgentsRow
                     }
                     agentPicker
+                    if !orderedSelectedAgents.isEmpty {
+                        Text("Selected: \(orderedSelectedAgents.map(\.name).joined(separator: ", "))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("newSession.selectedAgentsSummary")
+                    }
                     optionsSection
                 }
                 .padding(24)
@@ -97,7 +107,8 @@ struct NewSessionSheet: View {
             HStack(spacing: 10) {
                 ForEach(recentAgents) { agent in
                     Button {
-                        selectedAgent = agent
+                        isFreeformChat = false
+                        selectedAgentIds = [agent.id]
                         modelOverride = ""
                         if let dir = agent.defaultWorkingDirectory, !dir.isEmpty {
                             workingDirectory = dir
@@ -112,7 +123,7 @@ struct NewSessionSheet: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(selectedAgent?.id == agent.id
+                        .background(selectedAgentIds == [agent.id] && !isFreeformChat
                             ? Color.fromAgentColor(agent.color).opacity(0.12)
                             : Color.clear
                         )
@@ -120,10 +131,10 @@ struct NewSessionSheet: View {
                         .overlay {
                             Capsule()
                                 .strokeBorder(
-                                    selectedAgent?.id == agent.id
+                                    selectedAgentIds == [agent.id] && !isFreeformChat
                                         ? Color.fromAgentColor(agent.color)
                                         : .secondary.opacity(0.3),
-                                    lineWidth: selectedAgent?.id == agent.id ? 2 : 1
+                                    lineWidth: selectedAgentIds == [agent.id] && !isFreeformChat ? 2 : 1
                                 )
                         }
                     }
@@ -140,7 +151,7 @@ struct NewSessionSheet: View {
     @ViewBuilder
     private var agentPicker: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("All Agents")
+            Text("All Agents (select one or more)")
                 .font(.headline)
 
             LazyVGrid(columns: [
@@ -151,10 +162,11 @@ struct NewSessionSheet: View {
                     name: "Freeform",
                     detail: "No agent",
                     color: .secondary,
-                    isSelected: selectedAgent == nil,
+                    isSelected: isFreeformChat && selectedAgentIds.isEmpty,
                     identifier: "newSession.agentCard.freeform"
                 ) {
-                    selectedAgent = nil
+                    isFreeformChat = true
+                    selectedAgentIds.removeAll()
                     modelOverride = "claude-sonnet-4-6"
                 }
 
@@ -164,13 +176,18 @@ struct NewSessionSheet: View {
                         name: agent.name,
                         detail: agent.model,
                         color: Color.fromAgentColor(agent.color),
-                        isSelected: selectedAgent?.id == agent.id,
+                        isSelected: selectedAgentIds.contains(agent.id),
                         identifier: "newSession.agentCard.\(agent.id.uuidString)"
                     ) {
-                        selectedAgent = agent
-                        modelOverride = ""
-                        if let dir = agent.defaultWorkingDirectory, !dir.isEmpty {
-                            workingDirectory = dir
+                        isFreeformChat = false
+                        if selectedAgentIds.contains(agent.id) {
+                            selectedAgentIds.remove(agent.id)
+                        } else {
+                            selectedAgentIds.insert(agent.id)
+                            modelOverride = ""
+                            if let dir = agent.defaultWorkingDirectory, !dir.isEmpty {
+                                workingDirectory = dir
+                            }
                         }
                     }
                 }
@@ -227,7 +244,7 @@ struct NewSessionSheet: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     Picker("", selection: $modelOverride) {
-                        if selectedAgent != nil {
+                        if selectedAgentIds.count <= 1 {
                             Text("Inherit from Agent").tag("")
                         }
                         Text("Sonnet 4.6").tag("claude-sonnet-4-6")
@@ -335,6 +352,7 @@ struct NewSessionSheet: View {
             }
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.return)
+            .disabled(!canStartSession)
             .accessibilityIdentifier("newSession.startSessionButton")
         }
         .padding(16)
@@ -343,7 +361,6 @@ struct NewSessionSheet: View {
     // MARK: - Actions
 
     private func createSession() {
-        let agent = selectedAgent
         let missionText = mission.trimmingCharacters(in: .whitespacesAndNewlines)
         let dirText = workingDirectory.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -351,31 +368,7 @@ struct NewSessionSheet: View {
             RecentDirectories.add(dirText)
         }
 
-        if let agent {
-            let session = Session(
-                agent: agent,
-                mission: missionText.isEmpty ? nil : missionText,
-                mode: sessionMode,
-                workingDirectory: dirText.isEmpty
-                    ? (agent.defaultWorkingDirectory ?? appState.instanceWorkingDirectory ?? "")
-                    : dirText
-            )
-            let conversation = Conversation(topic: agent.name, session: session)
-            let userParticipant = Participant(type: .user, displayName: "You")
-            let agentParticipant = Participant(
-                type: .agentSession(sessionId: session.id),
-                displayName: agent.name
-            )
-            userParticipant.conversation = conversation
-            agentParticipant.conversation = conversation
-            conversation.participants = [userParticipant, agentParticipant]
-            session.conversations = [conversation]
-
-            modelContext.insert(session)
-            modelContext.insert(conversation)
-            try? modelContext.save()
-            appState.selectedConversationId = conversation.id
-        } else {
+        if isFreeformChat || selectedAgentIds.isEmpty {
             let conversation = Conversation(topic: "New Chat")
             let userParticipant = Participant(type: .user, displayName: "You")
             userParticipant.conversation = conversation
@@ -383,8 +376,57 @@ struct NewSessionSheet: View {
             modelContext.insert(conversation)
             try? modelContext.save()
             appState.selectedConversationId = conversation.id
+            dismiss()
+            return
         }
 
+        let selectedList = orderedSelectedAgents
+        guard !selectedList.isEmpty else {
+            dismiss()
+            return
+        }
+
+        let topic: String
+        if selectedList.count == 1 {
+            topic = selectedList[0].name
+        } else {
+            topic = selectedList.map(\.name).joined(separator: ", ")
+        }
+
+        let conversation = Conversation(topic: topic)
+        let userParticipant = Participant(type: .user, displayName: "You")
+        userParticipant.conversation = conversation
+        conversation.participants.append(userParticipant)
+
+        for agent in selectedList {
+            let wd: String
+            if !dirText.isEmpty {
+                wd = dirText
+            } else {
+                wd = agent.defaultWorkingDirectory ?? appState.instanceWorkingDirectory ?? ""
+            }
+            let session = Session(
+                agent: agent,
+                mission: missionText.isEmpty ? nil : missionText,
+                mode: sessionMode,
+                workingDirectory: wd
+            )
+            session.conversations = [conversation]
+            conversation.sessions.append(session)
+
+            let agentParticipant = Participant(
+                type: .agentSession(sessionId: session.id),
+                displayName: agent.name
+            )
+            agentParticipant.conversation = conversation
+            conversation.participants.append(agentParticipant)
+
+            modelContext.insert(session)
+        }
+
+        modelContext.insert(conversation)
+        try? modelContext.save()
+        appState.selectedConversationId = conversation.id
         dismiss()
     }
 

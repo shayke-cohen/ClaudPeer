@@ -10,6 +10,7 @@
  *   D  = Delegation (peer_delegate_task / delegate.task)
  *   O  = Orchestration (multi-hop delegation chains)
  *   BB = Blackboard (shared state)
+ *   GC = Group chat (per-session registry keys + sequential turns + transcript-shaped prompt, Swift-aligned)
  *   ACCEPT = Full orchestration acceptance test
  *
  * Boots a real sidecar subprocess. Tests that require live Claude SDK calls
@@ -19,9 +20,10 @@
  */
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { spawn, type Subprocess } from "bun";
-import { mkdtempSync } from "fs";
+import { mkdtempSync, existsSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
+import { randomUUID } from "crypto";
 import { BufferedWs, wsConnect, waitForHealth, makeAgentConfig } from "../helpers.js";
 
 const WS_PORT = 39849 + Math.floor(Math.random() * 500);
@@ -159,12 +161,13 @@ describe("S: Session Lifecycle", () => {
       });
       await new Promise((r) => setTimeout(r, 300));
 
-      ws.send({ type: "session.fork", sessionId: sid });
+      const childId = `${sid}-child`;
+      ws.send({ type: "session.fork", sessionId: sid, childSessionId: childId });
       const forkMsg = await ws.waitFor(
-        (m) => m.type === "stream.token" && m.text?.includes("Forked"),
+        (m) => m.type === "session.forked" && m.childSessionId === childId,
         5000,
       );
-      expect(forkMsg.text).toContain("Forked");
+      expect(forkMsg.parentSessionId).toBe(sid);
     } finally {
       ws.close();
     }
@@ -205,6 +208,119 @@ describe("S: Session Lifecycle", () => {
       ws.close();
     }
   }, 120000);
+});
+
+// ─── GC: Group Chat (Swift app wire protocol) ───────────────────────
+//
+// The macOS app uses one sidecar registry entry per SwiftData Session.id (wire: session.create
+// payload field still named conversationId). Multi-agent rooms send session.message sequentially;
+// later agents receive a GroupPromptBuilder-style transcript block in the message text.
+
+describe("GC: Group Chat", () => {
+  liveTest(
+    "GC-1: two session ids, sequential messages, second prompt includes first agent reply (live)",
+    async () => {
+      const ws = await wsConnect(WS_PORT);
+      try {
+        await ws.waitFor((m) => m.type === "sidecar.ready");
+        const sidAlpha = randomUUID();
+        const sidBeta = randomUUID();
+
+        ws.send({
+          type: "session.create",
+          conversationId: sidAlpha,
+          agentConfig: makeAgentConfig({
+            name: "GroupAlpha",
+            systemPrompt:
+              "You are GroupAlpha in a multi-agent room. Follow user instructions exactly. Be concise.",
+            maxTurns: 1,
+          }),
+        });
+        ws.send({
+          type: "session.create",
+          conversationId: sidBeta,
+          agentConfig: makeAgentConfig({
+            name: "GroupBeta",
+            systemPrompt:
+              "You are GroupBeta in a multi-agent room. Use the group thread and latest user message. Be concise.",
+            maxTurns: 1,
+          }),
+        });
+        await new Promise((r) => setTimeout(r, 600));
+
+        ws.send({
+          type: "session.message",
+          sessionId: sidAlpha,
+          text: 'Reply with exactly one word in all caps: MARZIPAN',
+        });
+
+        const alphaEvents = await ws.collectUntil(
+          (m) =>
+            m.sessionId === sidAlpha &&
+            (m.type === "session.result" || m.type === "session.error"),
+          90000,
+        );
+        const alphaErr = alphaEvents.find(
+          (m) => m.type === "session.error" && m.sessionId === sidAlpha,
+        );
+        expect(alphaErr).toBeUndefined();
+
+        const alphaTokens = alphaEvents.filter(
+          (m) => m.type === "stream.token" && m.sessionId === sidAlpha,
+        );
+        const alphaResult = alphaEvents.find(
+          (m) => m.type === "session.result" && m.sessionId === sidAlpha,
+        );
+        let alphaReply =
+          alphaTokens.map((m: any) => m.text ?? "").join("") +
+          (typeof alphaResult?.result === "string" ? alphaResult.result : "");
+        alphaReply = alphaReply.trim() || "(no text from Alpha)";
+        expect(alphaReply.length).toBeGreaterThan(3);
+
+        const groupPrompt = `--- Group thread (new since your last reply) ---
+GroupAlpha: ${alphaReply}
+--- End ---
+
+You are GroupBeta. Respond to the latest user message in this group.
+Latest user message:
+"""
+What word did GroupAlpha say (the all-caps word)? Reply with that single word only, same spelling.
+"""`;
+
+        ws.send({
+          type: "session.message",
+          sessionId: sidBeta,
+          text: groupPrompt,
+        });
+
+        const betaEvents = await ws.collectUntil(
+          (m) =>
+            m.sessionId === sidBeta &&
+            (m.type === "session.result" || m.type === "session.error"),
+          90000,
+        );
+        const betaErr = betaEvents.find(
+          (m) => m.type === "session.error" && m.sessionId === sidBeta,
+        );
+        expect(betaErr).toBeUndefined();
+
+        const betaTokens = betaEvents.filter(
+          (m) => m.type === "stream.token" && m.sessionId === sidBeta,
+        );
+        const betaResult = betaEvents.find(
+          (m) => m.type === "session.result" && m.sessionId === sidBeta,
+        );
+        const betaText = (
+          betaTokens.map((m: any) => m.text ?? "").join("") +
+          (typeof betaResult?.result === "string" ? betaResult.result : "")
+        ).toUpperCase();
+        expect(betaText).toContain("MARZIPAN");
+      } finally {
+        ws.close();
+      }
+    },
+    180000,
+  );
 });
 
 // ─── UC: User-to-Chat ───────────────────────────────────────────────
@@ -255,6 +371,91 @@ describe("UC: User-to-Chat", () => {
       ws.close();
     }
   });
+});
+
+// ─── CHAT: Agent Chat (provisioned config) ──────────────────────────
+
+describe("CHAT: Agent Chat", () => {
+  liveTest("CHAT-1: agent-provisioned config with model alias and fresh sandbox dir", async () => {
+    const ws = await wsConnect(WS_PORT);
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+      const sid = `chat1-${Date.now()}`;
+      const sandboxDir = join(tmpdir(), `claudpeer-chat-test-${randomUUID()}`);
+
+      ws.send({
+        type: "session.create",
+        conversationId: sid,
+        agentConfig: makeAgentConfig({
+          name: "Coder",
+          model: "sonnet",
+          workingDirectory: sandboxDir,
+          maxTurns: 1,
+          allowedTools: ["*"],
+          systemPrompt: "You are a helpful coding assistant. Reply concisely.",
+        }),
+      });
+      await new Promise((r) => setTimeout(r, 500));
+
+      ws.send({ type: "session.message", sessionId: sid, text: "What is 1+1? Reply with just the number." });
+
+      const events = await ws.collectUntil(
+        (m) => m.sessionId === sid && (m.type === "session.result" || m.type === "session.error"),
+        60000,
+      );
+
+      const errors = events.filter((m) => m.type === "session.error" && m.sessionId === sid);
+      expect(errors.length).toBe(0);
+
+      const tokens = events.filter((m) => m.type === "stream.token" && m.sessionId === sid);
+      expect(tokens.length).toBeGreaterThan(0);
+
+      const result = events.find((m) => m.type === "session.result" && m.sessionId === sid);
+      expect(result).toBeDefined();
+      expect(result.result).toBeTruthy();
+
+      expect(existsSync(sandboxDir)).toBe(true);
+    } finally {
+      ws.close();
+    }
+  }, 90000);
+
+  test("CHAT-2: non-existent working directory is created before query", async () => {
+    const ws = await wsConnect(WS_PORT);
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+      const sid = `chat2-${Date.now()}`;
+      const deepDir = join(tmpdir(), `claudpeer-nocwd-${randomUUID()}`, "nested", "sandbox");
+
+      expect(existsSync(deepDir)).toBe(false);
+
+      ws.send({
+        type: "session.create",
+        conversationId: sid,
+        agentConfig: makeAgentConfig({
+          name: "Chat2Bot",
+          workingDirectory: deepDir,
+          maxTurns: 1,
+          systemPrompt: "Reply with exactly: OK",
+        }),
+      });
+      await new Promise((r) => setTimeout(r, 300));
+
+      ws.send({ type: "session.message", sessionId: sid, text: "go" });
+
+      const event = await ws.waitFor(
+        (m) => m.sessionId === sid && (m.type === "session.result" || m.type === "session.error"),
+        30000,
+      );
+
+      if (event.type === "session.error") {
+        console.log(`[CHAT-2] Error: ${event.error}`);
+      }
+      expect(existsSync(deepDir)).toBe(true);
+    } finally {
+      ws.close();
+    }
+  }, 60000);
 });
 
 // ─── UA: User-to-Agent ──────────────────────────────────────────────

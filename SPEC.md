@@ -2,8 +2,8 @@
 
 Living specification tracking implemented features, user flows, and requirements.
 
-**Version:** 0.7.0
-**Status:** Phase 7 complete (Agent Communication Wiring + Delegation UI)
+**Version:** 0.8.0
+**Status:** Phase 8 — Group chat, slash commands, @-mentions, fork-from-message
 
 ---
 
@@ -102,7 +102,7 @@ All sessions use the Claude Agent SDK. Every session gets PeerBus tools injected
 
 ### FR-4: Conversation Model
 
-**Status:** Implemented
+**Status:** Implemented (including multi-agent group conversations per FR-4.9)
 
 Unified conversation model supporting user-to-agent and agent-to-agent communication.
 
@@ -131,10 +131,10 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 | FR-5.5: Message bubbles with participant distinction | Done |
 | FR-5.6: Conversation tree node component | Done |
 | FR-5.7: Status badges (session/conversation) | Done |
-| FR-5.8: Slash commands in input | Not started |
+| FR-5.8: Slash commands in input | Done |
 | FR-5.9: File drag-and-drop (images + documents) | Done |
-| FR-5.10: @-mention agents in group chats | Not started |
-| FR-5.11: Fork from any message point | Not started |
+| FR-5.10: @-mention agents in group chats | Done |
+| FR-5.11: Fork from any message point | Done |
 | FR-5.12: Auto-name conversations from first user message | Done |
 | FR-5.13: Rename conversations via context menu, chat header, or inspector | Done |
 | FR-5.14: Pin/unpin conversations in sidebar | Done |
@@ -153,6 +153,16 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 | FR-5.27: Agent picker menu listing installed agents for delegation target selection | Done |
 | FR-5.28: DelegateSheet with task editor, context field, wait-for-result toggle | Done |
 | FR-5.29: Delegation message bubble in parent chat (pending + completed states) | Done |
+
+#### Group chat, slash commands, @-mentions, fork (FR-4.9, FR-5.8, FR-5.10, FR-5.11)
+
+- **Per-agent sidecar key:** SwiftData `Session.id.uuidString` is the registry key for `session.create` / `session.message` / streaming maps (the JSON field on `session.create` remains `conversationId` for wire compatibility; the value is the session id).
+- **Transcript injection:** When a conversation has more than one `Session`, each outbound message includes a **delta** of shared chat lines since `Session.lastInjectedMessageId`, fenced as `Group thread (new since your last reply)`, plus role instructions and the latest user line. Single-agent chats send the raw user text.
+- **Sequential v1:** Multiple targeted agents respond one after another; watermarks advance after each assistant message is persisted so the next agent’s prompt includes prior replies in the delta.
+- **@-mentions:** Tokens `@Name` match installed agents by name (case-insensitive). Unknown names show an error and do not call the sidecar. Mentioning an agent not yet in the room provisions a `Session`, adds a participant, and includes them in the current send. Composer chips show **In chat** vs **Adds on send**.
+- **Slash commands (first line):** `/help`, `/topic` or `/rename <title>`, `/agents`. A line starting with `//` is not a command.
+- **Fork:** **Fork conversation** (header menu) clones the thread and primary session mapping, then sends `session.fork` with parent and child primary session ids. **Fork from here** (message context menu) clones through the selected message inclusive; SDK continuity follows sidecar `forkSession` behavior.
+- **Composer:** **Return** inserts a newline; **⌘↩** or the Send button sends.
 
 ### FR-6: Main Window Layout
 
@@ -960,7 +970,7 @@ flowchart TD
 | Memory | Graceful with 10+ concurrent sessions | Untested |
 | Security | Hardened runtime, localhost-only sidecar | Met |
 | Multi-instance | Fully isolated data, ports, settings | Met |
-| Test coverage | Unit tests for catalog, config, data integrity, file explorer | Met (131 Swift + 96 sidecar) |
+| Test coverage | Unit tests for catalog, config, data integrity, file explorer, chat routing, group prompts | Met (see CI / `xcodebuild test` + `bun test`) |
 | Catalog size | 30 agents + 101 skills + 100 MCPs bundled | Met |
 
 ---
@@ -982,3 +992,4 @@ flowchart TD
 | 2026-03-22 | Phase 6: UX Redesign + Inspector Toggle. Comprehensive UX overhaul: Settings reorganized into General/Connection (with live sidecar status and action buttons)/Developer tabs. Sidebar toolbar replaced with bottom bar (Catalog, Agents, + buttons). Main toolbar simplified to New Session + Quick Chat + status pill + inspector toggle. Chat header: tappable agent icon opens library, mission preview, Fork/Rename moved to overflow menu. Inspector transformed into monitoring dashboard with usage section (tokens, cost, turns progress bar), workspace section with Open in Terminal, and removed duplicate controls. New Session sheet: recent agents row, collapsible options DisclosureGroup, "Inherit from Agent" model default, mode tooltips. Agent Editor consolidated from 5 steps to 3 (Identity, Capabilities with Skills/MCPs/Permissions DisclosureGroups, System Prompt). Inspector toggle: toolbar button (sidebar.trailing, ⌘⌥0) shows/hides right inspector pane; chat expands to fill freed space via 2-column NavigationSplitView + HStack layout. Fixed macOS state restoration crash (WorkingDirectoryPicker environment object). Fixed FileNode Swift 6 concurrency (nonisolated init, @unchecked Sendable). | FR-6.14-6.21, FR-9.1, US-7, US-8, Flow 4 |
 | 2026-03-22 | Phase 5: Inspector File Explorer. Tabbed Inspector (Info/Files) with file tree browser for agent working directories. FileSystemService, GitService, FileNode model. FileTreeView with DisclosureGroup, git badges, changes-only filter. FileContentView with three modes: Markdown preview, syntax-highlighted source (Highlightr), git diff (NSTextView). Async I/O, auto-refresh on tool calls, HighlightedCodeView for chat code blocks, dynamic git path, full a11y identifiers. | FR-17, FR-18, US-16, Flow 11 |
 | 2026-03-22 | Phase 7: Agent Communication Wiring + Delegation UI. Wired AgentCommsView into MainWindowView (toolbar button with antenna icon + event badge, ⌘⇧A shortcut, sheet presentation). Added user-initiated delegation from chat: delegate menu button in input bar, agent picker menu, DelegateSheet (task editor, context field, wait-for-result toggle). New delegate.task sidecar command with full wire protocol (SidecarProtocol → ws-server.ts). Instance policy enforcement in both peer_delegate_task and delegate.task handler: singleton reuses existing session, pool caps at max then routes to least-busy, spawn always creates new. Added findByAgentName to SessionRegistry. Fixed pool serialization to pool:N format in AppState. Added peer_chat_listen to AgentProvisioner allowedTools. | FR-3.14, FR-3.19, FR-5.26-5.29, FR-14.23-14.24, FR-15.8-15.9, US-12, US-13, US-17, Flow 12, Flow 13 |
+| 2026-03-22 | Phase 8: Group conversations (`Conversation.sessions`), per-session transcript watermarks, `GroupPromptBuilder` injection, sequential multi-agent sends, New Session multi-select, `/help` `/topic` `/rename` `/agents`, @-mention routing and add-on-send with autocomplete hints, fork from message + `session.fork`/`session.forked` with explicit child session id, inspector multi-session list, ⌘↩ to send / Return for newline in composer. | FR-4.9, FR-5.8, FR-5.10, FR-5.11, FR-3.11 |

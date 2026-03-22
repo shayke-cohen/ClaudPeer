@@ -125,9 +125,15 @@ End-to-end with a real sidecar subprocess (random ports).
 
 ---
 
-### 6. `test/e2e/scenarios.test.ts` — 24 tests
+### 6. `test/e2e/scenarios.test.ts` — 27 tests
 
 Comprehensive E2E scenarios with a real sidecar subprocess. The main sanity suite.
+
+#### GC: Group Chat — Swift app protocol (1 test)
+
+| ID | Test | Live | Timeout | What It Verifies |
+|----|------|------|---------|------------------|
+| GC-1 | Two UUID session keys, Alpha then Beta with injected transcript block | LIVE | 180s | Matches per-`Session.id` routing: two `session.create` → message Alpha → build `GroupPromptBuilder`-shaped text including Alpha’s reply → message Beta → Beta’s answer reflects the thread |
 
 #### S: Session Lifecycle (5 tests)
 
@@ -145,6 +151,13 @@ Comprehensive E2E scenarios with a real sidecar subprocess. The main sanity suit
 |----|------|------|---------|------------------|
 | UC-1 | User sends message, agent responds with full stream | LIVE | 90s | PING → PONG with streaming tokens and result |
 | UC-2 | Message to unknown session returns error | — | 30s | `session.error` with "not found" |
+
+#### CHAT: Agent Chat (2 tests)
+
+| ID | Test | Live | Timeout | What It Verifies |
+|----|------|------|---------|------------------|
+| CHAT-1 | Agent-provisioned config with model alias and fresh sandbox dir | LIVE | 90s | Model alias `"sonnet"` resolved, non-existent sandbox `cwd` created, full stream.token + session.result round-trip |
+| CHAT-2 | Non-existent working directory is created before query | — | 60s | Deeply nested `cwd` path auto-created by sidecar before SDK `query()` |
 
 #### UA: User-to-Agent (3 tests)
 
@@ -204,8 +217,8 @@ Comprehensive E2E scenarios with a real sidecar subprocess. The main sanity suit
 | `test/api/http-api.test.ts` | 18 | 18 | 0 | All pass |
 | `test/api/ws-protocol.test.ts` | 13 | 13 | 0 | All pass |
 | `test/e2e/full-flow.test.ts` | 8 | 7 | 1 | All pass |
-| `test/e2e/scenarios.test.ts` | 24 | 19 | 5 | All pass |
-| **Total** | **139** | **133** | **6** | |
+| `test/e2e/scenarios.test.ts` | 27 | 20 | 7 | All pass |
+| **Total** | **142** | **134** | **8** | |
 
 ---
 

@@ -58,6 +58,32 @@ final class SidecarProtocolTests: XCTestCase {
         XCTAssertEqual(json["text"] as? String, "Hello agent")
     }
 
+    func testSessionForkEncoding() throws {
+        let command = SidecarCommand.sessionFork(parentSessionId: "parent-1", childSessionId: "child-2")
+        let data = try command.encodeToJSON()
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+
+        XCTAssertEqual(json["type"] as? String, "session.fork")
+        XCTAssertEqual(json["sessionId"] as? String, "parent-1")
+        XCTAssertEqual(json["childSessionId"] as? String, "child-2")
+    }
+
+    func testSessionForkedDecoding() throws {
+        let jsonStr = """
+        {"type":"session.forked","parentSessionId":"p1","childSessionId":"c2"}
+        """
+        let data = jsonStr.data(using: .utf8)!
+        let wire = try JSONDecoder().decode(IncomingWireMessage.self, from: data)
+        let event = wire.toEvent()
+
+        if case .sessionForked(let p, let c) = event {
+            XCTAssertEqual(p, "p1")
+            XCTAssertEqual(c, "c2")
+        } else {
+            XCTFail("Expected .sessionForked, got \(String(describing: event))")
+        }
+    }
+
     // MARK: - Incoming Wire Message Decoding
 
     func testPeerChatDecoding() throws {

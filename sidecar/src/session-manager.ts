@@ -1,6 +1,6 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { randomUUID } from "crypto";
-import { mkdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import type { AgentConfig, FileAttachment, SidecarEvent } from "./types.js";
@@ -59,9 +59,14 @@ export class SessionManager {
       const options = this.buildQueryOptions(sessionId, config, state.claudeSessionId, abortController, attachments?.length ?? 0);
       const sdkSessionId = options.sessionId ?? options.resume;
 
+      if (options.cwd && !existsSync(options.cwd)) {
+        console.log(`[session] Creating missing cwd: ${options.cwd}`);
+        mkdirSync(options.cwd, { recursive: true });
+      }
+
       const prompt = this.buildPrompt(text, attachments);
       const attachmentCount = attachments?.length ?? 0;
-      console.log(`[session] query() start for ${sessionId} (${config.model}, ${attachmentCount} attachments)`);
+      console.log(`[session] query() start for ${sessionId} (model=${options.model}, cwd=${options.cwd ?? "none"}, turns=${options.maxTurns}, attachments=${attachmentCount})`);
       const stream = query({ prompt, options });
       let resultText = "";
 
@@ -153,18 +158,20 @@ export class SessionManager {
     });
   }
 
-  async forkSession(sessionId: string): Promise<string> {
-    const config = this.registry.getConfig(sessionId);
-    const forkedId = `${sessionId}-fork-${Date.now()}`;
+  async forkSession(parentSessionId: string, childSessionId: string): Promise<void> {
+    const config = this.registry.getConfig(parentSessionId);
+    const parentState = this.registry.get(parentSessionId);
     if (config) {
-      this.registry.create(forkedId, config);
+      this.registry.create(childSessionId, config);
+      if (parentState?.claudeSessionId) {
+        this.registry.update(childSessionId, { claudeSessionId: parentState.claudeSessionId });
+      }
     }
     this.emit({
-      type: "stream.token",
-      sessionId: forkedId,
-      text: `Forked from session ${sessionId}.\n`,
+      type: "session.forked",
+      parentSessionId,
+      childSessionId,
     });
-    return forkedId;
   }
 
   async pauseSession(sessionId: string): Promise<void> {
@@ -179,6 +186,17 @@ export class SessionManager {
     return this.registry.list();
   }
 
+  private static readonly MODEL_ALIASES: Record<string, string> = {
+    sonnet: "claude-sonnet-4-6",
+    opus: "claude-opus-4-6",
+    haiku: "claude-haiku-4-6",
+  };
+
+  private static resolveModel(model: string | undefined): string {
+    if (!model) return "claude-sonnet-4-6";
+    return SessionManager.MODEL_ALIASES[model] ?? model;
+  }
+
   private buildQueryOptions(
     sessionId: string,
     config: AgentConfig,
@@ -190,8 +208,9 @@ export class SessionManager {
     if (attachmentCount > 0 && maxTurns < 3) {
       maxTurns = 3;
     }
+    const resolvedModel = SessionManager.resolveModel(config.model);
     const options: Record<string, any> = {
-      model: config.model || "claude-sonnet-4-6",
+      model: resolvedModel,
       maxTurns,
       abortController,
       cwd: config.workingDirectory || undefined,
