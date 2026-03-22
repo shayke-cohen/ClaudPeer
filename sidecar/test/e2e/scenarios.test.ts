@@ -97,19 +97,24 @@ describe("S: Session Lifecycle", () => {
         conversationId: sid,
         agentConfig: makeAgentConfig({
           name: "S2Bot",
-          systemPrompt: "Write a very long essay about the history of computing. At least 2000 words.",
+          systemPrompt: "List the numbers from 1 to 500, each on a new line. Do not stop until you reach 500.",
           maxTurns: 1,
         }),
       });
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 1000));
 
       ws.send({ type: "session.message", sessionId: sid, text: "start" });
-      await ws.waitFor((m) => m.type === "stream.token" && m.sessionId === sid, 30000);
+
+      // Wait longer — model may take time to begin streaming
+      await ws.waitFor((m) => m.type === "stream.token" && m.sessionId === sid, 60000);
+
+      // Let a few more tokens arrive before pausing
+      await new Promise((r) => setTimeout(r, 2000));
 
       ws.send({ type: "session.pause", sessionId: sid });
       const completion = await ws.collectUntil(
         (m) => m.sessionId === sid && (m.type === "session.result" || m.type === "session.error"),
-        15000,
+        30000,
       );
       const hasResult = completion.some((m) => m.type === "session.result" && m.sessionId === sid);
       const hasError = completion.some((m) => m.type === "session.error" && m.sessionId === sid);
@@ -117,7 +122,7 @@ describe("S: Session Lifecycle", () => {
     } finally {
       ws.close();
     }
-  }, 60000);
+  }, 120000);
 
   test("S-3: resume restores session context", async () => {
     const ws = await wsConnect(WS_PORT);
