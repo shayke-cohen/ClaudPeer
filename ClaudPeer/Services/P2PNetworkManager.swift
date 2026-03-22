@@ -157,63 +157,12 @@ final class P2PNetworkManager: ObservableObject {
 
     private static func httpGetAgents(endpoint: NWEndpoint) async throws -> [WireAgentExport] {
         try await withCheckedThrowingContinuation { continuation in
-            let conn = NWConnection(to: endpoint, using: .tcp)
-            let queue = DispatchQueue(label: "com.claudpeer.p2p.http.client")
-            var buffer = Data()
-
-            conn.stateUpdateHandler = { state in
-                switch state {
-                case .ready:
-                    let req = """
-                    GET /claudpeer/v1/agents HTTP/1.1\r
-                    Host: claudpeer.local\r
-                    Connection: close\r
-                    \r
-
-                    """
-                    conn.send(content: Data(req.utf8), completion: .contentProcessed { err in
-                        if let err {
-                            conn.cancel()
-                            continuation.resume(throwing: err)
-                        }
-                    })
-                case .failed(let err):
-                    continuation.resume(throwing: err)
-                default:
-                    break
-                }
-            }
-
-            func receiveMore() {
-                conn.receive(minimumIncompleteLength: 1, maximumLength: 1_048_576) { data, _, isComplete, error in
-                    if let error {
-                        conn.cancel()
-                        continuation.resume(throwing: error)
-                        return
-                    }
-                    if let data, !data.isEmpty {
-                        buffer.append(data)
-                    }
-                    if isComplete {
-                        conn.cancel()
-                        do {
-                            let agents = try parseAgentsHTTPResponse(buffer)
-                            continuation.resume(returning: agents)
-                        } catch {
-                            continuation.resume(throwing: error)
-                        }
-                    } else {
-                        receiveMore()
-                    }
-                }
-            }
-
-            conn.start(queue: queue)
-            receiveMore()
+            let fetch = P2PHTTPFetch(endpoint: endpoint, continuation: continuation)
+            fetch.start()
         }
     }
 
-    private static func parseAgentsHTTPResponse(_ data: Data) throws -> [WireAgentExport] {
+    fileprivate static func parseAgentsHTTPResponse(_ data: Data) throws -> [WireAgentExport] {
         guard let str = String(data: data, encoding: .utf8),
               let range = str.range(of: "\r\n\r\n") else {
             throw P2PClientError.invalidResponse
@@ -225,13 +174,124 @@ final class P2PNetworkManager: ObservableObject {
     }
 }
 
+private let p2pHTTPTimeoutSeconds: Double = 10
+
+/// Sendable helper that owns connection state for a single HTTP GET to a peer.
+private final class P2PHTTPFetch: Sendable {
+    private let conn: NWConnection
+    private let queue = DispatchQueue(label: "com.claudpeer.p2p.http.client")
+    private let state: P2PHTTPFetchState
+
+    init(endpoint: NWEndpoint, continuation: CheckedContinuation<[WireAgentExport], Error>) {
+        self.conn = NWConnection(to: endpoint, using: .tcp)
+        self.state = P2PHTTPFetchState(continuation: continuation)
+    }
+
+    func start() {
+        let conn = self.conn
+        let state = self.state
+
+        conn.stateUpdateHandler = { [weak self] connState in
+            switch connState {
+            case .ready:
+                let req = "GET /claudpeer/v1/agents HTTP/1.1\r\nHost: claudpeer.local\r\nConnection: close\r\n\r\n"
+                conn.send(content: Data(req.utf8), completion: .contentProcessed { err in
+                    if let err {
+                        state.complete(with: .failure(err), conn: conn)
+                    } else {
+                        self?.receiveMore()
+                    }
+                })
+            case .failed(let err):
+                state.complete(with: .failure(err), conn: conn)
+            default:
+                break
+            }
+        }
+
+        conn.start(queue: queue)
+
+        // Timeout
+        queue.asyncAfter(deadline: .now() + p2pHTTPTimeoutSeconds) {
+            state.complete(with: .failure(P2PClientError.timeout), conn: conn)
+        }
+    }
+
+    private func receiveMore() {
+        let conn = self.conn
+        let state = self.state
+        conn.receive(minimumIncompleteLength: 1, maximumLength: 1_048_576) { [weak self] data, _, isComplete, error in
+            if let error {
+                state.complete(with: .failure(error), conn: conn)
+                return
+            }
+            if let data, !data.isEmpty {
+                state.appendData(data)
+            }
+            if isComplete {
+                do {
+                    let agents = try P2PNetworkManager.parseAgentsHTTPResponse(state.buffer)
+                    state.complete(with: .success(agents), conn: conn)
+                } catch {
+                    state.complete(with: .failure(error), conn: conn)
+                }
+            } else {
+                self?.receiveMore()
+            }
+        }
+    }
+}
+
+/// Thread-safe mutable state for P2PHTTPFetch.
+private final class P2PHTTPFetchState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var resumed = false
+    private let continuation: CheckedContinuation<[WireAgentExport], Error>
+    private var _buffer = Data()
+
+    var buffer: Data {
+        lock.lock()
+        let d = _buffer
+        lock.unlock()
+        return d
+    }
+
+    init(continuation: CheckedContinuation<[WireAgentExport], Error>) {
+        self.continuation = continuation
+    }
+
+    func appendData(_ data: Data) {
+        lock.lock()
+        _buffer.append(data)
+        lock.unlock()
+    }
+
+    func complete(with result: Result<[WireAgentExport], Error>, conn: NWConnection) {
+        lock.lock()
+        let shouldResume = !resumed
+        resumed = true
+        lock.unlock()
+        guard shouldResume else { return }
+        conn.cancel()
+        switch result {
+        case .success(let agents):
+            continuation.resume(returning: agents)
+        case .failure(let error):
+            continuation.resume(throwing: error)
+        }
+    }
+}
+
 enum P2PClientError: LocalizedError {
     case invalidResponse
+    case timeout
 
     var errorDescription: String? {
         switch self {
         case .invalidResponse:
             return "Could not read agent list from peer."
+        case .timeout:
+            return "Peer did not respond in time."
         }
     }
 }

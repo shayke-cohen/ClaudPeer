@@ -3,7 +3,7 @@ import SwiftData
 
 enum SkillSource: Sendable, Hashable {
     case filesystem(path: String)
-    case peer(peerId: UUID)
+    case peer(peerName: String)
     case builtin
     case custom
 }
@@ -31,7 +31,7 @@ final class Skill {
         get {
             switch sourceKind {
             case "filesystem": return .filesystem(path: sourceValue ?? "")
-            case "peer": return .peer(peerId: UUID(uuidString: sourceValue ?? "") ?? UUID())
+            case "peer": return .peer(peerName: sourceValue ?? "Unknown")
             case "builtin": return .builtin
             default: return .custom
             }
@@ -41,9 +41,9 @@ final class Skill {
             case .filesystem(let path):
                 sourceKind = "filesystem"
                 sourceValue = path
-            case .peer(let peerId):
+            case .peer(let peerName):
                 sourceKind = "peer"
-                sourceValue = peerId.uuidString
+                sourceValue = peerName
             case .builtin:
                 sourceKind = "builtin"
                 sourceValue = nil

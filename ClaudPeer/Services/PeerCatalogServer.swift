@@ -68,53 +68,62 @@ final class PeerCatalogServer: @unchecked Sendable {
 
     private func handleConnection(_ connection: NWConnection) {
         connection.start(queue: queue)
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
-            guard let self else {
-                connection.cancel()
-                return
+        var requestBuffer = Data()
+        func readUntilHeaders() {
+            connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
+                guard let self else {
+                    connection.cancel()
+                    return
+                }
+                if let error {
+                    print("[PeerCatalogServer] receive error: \(error)")
+                    connection.cancel()
+                    return
+                }
+                if let data, !data.isEmpty {
+                    requestBuffer.append(data)
+                }
+                // Check if we have the full header block yet
+                if let req = String(data: requestBuffer, encoding: .utf8),
+                   req.contains("\r\n\r\n") {
+                    self.dispatchRequest(req, connection: connection)
+                } else if isComplete {
+                    // Connection closed before full headers — try what we have
+                    if let req = String(data: requestBuffer, encoding: .utf8), !req.isEmpty {
+                        self.dispatchRequest(req, connection: connection)
+                    } else {
+                        connection.cancel()
+                    }
+                } else {
+                    readUntilHeaders()
+                }
             }
-            if let error {
-                print("[PeerCatalogServer] receive error: \(error)")
-                connection.cancel()
-                return
-            }
-            guard let data, !data.isEmpty else {
-                if isComplete { connection.cancel() }
-                return
-            }
-            guard let req = String(data: data, encoding: .utf8) else {
-                connection.cancel()
-                return
-            }
-            let lines = req.split(separator: "\r\n", omittingEmptySubsequences: false)
-            guard let first = lines.first else {
-                connection.cancel()
-                return
-            }
-            let parts = first.split(separator: " ")
-            guard parts.count >= 2, parts[0] == "GET" else {
-                self.sendText(connection, status: 400, body: "Bad Request")
-                return
-            }
-            let path = String(parts[1])
-            if path == "/claudpeer/v1/agents" || path.hasPrefix("/claudpeer/v1/agents?") {
-                let body = self.snapshotBody()
-                self.sendJSON(connection, body: body)
-            } else {
-                self.sendText(connection, status: 404, body: "Not Found")
-            }
+        }
+        readUntilHeaders()
+    }
+
+    private func dispatchRequest(_ req: String, connection: NWConnection) {
+        let lines = req.split(separator: "\r\n", omittingEmptySubsequences: false)
+        guard let first = lines.first else {
+            connection.cancel()
+            return
+        }
+        let parts = first.split(separator: " ")
+        guard parts.count >= 2, parts[0] == "GET" else {
+            sendText(connection, status: 400, body: "Bad Request")
+            return
+        }
+        let path = String(parts[1])
+        if path == "/claudpeer/v1/agents" || path.hasPrefix("/claudpeer/v1/agents?") {
+            let body = snapshotBody()
+            sendJSON(connection, body: body)
+        } else {
+            sendText(connection, status: 404, body: "Not Found")
         }
     }
 
     private func sendJSON(_ connection: NWConnection, body: Data) {
-        let header = """
-        HTTP/1.1 200 OK\r
-        Content-Type: application/json; charset=utf-8\r
-        Content-Length: \(body.count)\r
-        Connection: close\r
-        \r
-
-        """
+        let header = "HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
         var out = Data(header.utf8)
         out.append(body)
         connection.send(content: out, completion: .contentProcessed { _ in
@@ -124,14 +133,8 @@ final class PeerCatalogServer: @unchecked Sendable {
 
     private func sendText(_ connection: NWConnection, status: Int, body: String) {
         let b = Data(body.utf8)
-        let header = """
-        HTTP/1.1 \(status) \(status == 404 ? "Not Found" : "Bad Request")\r
-        Content-Type: text/plain; charset=utf-8\r
-        Content-Length: \(b.count)\r
-        Connection: close\r
-        \r
-
-        """
+        let reason = status == 404 ? "Not Found" : "Bad Request"
+        let header = "HTTP/1.1 \(status) \(reason)\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: \(b.count)\r\nConnection: close\r\n\r\n"
         var out = Data(header.utf8)
         out.append(b)
         connection.send(content: out, completion: .contentProcessed { _ in

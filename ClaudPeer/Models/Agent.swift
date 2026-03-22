@@ -9,7 +9,7 @@ enum InstancePolicy: Sendable, Hashable {
 
 enum AgentOrigin: Sendable, Hashable {
     case local
-    case peer(peerId: UUID)
+    case peer(peerName: String)
     case imported
     case builtin
 }
@@ -37,7 +37,9 @@ final class Agent {
 
     // AgentOrigin flattened for SwiftData
     var originKind: String
-    var originPeerId: UUID?
+    var originPeerName: String?
+    /// The original UUID of the agent on the remote peer (used for duplicate import detection)
+    var originRemoteId: UUID?
 
     var defaultWorkingDirectory: String?
     var githubRepo: String?
@@ -78,7 +80,7 @@ final class Agent {
         get {
             switch originKind {
             case "peer":
-                return .peer(peerId: originPeerId ?? UUID())
+                return .peer(peerName: originPeerName ?? "Unknown")
             case "imported":
                 return .imported
             case "builtin":
@@ -91,16 +93,16 @@ final class Agent {
             switch newValue {
             case .local:
                 originKind = "local"
-                originPeerId = nil
-            case .peer(let peerId):
+                originPeerName = nil
+            case .peer(let peerName):
                 originKind = "peer"
-                originPeerId = peerId
+                originPeerName = peerName
             case .imported:
                 originKind = "imported"
-                originPeerId = nil
+                originPeerName = nil
             case .builtin:
                 originKind = "builtin"
-                originPeerId = nil
+                originPeerName = nil
             }
         }
     }
@@ -129,7 +131,8 @@ final class Agent {
         self.instancePolicyKind = "spawn"
         self.instancePolicyPoolMax = nil
         self.originKind = "local"
-        self.originPeerId = nil
+        self.originPeerName = nil
+        self.originRemoteId = nil
         self.isShared = false
         self.createdAt = Date()
         self.updatedAt = Date()

@@ -80,6 +80,9 @@ struct ClaudPeerApp: App {
                 if autoConnectSidecar {
                     appState.connectSidecar()
                 }
+                // Start P2P discovery & advertising so peers can find us even when the sheet is closed
+                p2pNetworkManager.attach(modelContext: modelContainer.mainContext)
+                p2pNetworkManager.start()
                 #if DEBUG
                 AppXray.shared.registerObservableObject(appState, name: "appState")
                 #endif

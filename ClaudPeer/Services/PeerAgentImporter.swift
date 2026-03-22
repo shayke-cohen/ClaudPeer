@@ -1,9 +1,22 @@
 import Foundation
 import SwiftData
 
+struct PeerImportResult {
+    let agent: Agent
+    let missingSkills: [String]
+    let missingMCPs: [String]
+    let missingPermission: String?
+}
+
 @MainActor
 enum PeerAgentImporter {
-    static func importFromWire(_ w: WireAgentExport, peerSourceId: UUID, modelContext: ModelContext) throws -> Agent {
+    static func importFromWire(_ w: WireAgentExport, peerDisplayName: String, modelContext: ModelContext) throws -> PeerImportResult {
+        // Duplicate guard: skip if an agent with the same original ID was already imported from a peer
+        let allAgents = (try? modelContext.fetch(FetchDescriptor<Agent>())) ?? []
+        if allAgents.contains(where: { $0.originKind == "peer" && $0.originRemoteId == w.id }) {
+            throw PeerImportError.alreadyImported(name: w.name)
+        }
+
         let skills = try modelContext.fetch(FetchDescriptor<Skill>())
         let mcps = try modelContext.fetch(FetchDescriptor<MCPServer>())
         let perms = try modelContext.fetch(FetchDescriptor<PermissionSet>())
@@ -12,7 +25,11 @@ enum PeerAgentImporter {
         let mcpByName = Dictionary(uniqueKeysWithValues: mcps.map { ($0.name, $0) })
         let permByName = Dictionary(uniqueKeysWithValues: perms.map { ($0.name, $0) })
 
-        let uniqueName = disambiguateName(w.name, modelContext: modelContext)
+        let missingSkills = w.skillNames.filter { skillByName[$0] == nil }
+        let missingMCPs = w.extraMCPNames.filter { mcpByName[$0] == nil }
+        let missingPerm: String? = w.permissionSetName.flatMap { permByName[$0] == nil ? $0 : nil }
+
+        let uniqueName = disambiguateName(w.name, existing: allAgents)
         let agent = Agent(
             name: uniqueName,
             agentDescription: w.agentDescription,
@@ -32,16 +49,16 @@ enum PeerAgentImporter {
         agent.githubDefaultBranch = w.githubDefaultBranch
         agent.instancePolicyKind = w.instancePolicyKind.isEmpty ? "spawn" : w.instancePolicyKind
         agent.instancePolicyPoolMax = w.instancePolicyPoolMax
-        agent.origin = .peer(peerId: peerSourceId)
+        agent.origin = .peer(peerName: peerDisplayName)
+        agent.originRemoteId = w.id
         agent.catalogId = nil
 
         modelContext.insert(agent)
         try modelContext.save()
-        return agent
+        return PeerImportResult(agent: agent, missingSkills: missingSkills, missingMCPs: missingMCPs, missingPermission: missingPerm)
     }
 
-    private static func disambiguateName(_ base: String, modelContext: ModelContext) -> String {
-        let existing = (try? modelContext.fetch(FetchDescriptor<Agent>())) ?? []
+    private static func disambiguateName(_ base: String, existing: [Agent]) -> String {
         let names = Set(existing.map(\.name))
         if !names.contains(base) { return base }
         var n = 2
@@ -49,5 +66,16 @@ enum PeerAgentImporter {
             n += 1
         }
         return "\(base) (\(n))"
+    }
+}
+
+enum PeerImportError: LocalizedError {
+    case alreadyImported(name: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .alreadyImported(let name):
+            return "\"\(name)\" was already imported from this peer."
+        }
     }
 }

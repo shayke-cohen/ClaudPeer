@@ -7,7 +7,6 @@ struct PeerNetworkView: View {
     @EnvironmentObject private var p2p: P2PNetworkManager
 
     @State private var selectedPeerId: String?
-    @State private var peerSourceUUID = UUID()
     @State private var remoteAgents: [WireAgentExport] = []
     @State private var isLoadingList = false
     @State private var listError: String?
@@ -27,6 +26,10 @@ struct PeerNetworkView: View {
                     .fontWeight(.semibold)
                     .accessibilityIdentifier("peerNetwork.title")
                 Spacer()
+                Circle()
+                    .fill(p2p.isRunning ? Color.green : Color.secondary)
+                    .frame(width: 8, height: 8)
+                    .accessibilityIdentifier("peerNetwork.statusDot")
                 Button {
                     dismiss()
                 } label: {
@@ -76,11 +79,10 @@ struct PeerNetworkView: View {
         }
         .frame(width: 720, height: 520)
         .onAppear {
-            p2p.attach(modelContext: modelContext)
-            p2p.start()
-        }
-        .onDisappear {
-            p2p.stop()
+            if !p2p.isRunning {
+                p2p.attach(modelContext: modelContext)
+                p2p.start()
+            }
         }
     }
 
@@ -111,9 +113,9 @@ struct PeerNetworkView: View {
         }
         .onChange(of: selectedPeerId) { _, newId in
             if newId != nil {
-                peerSourceUUID = UUID()
                 remoteAgents = []
                 listError = nil
+                importMessage = nil
             }
         }
     }
@@ -167,7 +169,7 @@ struct PeerNetworkView: View {
                             }
                             Spacer()
                             Button("Import") {
-                                importAgent(agent)
+                                importAgent(agent, peerName: peer.displayName)
                             }
                             .disabled(importInFlight)
                             .accessibilityIdentifier("peerNetwork.importButton.\(agent.id.uuidString)")
@@ -202,16 +204,21 @@ struct PeerNetworkView: View {
         }
     }
 
-    private func importAgent(_ w: WireAgentExport) {
+    private func importAgent(_ w: WireAgentExport, peerName: String) {
         importInFlight = true
         importMessage = nil
         defer { importInFlight = false }
         do {
-            let agent = try PeerAgentImporter.importFromWire(w, peerSourceId: peerSourceUUID, modelContext: modelContext)
-            importMessage = "Imported “\(agent.name)”."
+            let result = try PeerAgentImporter.importFromWire(w, peerDisplayName: peerName, modelContext: modelContext)
+            var msg = "Imported \"\(result.agent.name)\"."
+            let missing = result.missingSkills + result.missingMCPs + [result.missingPermission].compactMap { $0 }
+            if !missing.isEmpty {
+                msg += " Missing locally: \(missing.joined(separator: ", "))."
+            }
+            importMessage = msg
             p2p.refreshExportCache()
         } catch {
-            importMessage = "Import failed: \(error.localizedDescription)"
+            importMessage = error.localizedDescription
         }
     }
 }
