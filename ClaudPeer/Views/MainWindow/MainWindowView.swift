@@ -13,37 +13,20 @@ struct MainWindowView: View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             SidebarView()
         } detail: {
-            HStack(spacing: 0) {
-                Group {
-                    if let conversationId = appState.selectedConversationId {
-                        ChatView(conversationId: conversationId)
-                            .id(conversationId)
-                    } else {
-                        ContentUnavailableView(
-                            "No Conversation Selected",
-                            systemImage: "bubble.left.and.bubble.right",
-                            description: Text("Select a conversation from the sidebar or start a new one.")
-                        )
-                        .accessibilityIdentifier("mainWindow.noConversationPlaceholder")
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
+            Group {
                 if inspectorVisible {
-                    Divider()
-
-                    Group {
-                        if let conversationId = appState.selectedConversationId {
-                            InspectorView(conversationId: conversationId)
-                                .id(conversationId)
-                        } else {
-                            Text("Inspector")
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .accessibilityIdentifier("mainWindow.inspectorPlaceholder")
-                        }
+                    HSplitView {
+                        mainDetailPane
+                            .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
+                            .layoutPriority(1)
+                        inspectorPane
+                            .frame(minWidth: 200, idealWidth: 260, maxWidth: 720, maxHeight: .infinity)
                     }
-                    .frame(width: 260)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityIdentifier("mainWindow.chatInspectorSplit")
+                } else {
+                    mainDetailPane
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
@@ -131,6 +114,36 @@ struct MainWindowView: View {
         }
         .onAppear {
             appState.connectSidecar()
+        }
+    }
+
+    // MARK: - Detail panes
+
+    @ViewBuilder
+    private var mainDetailPane: some View {
+        if let conversationId = appState.selectedConversationId {
+            ChatView(conversationId: conversationId)
+                .id(conversationId)
+        } else {
+            ContentUnavailableView(
+                "No Conversation Selected",
+                systemImage: "bubble.left.and.bubble.right",
+                description: Text("Select a conversation from the sidebar or start a new one.")
+            )
+            .accessibilityIdentifier("mainWindow.noConversationPlaceholder")
+        }
+    }
+
+    @ViewBuilder
+    private var inspectorPane: some View {
+        if let conversationId = appState.selectedConversationId {
+            InspectorView(conversationId: conversationId)
+                .id(conversationId)
+        } else {
+            Text("Inspector")
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("mainWindow.inspectorPlaceholder")
         }
     }
 

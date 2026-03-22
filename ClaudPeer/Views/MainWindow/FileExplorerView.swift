@@ -31,6 +31,7 @@ struct FileExplorerView: View {
                 treeView
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Toolbar
@@ -110,6 +111,7 @@ struct FileExplorerView: View {
             showHidden: showHidden,
             refreshTrigger: refreshTrigger + localRefresh
         )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Content

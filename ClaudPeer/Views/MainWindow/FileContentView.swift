@@ -50,6 +50,7 @@ struct FileContentView: View {
             Divider()
             actionBar
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task { await loadContent() }
         .onChange(of: node.id) { _, _ in Task { await loadContent() } }
     }
@@ -152,22 +153,24 @@ struct FileContentView: View {
 
     @ViewBuilder
     private var contentArea: some View {
-        if isLoading {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityIdentifier("inspector.fileContent.loading")
-        } else if isBinary {
-            binaryPlaceholder
-        } else {
-            switch viewMode {
-            case .preview:
-                markdownPreview
-            case .source:
-                sourceView
-            case .diff:
-                diffView
+        Group {
+            if isLoading {
+                ProgressView()
+                    .accessibilityIdentifier("inspector.fileContent.loading")
+            } else if isBinary {
+                binaryPlaceholder
+            } else {
+                switch viewMode {
+                case .preview:
+                    markdownPreview
+                case .source:
+                    sourceView
+                case .diff:
+                    diffView
+                }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
@@ -177,6 +180,7 @@ struct FileContentView: View {
                 MarkdownContent(text: content)
                     .padding(10)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .accessibilityIdentifier("inspector.fileContent.markdownPreview")
         } else {
             emptyContentPlaceholder
@@ -188,6 +192,7 @@ struct FileContentView: View {
         if let content = fileContent {
             let lang = FileSystemService.languageForExtension(node.fileExtension)
             HighlightedCodeView(code: content, language: lang, showLineNumbers: true)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityIdentifier("inspector.fileContent.sourceView")
         } else {
             emptyContentPlaceholder
@@ -201,12 +206,14 @@ struct FileContentView: View {
                 DiffTextView(diffText: diff)
                     .padding(8)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .accessibilityIdentifier("inspector.fileContent.diffView")
         } else if node.gitStatus == .untracked, let content = fileContent {
             ScrollView([.horizontal, .vertical]) {
                 DiffTextView(diffText: allAddedDiff(content))
                     .padding(8)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .accessibilityIdentifier("inspector.fileContent.diffView")
         } else {
             ContentUnavailableView("No Changes", systemImage: "checkmark.circle", description: Text("This file has no uncommitted changes."))

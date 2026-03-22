@@ -54,7 +54,9 @@ enum FileSystemService {
         defer { try? handle.close() }
 
         guard let data = try? handle.read(upToCount: maxBytes) else { return nil }
-        return String(data: data, encoding: .utf8)
+        if let utf8 = String(data: data, encoding: .utf8) { return utf8 }
+        // Lossy UTF-8 so Source isn’t blank for Latin-1 / mixed encodings.
+        return String(decoding: data, as: UTF8.self)
     }
 
     static func isBinaryFile(at url: URL) -> Bool {

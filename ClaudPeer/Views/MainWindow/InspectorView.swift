@@ -68,7 +68,7 @@ struct InspectorView: View {
                 }
             }
         }
-        .frame(minWidth: 220, idealWidth: 280)
+        .frame(minWidth: 220, idealWidth: 280, maxWidth: .infinity, maxHeight: .infinity)
         .onReceive(durationTimer) { _ in
             now = Date()
         }
