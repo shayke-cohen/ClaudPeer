@@ -24,12 +24,12 @@ struct PeerNetworkView: View {
                 Text("Peer Network")
                     .font(.title2)
                     .fontWeight(.semibold)
-                    .accessibilityIdentifier("peerNetwork.title")
+                    .xrayId("peerNetwork.title")
                 Spacer()
                 Circle()
                     .fill(p2p.isRunning ? Color.green : Color.secondary)
                     .frame(width: 8, height: 8)
-                    .accessibilityIdentifier("peerNetwork.statusDot")
+                    .xrayId("peerNetwork.statusDot")
                 Button {
                     dismiss()
                 } label: {
@@ -37,7 +37,7 @@ struct PeerNetworkView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
-                .accessibilityIdentifier("peerNetwork.closeButton")
+                .xrayId("peerNetwork.closeButton")
                 .accessibilityLabel("Close")
             }
             .padding(16)
@@ -50,7 +50,7 @@ struct PeerNetworkView: View {
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
-                    .accessibilityIdentifier("peerNetwork.bannerError")
+                    .xrayId("peerNetwork.bannerError")
             }
 
             HSplitView {
@@ -69,7 +69,7 @@ struct PeerNetworkView: View {
                     p2p.attach(modelContext: modelContext)
                     p2p.start()
                 }
-                .accessibilityIdentifier("peerNetwork.refreshButton")
+                .xrayId("peerNetwork.refreshButton")
                 Spacer()
                 Text("Advertising local agents for LAN import.")
                     .font(.caption2)
@@ -94,7 +94,7 @@ struct PeerNetworkView: View {
                     systemImage: "wifi.exclamationmark",
                     description: Text("Ensure other Macs run ClaudPeer on the same network.")
                 )
-                .accessibilityIdentifier("peerNetwork.emptyPeers")
+                .xrayId("peerNetwork.emptyPeers")
             } else {
                 List(p2p.peers, id: \.id, selection: $selectedPeerId) { peer in
                     VStack(alignment: .leading, spacing: 2) {
@@ -106,9 +106,9 @@ struct PeerNetworkView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .accessibilityIdentifier("peerNetwork.peerRow.\(peer.id)")
+                    .xrayId("peerNetwork.peerRow.\(peer.id)")
                 }
-                .accessibilityIdentifier("peerNetwork.peerList")
+                .xrayId("peerNetwork.peerList")
             }
         }
         .onChange(of: selectedPeerId) { _, newId in
@@ -124,10 +124,17 @@ struct PeerNetworkView: View {
         Group {
             if let peer = selectedPeer {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(peer.displayName)
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .accessibilityIdentifier("peerNetwork.detailTitle")
+                    HStack {
+                        Text(peer.displayName)
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .xrayId("peerNetwork.detailTitle")
+                        Spacer()
+                        Label("Relay ready", systemImage: "arrow.left.arrow.right.circle")
+                            .font(.caption2)
+                            .foregroundStyle(.green)
+                            .xrayId("peerNetwork.relayStatus")
+                    }
 
                     HStack {
                         Button {
@@ -141,21 +148,21 @@ struct PeerNetworkView: View {
                             }
                         }
                         .disabled(isLoadingList)
-                        .accessibilityIdentifier("peerNetwork.browseAgentsButton")
+                        .xrayId("peerNetwork.browseAgentsButton")
                     }
 
                     if let listError {
                         Text(listError)
                             .font(.caption)
                             .foregroundStyle(.red)
-                            .accessibilityIdentifier("peerNetwork.listError")
+                            .xrayId("peerNetwork.listError")
                     }
 
                     if let importMessage {
                         Text(importMessage)
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("peerNetwork.importMessage")
+                            .xrayId("peerNetwork.importMessage")
                     }
 
                     List(remoteAgents) { agent in
@@ -172,10 +179,10 @@ struct PeerNetworkView: View {
                                 importAgent(agent, peerName: peer.displayName)
                             }
                             .disabled(importInFlight)
-                            .accessibilityIdentifier("peerNetwork.importButton.\(agent.id.uuidString)")
+                            .xrayId("peerNetwork.importButton.\(agent.id.uuidString)")
                         }
                     }
-                    .accessibilityIdentifier("peerNetwork.remoteAgentList")
+                    .xrayId("peerNetwork.remoteAgentList")
                 }
                 .padding()
             } else {
@@ -184,7 +191,7 @@ struct PeerNetworkView: View {
                     systemImage: "dot.radiowaves.left.and.right",
                     description: Text("Choose a ClaudPeer instance on your network.")
                 )
-                .accessibilityIdentifier("peerNetwork.selectPeerPlaceholder")
+                .xrayId("peerNetwork.selectPeerPlaceholder")
             }
         }
     }

@@ -24,6 +24,7 @@ struct AgentEditorView: View {
     @State private var workingDirectory: String
     @State private var githubRepo: String
     @State private var githubBranch: String
+    @State private var githubAutoCreateBranch: Bool
     @State private var selectedSkillIds: Set<UUID>
     @State private var selectedMCPIds: Set<UUID>
     @State private var selectedPermissionId: UUID?
@@ -50,6 +51,7 @@ struct AgentEditorView: View {
         _workingDirectory = State(initialValue: agent?.defaultWorkingDirectory ?? "")
         _githubRepo = State(initialValue: agent?.githubRepo ?? "")
         _githubBranch = State(initialValue: agent?.githubDefaultBranch ?? "main")
+        _githubAutoCreateBranch = State(initialValue: agent?.githubAutoCreateBranch ?? false)
         _selectedSkillIds = State(initialValue: Set(agent?.skillIds ?? []))
         _selectedMCPIds = State(initialValue: Set(agent?.extraMCPServerIds ?? []))
         _selectedPermissionId = State(initialValue: agent?.permissionSetId)
@@ -106,7 +108,7 @@ struct AgentEditorView: View {
             Text(agent == nil ? "Create Agent" : "Edit Agent")
                 .font(.title3)
                 .fontWeight(.semibold)
-                .accessibilityIdentifier("agentEditor.title")
+                .xrayId("agentEditor.title")
             Spacer()
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
@@ -114,7 +116,7 @@ struct AgentEditorView: View {
             }
             .buttonStyle(.borderless)
             .help("Close")
-            .accessibilityIdentifier("agentEditor.closeButton")
+            .xrayId("agentEditor.closeButton")
             .accessibilityLabel("Close")
         }
         .padding()
@@ -138,7 +140,7 @@ struct AgentEditorView: View {
                         .background(currentStep == index ? Color.accentColor.opacity(0.1) : Color.clear)
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("agentEditor.step.\(steps[index].lowercased().replacingOccurrences(of: " ", with: ""))")
+                .xrayId("agentEditor.step.\(steps[index].lowercased().replacingOccurrences(of: " ", with: ""))")
                 if index < steps.count - 1 {
                     Divider().frame(height: 20)
                 }
@@ -154,13 +156,13 @@ struct AgentEditorView: View {
         Form {
             Section("Basic Info") {
                 TextField("Name", text: $name)
-                    .accessibilityIdentifier("agentEditor.nameField")
+                    .xrayId("agentEditor.nameField")
                 TextField("Description", text: $agentDescription, axis: .vertical)
                     .lineLimit(2...4)
-                    .accessibilityIdentifier("agentEditor.descriptionField")
+                    .xrayId("agentEditor.descriptionField")
                 HStack {
                     TextField("Icon (SF Symbol)", text: $icon)
-                        .accessibilityIdentifier("agentEditor.iconField")
+                        .xrayId("agentEditor.iconField")
                     Image(systemName: icon)
                         .foregroundStyle(.blue)
                 }
@@ -169,17 +171,17 @@ struct AgentEditorView: View {
                         Text(c.capitalized).tag(c)
                     }
                 }
-                .accessibilityIdentifier("agentEditor.colorPicker")
+                .xrayId("agentEditor.colorPicker")
                 Picker("Model", selection: $model) {
                     Text("Sonnet").tag("sonnet")
                     Text("Opus").tag("opus")
                     Text("Haiku").tag("haiku")
                 }
-                .accessibilityIdentifier("agentEditor.modelPicker")
+                .xrayId("agentEditor.modelPicker")
                 TextField("Max Turns", text: $maxTurns)
-                    .accessibilityIdentifier("agentEditor.maxTurnsField")
+                    .xrayId("agentEditor.maxTurnsField")
                 TextField("Max Budget ($)", text: $maxBudget)
-                    .accessibilityIdentifier("agentEditor.maxBudgetField")
+                    .xrayId("agentEditor.maxBudgetField")
             }
 
             Section("Instance Policy") {
@@ -188,20 +190,22 @@ struct AgentEditorView: View {
                     Text("Singleton (one instance)").tag(1)
                     Text("Pool (multiple instances)").tag(2)
                 }
-                .accessibilityIdentifier("agentEditor.instancePolicyPicker")
+                .xrayId("agentEditor.instancePolicyPicker")
                 if instancePolicyType == 2 {
                     TextField("Max Instances", text: $poolMax)
-                        .accessibilityIdentifier("agentEditor.poolMaxField")
+                        .xrayId("agentEditor.poolMaxField")
                 }
             }
 
             Section("Workspace") {
                 TextField("Working Directory", text: $workingDirectory)
-                    .accessibilityIdentifier("agentEditor.workingDirectoryField")
+                    .xrayId("agentEditor.workingDirectoryField")
                 TextField("GitHub Repo URL", text: $githubRepo)
-                    .accessibilityIdentifier("agentEditor.githubRepoField")
+                    .xrayId("agentEditor.githubRepoField")
                 TextField("Branch", text: $githubBranch)
-                    .accessibilityIdentifier("agentEditor.githubBranchField")
+                    .xrayId("agentEditor.githubBranchField")
+                Toggle("Auto-create branch from issue", isOn: $githubAutoCreateBranch)
+                    .xrayId("agentEditor.githubAutoCreateBranchToggle")
 
                 let repoTrim = githubRepo.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !repoTrim.isEmpty {
@@ -211,7 +215,7 @@ struct AgentEditorView: View {
                             .font(.caption)
                             .textSelection(.enabled)
                     }
-                    .accessibilityIdentifier("agentEditor.githubClonePathLabel")
+                    .xrayId("agentEditor.githubClonePathLabel")
                     HStack {
                         if githubWorkspaceBusy {
                             ProgressView().scaleEffect(0.75)
@@ -220,13 +224,13 @@ struct AgentEditorView: View {
                             Task { await runGithubWorkspacePrep() }
                         }
                         .disabled(githubWorkspaceBusy)
-                        .accessibilityIdentifier("agentEditor.githubValidateButton")
+                        .xrayId("agentEditor.githubValidateButton")
                     }
                     if !githubWorkspaceMessage.isEmpty {
                         Text(githubWorkspaceMessage)
                             .font(.caption)
                             .foregroundStyle(githubWorkspaceSucceeded ? Color.secondary : Color.red)
-                            .accessibilityIdentifier("agentEditor.githubWorkspaceMessage")
+                            .xrayId("agentEditor.githubWorkspaceMessage")
                     }
                     Text("Next session start will re-run clone resolution if the repo or branch changes.")
                         .font(.caption2)
@@ -290,12 +294,12 @@ struct AgentEditorView: View {
                                 }
                                 .buttonStyle(.borderless)
                                 .help("Remove skill")
-                                .accessibilityIdentifier("agentEditor.skills.removeButton.\(skill.id.uuidString)")
+                                .xrayId("agentEditor.skills.removeButton.\(skill.id.uuidString)")
                                 .accessibilityLabel("Remove \(skill.name)")
                             }
                         }
                     }
-                    .accessibilityIdentifier("agentEditor.skills.selectedList")
+                    .xrayId("agentEditor.skills.selectedList")
                     .frame(minHeight: 120)
                 }
                 .frame(maxWidth: .infinity)
@@ -323,12 +327,12 @@ struct AgentEditorView: View {
                                 }
                                 .buttonStyle(.borderless)
                                 .help("Add skill")
-                                .accessibilityIdentifier("agentEditor.skills.addButton.\(skill.id.uuidString)")
+                                .xrayId("agentEditor.skills.addButton.\(skill.id.uuidString)")
                                 .accessibilityLabel("Add \(skill.name)")
                             }
                         }
                     }
-                    .accessibilityIdentifier("agentEditor.skills.availableList")
+                    .xrayId("agentEditor.skills.availableList")
                     .frame(minHeight: 120)
                 }
                 .frame(maxWidth: .infinity)
@@ -343,7 +347,7 @@ struct AgentEditorView: View {
                     Label("Manage Skills...", systemImage: "book.fill")
                 }
                 .buttonStyle(.borderless)
-                .accessibilityIdentifier("agentEditor.manageSkills")
+                .xrayId("agentEditor.manageSkills")
             }
             .padding(.horizontal)
             .padding(.vertical, 4)
@@ -352,7 +356,7 @@ struct AgentEditorView: View {
                 .font(.headline)
         }
         .padding()
-        .accessibilityIdentifier("agentEditor.skillsDisclosure")
+        .xrayId("agentEditor.skillsDisclosure")
     }
 
     @ViewBuilder
@@ -409,12 +413,12 @@ struct AgentEditorView: View {
                                 }
                                 .buttonStyle(.borderless)
                                 .help("Remove MCP server")
-                                .accessibilityIdentifier("agentEditor.mcps.removeButton.\(mcp.id.uuidString)")
+                                .xrayId("agentEditor.mcps.removeButton.\(mcp.id.uuidString)")
                                 .accessibilityLabel("Remove \(mcp.name)")
                             }
                         }
                     }
-                    .accessibilityIdentifier("agentEditor.mcps.selectedList")
+                    .xrayId("agentEditor.mcps.selectedList")
                     .frame(minHeight: 80)
                 }
                 .frame(maxWidth: .infinity)
@@ -442,12 +446,12 @@ struct AgentEditorView: View {
                                 }
                                 .buttonStyle(.borderless)
                                 .help("Add MCP server")
-                                .accessibilityIdentifier("agentEditor.mcps.addButton.\(mcp.id.uuidString)")
+                                .xrayId("agentEditor.mcps.addButton.\(mcp.id.uuidString)")
                                 .accessibilityLabel("Add \(mcp.name)")
                             }
                         }
                     }
-                    .accessibilityIdentifier("agentEditor.mcps.availableList")
+                    .xrayId("agentEditor.mcps.availableList")
                     .frame(minHeight: 80)
                 }
                 .frame(maxWidth: .infinity)
@@ -462,7 +466,7 @@ struct AgentEditorView: View {
                     Label("Manage MCPs...", systemImage: "server.rack")
                 }
                 .buttonStyle(.borderless)
-                .accessibilityIdentifier("agentEditor.manageMCPs")
+                .xrayId("agentEditor.manageMCPs")
             }
             .padding(.horizontal)
             .padding(.vertical, 4)
@@ -472,7 +476,7 @@ struct AgentEditorView: View {
                 .font(.headline)
         }
         .padding()
-        .accessibilityIdentifier("agentEditor.mcpsDisclosure")
+        .xrayId("agentEditor.mcpsDisclosure")
     }
 
     @ViewBuilder
@@ -485,7 +489,7 @@ struct AgentEditorView: View {
                         Text(perm.name).tag(Optional(perm.id))
                     }
                 }
-                .accessibilityIdentifier("agentEditor.permissionPresetPicker")
+                .xrayId("agentEditor.permissionPresetPicker")
 
                 if let permId = selectedPermissionId,
                    let perm = allPermissions.first(where: { $0.id == permId }) {
@@ -521,7 +525,7 @@ struct AgentEditorView: View {
                 .font(.headline)
         }
         .padding()
-        .accessibilityIdentifier("agentEditor.permissionsDisclosure")
+        .xrayId("agentEditor.permissionsDisclosure")
     }
 
     // MARK: - Step 3: System Prompt
@@ -537,7 +541,7 @@ struct AgentEditorView: View {
                 Text("\(systemPrompt.count) chars")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("agentEditor.systemPromptCharCount")
+                    .xrayId("agentEditor.systemPromptCharCount")
             }
             .padding(.horizontal)
 
@@ -551,7 +555,7 @@ struct AgentEditorView: View {
                         .stroke(.quaternary, lineWidth: 1)
                 )
                 .padding(.horizontal)
-                .accessibilityIdentifier("agentEditor.systemPromptEditor")
+                .xrayId("agentEditor.systemPromptEditor")
         }
         .padding(.vertical)
     }
@@ -565,24 +569,24 @@ struct AgentEditorView: View {
                 Button("Back") {
                     currentStep -= 1
                 }
-                .accessibilityIdentifier("agentEditor.backButton")
+                .xrayId("agentEditor.backButton")
             }
             Spacer()
             Button("Cancel") { dismiss() }
-                .accessibilityIdentifier("agentEditor.cancelButton")
+                .xrayId("agentEditor.cancelButton")
             if currentStep < steps.count - 1 {
                 Button("Next") {
                     currentStep += 1
                 }
                 .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("agentEditor.nextButton")
+                .xrayId("agentEditor.nextButton")
             } else {
                 Button("Save") {
                     saveAgent()
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(name.isEmpty)
-                .accessibilityIdentifier("agentEditor.saveButton")
+                .xrayId("agentEditor.saveButton")
             }
         }
         .padding()
@@ -632,6 +636,7 @@ struct AgentEditorView: View {
         target.defaultWorkingDirectory = workingDirectory.isEmpty ? nil : workingDirectory
         target.githubRepo = githubRepo.isEmpty ? nil : githubRepo
         target.githubDefaultBranch = githubBranch.isEmpty ? nil : githubBranch
+        target.githubAutoCreateBranch = githubAutoCreateBranch
         target.updatedAt = Date()
 
         switch instancePolicyType {

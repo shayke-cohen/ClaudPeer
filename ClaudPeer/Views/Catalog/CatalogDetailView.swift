@@ -27,7 +27,7 @@ struct CatalogDetailView: View {
                 }
                 .padding()
             }
-            .accessibilityIdentifier("catalogDetail.scrollView")
+            .xrayId("catalogDetail.scrollView")
             Divider()
             footer
         }
@@ -55,7 +55,7 @@ struct CatalogDetailView: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.borderless)
-            .accessibilityIdentifier("catalogDetail.closeButton")
+            .xrayId("catalogDetail.closeButton")
             .accessibilityLabel("Close")
         }
         .padding()
@@ -192,7 +192,7 @@ struct CatalogDetailView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .accessibilityIdentifier("catalogDetail.systemPromptDisclosure")
+                .xrayId("catalogDetail.systemPromptDisclosure")
             }
         }
     }
@@ -272,7 +272,7 @@ struct CatalogDetailView: View {
                     Link(mcp.homepage, destination: URL(string: mcp.homepage) ?? URL(string: "https://example.com")!)
                         .font(.callout)
                         .lineLimit(1)
-                        .accessibilityIdentifier("catalogDetail.homepageLink")
+                        .xrayId("catalogDetail.homepageLink")
                 }
             }
         }
@@ -308,7 +308,7 @@ struct CatalogDetailView: View {
                 Text("Uninstall")
             }
             .controlSize(.regular)
-            .accessibilityIdentifier("catalogDetail.uninstallButton")
+            .xrayId("catalogDetail.uninstallButton")
         } else {
             Button {
                 install()
@@ -318,7 +318,7 @@ struct CatalogDetailView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.regular)
-            .accessibilityIdentifier("catalogDetail.installButton")
+            .xrayId("catalogDetail.installButton")
         }
     }
 
@@ -411,42 +411,4 @@ struct CatalogDetailView: View {
     }
 }
 
-private struct FlowLayout: Layout {
-    var spacing: CGFloat = 6
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let result = arrangeSubviews(proposal: proposal, subviews: subviews)
-        return result.size
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let result = arrangeSubviews(proposal: proposal, subviews: subviews)
-        for (index, position) in result.positions.enumerated() {
-            subviews[index].place(at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y), proposal: .unspecified)
-        }
-    }
-
-    private func arrangeSubviews(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, positions: [CGPoint]) {
-        let maxWidth = proposal.width ?? .infinity
-        var positions: [CGPoint] = []
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        var totalHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > maxWidth, x > 0 {
-                x = 0
-                y += rowHeight + spacing
-                rowHeight = 0
-            }
-            positions.append(CGPoint(x: x, y: y))
-            rowHeight = max(rowHeight, size.height)
-            x += size.width + spacing
-            totalHeight = y + rowHeight
-        }
-
-        return (CGSize(width: maxWidth, height: totalHeight), positions)
-    }
-}
+// Uses FlowLayout from AgentPreviewCard.swift

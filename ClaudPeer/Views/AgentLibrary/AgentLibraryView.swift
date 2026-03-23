@@ -9,6 +9,7 @@ struct AgentLibraryView: View {
     @State private var searchText = ""
     @State private var filterOrigin: AgentOriginFilter = .all
     @State private var showingNewAgent = false
+    @State private var showingFromPrompt = false
     @State private var editingAgent: Agent?
     @State private var showCatalog = false
 
@@ -53,23 +54,23 @@ struct AgentLibraryView: View {
                             }) {
                                 editingAgent = agent
                             }
-                            .accessibilityIdentifier("agentLibrary.card.\(agent.id.uuidString)")
+                            .xrayId("agentLibrary.card.\(agent.id.uuidString)")
                             .contextMenu {
                                 Button("Edit") {
                                     editingAgent = agent
                                 }
-                                .accessibilityIdentifier("agentLibrary.card.context.edit.\(agent.id.uuidString)")
+                                .xrayId("agentLibrary.card.context.edit.\(agent.id.uuidString)")
                                 Button("Duplicate") { duplicateAgent(agent) }
-                                    .accessibilityIdentifier("agentLibrary.card.context.duplicate.\(agent.id.uuidString)")
+                                    .xrayId("agentLibrary.card.context.duplicate.\(agent.id.uuidString)")
                                 Divider()
                                 Button("Delete", role: .destructive) { deleteAgent(agent) }
-                                    .accessibilityIdentifier("agentLibrary.card.context.delete.\(agent.id.uuidString)")
+                                    .xrayId("agentLibrary.card.context.delete.\(agent.id.uuidString)")
                             }
                         }
                     }
                     .padding()
                 }
-                .accessibilityIdentifier("agentLibrary.agentGrid")
+                .xrayId("agentLibrary.agentGrid")
             }
         }
         .sheet(item: $editingAgent) { agent in
@@ -83,6 +84,12 @@ struct AgentLibraryView: View {
                 showingNewAgent = false
             }
             .frame(minWidth: 600, minHeight: 500)
+        }
+        .sheet(isPresented: $showingFromPrompt) {
+            AgentFromPromptSheet(onSave: { _ in
+                showingFromPrompt = false
+            })
+            .frame(minWidth: 560, minHeight: 400)
         }
         .sheet(isPresented: $showCatalog) {
             CatalogBrowserView()
@@ -111,14 +118,14 @@ struct AgentLibraryView: View {
                 Text("Browse Catalog")
             }
             .buttonStyle(.borderedProminent)
-            .accessibilityIdentifier("agentLibrary.emptyState.browseCatalogButton")
+            .xrayId("agentLibrary.emptyState.browseCatalogButton")
             Text("or")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
             Button("Create Custom Agent") {
                 showingNewAgent = true
             }
-            .accessibilityIdentifier("agentLibrary.emptyState.createAgentButton")
+            .xrayId("agentLibrary.emptyState.createAgentButton")
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -130,7 +137,7 @@ struct AgentLibraryView: View {
             Text("Agent Library")
                 .font(.title2)
                 .fontWeight(.semibold)
-                .accessibilityIdentifier("agentLibrary.title")
+                .xrayId("agentLibrary.title")
             Spacer()
 
             Picker("Filter", selection: $filterOrigin) {
@@ -140,12 +147,20 @@ struct AgentLibraryView: View {
             }
             .pickerStyle(.segmented)
             .frame(width: 200)
-            .accessibilityIdentifier("agentLibrary.originFilter")
+            .xrayId("agentLibrary.originFilter")
 
             TextField("Search...", text: $searchText)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 180)
-                .accessibilityIdentifier("agentLibrary.searchField")
+                .xrayId("agentLibrary.searchField")
+
+            Button {
+                showingFromPrompt = true
+            } label: {
+                Label("From Prompt", systemImage: "wand.and.stars")
+            }
+            .help("Create agent from a natural language description")
+            .xrayId("agentLibrary.fromPromptButton")
 
             Button {
                 showingNewAgent = true
@@ -154,7 +169,7 @@ struct AgentLibraryView: View {
             }
             .buttonStyle(.borderedProminent)
             .help("Create a new agent")
-            .accessibilityIdentifier("agentLibrary.newAgentButton")
+            .xrayId("agentLibrary.newAgentButton")
 
             Button {
                 showCatalog = true
@@ -162,7 +177,7 @@ struct AgentLibraryView: View {
                 Label("Catalog", systemImage: "square.grid.2x2")
             }
             .help("Browse catalog")
-            .accessibilityIdentifier("agentLibrary.catalogButton")
+            .xrayId("agentLibrary.catalogButton")
 
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
@@ -170,7 +185,7 @@ struct AgentLibraryView: View {
             }
             .buttonStyle(.borderless)
             .help("Close")
-            .accessibilityIdentifier("agentLibrary.closeButton")
+            .xrayId("agentLibrary.closeButton")
             .accessibilityLabel("Close")
         }
         .padding()

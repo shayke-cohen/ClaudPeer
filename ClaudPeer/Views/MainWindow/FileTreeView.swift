@@ -17,7 +17,7 @@ struct FileTreeView: View {
             if isLoading && rootNodes.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .accessibilityIdentifier("inspector.fileTree.loading")
+                    .xrayId("inspector.fileTree.loading")
             } else {
                 List {
                     ForEach(filteredNodes) { node in
@@ -32,7 +32,7 @@ struct FileTreeView: View {
                     }
                 }
                 .listStyle(.sidebar)
-                .accessibilityIdentifier("inspector.fileTree.list")
+                .xrayId("inspector.fileTree.list")
             }
         }
         .task { await loadTree() }
@@ -133,7 +133,7 @@ private struct FileTreeRow: View {
                 }
             }
         }
-        .accessibilityIdentifier("inspector.fileTree.directoryRow.\(node.name)")
+        .xrayId("inspector.fileTree.directoryRow.\(node.name)")
     }
 
     @ViewBuilder
@@ -157,7 +157,7 @@ private struct FileTreeRow: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("inspector.fileTree.fileRow.\(node.name)")
+        .xrayId("inspector.fileTree.fileRow.\(node.name)")
     }
 
     @ViewBuilder

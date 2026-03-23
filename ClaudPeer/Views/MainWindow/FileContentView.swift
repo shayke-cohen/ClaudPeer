@@ -67,7 +67,7 @@ struct FileContentView: View {
             }
             .buttonStyle(.borderless)
             .help("Back to file tree")
-            .accessibilityIdentifier("inspector.fileContent.backButton")
+            .xrayId("inspector.fileContent.backButton")
             .accessibilityLabel("Back to file tree")
 
             Image(systemName: FileSystemService.fileIcon(for: node.fileExtension))
@@ -79,7 +79,7 @@ struct FileContentView: View {
                 .fontWeight(.medium)
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .accessibilityIdentifier("inspector.fileContent.fileName")
+                .xrayId("inspector.fileContent.fileName")
 
             Spacer()
 
@@ -132,7 +132,7 @@ struct FileContentView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 4)
-        .accessibilityIdentifier("inspector.fileContent.metadataBar")
+        .xrayId("inspector.fileContent.metadataBar")
     }
 
     // MARK: - Mode Picker
@@ -146,7 +146,7 @@ struct FileContentView: View {
         .pickerStyle(.segmented)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .accessibilityIdentifier("inspector.fileContent.modePicker")
+        .xrayId("inspector.fileContent.modePicker")
     }
 
     // MARK: - Content
@@ -156,7 +156,7 @@ struct FileContentView: View {
         if isLoading {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityIdentifier("inspector.fileContent.loading")
+                .xrayId("inspector.fileContent.loading")
         } else if isBinary {
             binaryPlaceholder
         } else {
@@ -179,7 +179,7 @@ struct FileContentView: View {
                     .padding(10)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .accessibilityIdentifier("inspector.fileContent.markdownPreview")
+            .xrayId("inspector.fileContent.markdownPreview")
         } else {
             emptyContentPlaceholder
         }
@@ -191,7 +191,7 @@ struct FileContentView: View {
             let lang = FileSystemService.languageForExtension(node.fileExtension)
             HighlightedCodeView(code: content, language: lang, showLineNumbers: true)
                 .frame(maxWidth: .infinity, minHeight: 80, maxHeight: .infinity)
-                .accessibilityIdentifier("inspector.fileContent.sourceView")
+                .xrayId("inspector.fileContent.sourceView")
         } else {
             emptyContentPlaceholder
         }
@@ -201,10 +201,10 @@ struct FileContentView: View {
     private var diffView: some View {
         if let diff = diffContent, !diff.isEmpty {
             DiffTextView(diffText: diff)
-                .accessibilityIdentifier("inspector.fileContent.diffView")
+                .xrayId("inspector.fileContent.diffView")
         } else if node.gitStatus == .untracked, let content = fileContent {
             DiffTextView(diffText: allAddedDiff(content))
-                .accessibilityIdentifier("inspector.fileContent.diffView")
+                .xrayId("inspector.fileContent.diffView")
         } else {
             ContentUnavailableView("No Changes", systemImage: "checkmark.circle", description: Text("This file has no uncommitted changes."))
         }
@@ -226,14 +226,15 @@ struct FileContentView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
+            .xrayId("inspector.fileContent.openInDefaultAppButton")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityIdentifier("inspector.fileContent.binaryPlaceholder")
+        .xrayId("inspector.fileContent.binaryPlaceholder")
     }
 
     private var emptyContentPlaceholder: some View {
         ContentUnavailableView("Unable to Read", systemImage: "exclamationmark.triangle", description: Text("Could not read file contents."))
-            .accessibilityIdentifier("inspector.fileContent.emptyPlaceholder")
+            .xrayId("inspector.fileContent.emptyPlaceholder")
     }
 
     // MARK: - Actions
@@ -249,7 +250,7 @@ struct FileContentView: View {
             .buttonStyle(.bordered)
             .controlSize(.mini)
             .help("Open in default editor")
-            .accessibilityIdentifier("inspector.fileContent.openInEditorButton")
+            .xrayId("inspector.fileContent.openInEditorButton")
 
             Button {
                 NSPasteboard.general.clearContents()
@@ -261,7 +262,7 @@ struct FileContentView: View {
             .buttonStyle(.bordered)
             .controlSize(.mini)
             .help("Copy file path to clipboard")
-            .accessibilityIdentifier("inspector.fileContent.copyPathButton")
+            .xrayId("inspector.fileContent.copyPathButton")
 
             Spacer()
         }

@@ -103,7 +103,7 @@ struct WorkingDirectoryPicker: View {
                     .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("directoryPicker.recent.\(index)")
+                .xrayId("directoryPicker.recent.\(index)")
             }
         }
     }
@@ -118,14 +118,14 @@ struct WorkingDirectoryPicker: View {
             HStack(spacing: 8) {
                 TextField("~/projects/my-app", text: $customPath)
                     .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("directoryPicker.customPathField")
+                    .xrayId("directoryPicker.customPathField")
                     .onSubmit {
                         let expanded = expandPath(customPath)
                         if !expanded.isEmpty { onSelect(expanded) }
                     }
 
                 Button("Browse...") { browse() }
-                    .accessibilityIdentifier("directoryPicker.browseButton")
+                    .xrayId("directoryPicker.browseButton")
             }
         }
     }
@@ -137,7 +137,7 @@ struct WorkingDirectoryPicker: View {
             Button("Use Home Directory") {
                 onSelect(NSHomeDirectory())
             }
-            .accessibilityIdentifier("directoryPicker.useHomeButton")
+            .xrayId("directoryPicker.useHomeButton")
 
             Spacer()
 
@@ -147,7 +147,7 @@ struct WorkingDirectoryPicker: View {
                     if !expanded.isEmpty { onSelect(expanded) }
                 }
                 .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("directoryPicker.useCustomButton")
+                .xrayId("directoryPicker.useCustomButton")
             }
         }
         .padding(16)

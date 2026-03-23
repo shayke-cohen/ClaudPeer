@@ -28,7 +28,7 @@ struct CodeBlockView: View {
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
                     .textCase(.lowercase)
-                    .accessibilityIdentifier("codeBlock.languageLabel")
+                    .xrayId("codeBlock.languageLabel")
             }
 
             Spacer()
@@ -46,7 +46,7 @@ struct CodeBlockView: View {
             }
             .buttonStyle(.borderless)
             .help("Copy code to clipboard")
-            .accessibilityIdentifier("codeBlock.copyButton")
+            .xrayId("codeBlock.copyButton")
             .accessibilityLabel("Copy code")
         }
         .padding(.horizontal, 10)
@@ -62,7 +62,7 @@ struct CodeBlockView: View {
             showLineNumbers: false
         )
         .frame(minHeight: 40, maxHeight: 400)
-        .accessibilityIdentifier("codeBlock.codeScrollView")
+        .xrayId("codeBlock.codeScrollView")
     }
 
     private func copyToClipboard() {

@@ -7,22 +7,22 @@ struct SettingsView: View {
                 .tabItem {
                     Label("General", systemImage: "gear")
                 }
-                .accessibilityIdentifier("settings.tab.general")
+                .xrayId("settings.tab.general")
 
             ConnectionSettingsTab()
                 .tabItem {
                     Label("Connection", systemImage: "network")
                 }
-                .accessibilityIdentifier("settings.tab.connection")
+                .xrayId("settings.tab.connection")
 
             DeveloperSettingsTab()
                 .tabItem {
                     Label("Developer", systemImage: "wrench.and.screwdriver")
                 }
-                .accessibilityIdentifier("settings.tab.developer")
+                .xrayId("settings.tab.developer")
         }
         .frame(width: 480)
-        .accessibilityIdentifier("settings.tabView")
+        .xrayId("settings.tabView")
     }
 }
 
@@ -56,7 +56,7 @@ private struct GeneralSettingsTab: View {
                 }
             }
             .pickerStyle(.segmented)
-            .accessibilityIdentifier("settings.general.appearancePicker")
+            .xrayId("settings.general.appearancePicker")
 
             Divider()
 
@@ -65,10 +65,10 @@ private struct GeneralSettingsTab: View {
                     Text(model.label).tag(model)
                 }
             }
-            .accessibilityIdentifier("settings.general.defaultModelPicker")
+            .xrayId("settings.general.defaultModelPicker")
 
             Stepper("Default Max Turns: \(defaultMaxTurns)", value: $defaultMaxTurns, in: 1...200)
-                .accessibilityIdentifier("settings.general.defaultMaxTurnsStepper")
+                .xrayId("settings.general.defaultMaxTurnsStepper")
 
             HStack {
                 Text("Default Max Budget")
@@ -77,7 +77,7 @@ private struct GeneralSettingsTab: View {
                     .frame(width: 80)
                     .textFieldStyle(.roundedBorder)
                     .multilineTextAlignment(.trailing)
-                    .accessibilityIdentifier("settings.general.defaultMaxBudgetField")
+                    .xrayId("settings.general.defaultMaxBudgetField")
                 Text(defaultMaxBudget == 0 ? "(unlimited)" : "")
                     .foregroundStyle(.secondary)
                     .font(.caption)
@@ -108,18 +108,18 @@ private struct ConnectionSettingsTab: View {
                             Text("ws://localhost:\(appState.allocatedWsPort)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .accessibilityIdentifier("settings.connection.statusURL")
+                                .xrayId("settings.connection.statusURL")
                         }
                     }
                     Spacer()
                     statusActions
                 }
-                .accessibilityIdentifier("settings.connection.statusRow")
+                .xrayId("settings.connection.statusRow")
             }
 
             Section("Preferences") {
                 Toggle("Auto-connect on Launch", isOn: $autoConnectSidecar)
-                    .accessibilityIdentifier("settings.connection.autoConnectToggle")
+                    .xrayId("settings.connection.autoConnectToggle")
             }
 
             Section("Ports") {
@@ -130,7 +130,7 @@ private struct ConnectionSettingsTab: View {
                         .frame(width: 80)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.trailing)
-                        .accessibilityIdentifier("settings.connection.wsPortField")
+                        .xrayId("settings.connection.wsPortField")
                 }
 
                 HStack {
@@ -140,7 +140,7 @@ private struct ConnectionSettingsTab: View {
                         .frame(width: 80)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.trailing)
-                        .accessibilityIdentifier("settings.connection.httpPortField")
+                        .xrayId("settings.connection.httpPortField")
                 }
 
                 Text("Changes take effect after restarting the sidecar.")
@@ -186,14 +186,14 @@ private struct ConnectionSettingsTab: View {
                 appState.connectSidecar()
             }
             .controlSize(.small)
-            .accessibilityIdentifier("settings.connection.reconnectButton")
+            .xrayId("settings.connection.reconnectButton")
 
             Button("Stop") {
                 appState.disconnectSidecar()
             }
             .controlSize(.small)
             .foregroundStyle(.red)
-            .accessibilityIdentifier("settings.connection.stopButton")
+            .xrayId("settings.connection.stopButton")
 
         case .disconnected, .error:
             Button("Connect") {
@@ -201,7 +201,7 @@ private struct ConnectionSettingsTab: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
-            .accessibilityIdentifier("settings.connection.connectButton")
+            .xrayId("settings.connection.connectButton")
 
         case .connecting:
             EmptyView()
@@ -233,11 +233,11 @@ private struct DeveloperSettingsTab: View {
                     HStack {
                         TextField("Auto-detect", text: $bunPathOverride)
                             .textFieldStyle(.roundedBorder)
-                            .accessibilityIdentifier("settings.developer.bunPathField")
+                            .xrayId("settings.developer.bunPathField")
                         Button("Browse...") {
                             browseBunPath()
                         }
-                        .accessibilityIdentifier("settings.developer.bunPathBrowseButton")
+                        .xrayId("settings.developer.bunPathBrowseButton")
                     }
                     if bunPathOverride.isEmpty {
                         Text("Will search: /opt/homebrew/bin/bun, /usr/local/bin/bun, ~/.bun/bin/bun")
@@ -251,11 +251,11 @@ private struct DeveloperSettingsTab: View {
                     HStack {
                         TextField("Auto-detect", text: $sidecarPath)
                             .textFieldStyle(.roundedBorder)
-                            .accessibilityIdentifier("settings.developer.sidecarPathField")
+                            .xrayId("settings.developer.sidecarPathField")
                         Button("Browse...") {
                             browseProjectPath()
                         }
-                        .accessibilityIdentifier("settings.developer.sidecarPathBrowseButton")
+                        .xrayId("settings.developer.sidecarPathBrowseButton")
                     }
                     Text("Root directory containing the sidecar/ folder.")
                         .font(.caption)
@@ -269,11 +269,11 @@ private struct DeveloperSettingsTab: View {
                     HStack {
                         TextField("~/.claudpeer", text: $dataDirectory)
                             .textFieldStyle(.roundedBorder)
-                            .accessibilityIdentifier("settings.developer.dataDirectoryField")
+                            .xrayId("settings.developer.dataDirectoryField")
                         Button("Browse...") {
                             browseDataDirectory()
                         }
-                        .accessibilityIdentifier("settings.developer.dataDirectoryBrowseButton")
+                        .xrayId("settings.developer.dataDirectoryBrowseButton")
                     }
                     Text("Stores logs, blackboard data, repos, and sandboxes.")
                         .font(.caption)
@@ -287,7 +287,7 @@ private struct DeveloperSettingsTab: View {
                         Text(level.label).tag(level)
                     }
                 }
-                .accessibilityIdentifier("settings.developer.logLevelPicker")
+                .xrayId("settings.developer.logLevelPicker")
             }
 
             Section {
@@ -295,14 +295,14 @@ private struct DeveloperSettingsTab: View {
                     Button("Open Data Directory in Finder") {
                         openDataDirectory()
                     }
-                    .accessibilityIdentifier("settings.developer.openDataDirectoryButton")
+                    .xrayId("settings.developer.openDataDirectoryButton")
 
                     Spacer()
 
                     Button("Reset All Settings", role: .destructive) {
                         showResetConfirmation = true
                     }
-                    .accessibilityIdentifier("settings.developer.resetSettingsButton")
+                    .xrayId("settings.developer.resetSettingsButton")
                     .confirmationDialog(
                         "Reset all settings to defaults?",
                         isPresented: $showResetConfirmation,

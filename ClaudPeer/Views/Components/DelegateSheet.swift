@@ -31,7 +31,7 @@ struct DelegateSheet: View {
                     .scrollContentBackground(.hidden)
                     .padding(8)
                     .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary))
-                    .accessibilityIdentifier("delegate.taskField")
+                    .xrayId("delegate.taskField")
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -47,7 +47,7 @@ struct DelegateSheet: View {
                     .scrollContentBackground(.hidden)
                     .padding(8)
                     .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary))
-                    .accessibilityIdentifier("delegate.contextField")
+                    .xrayId("delegate.contextField")
             }
 
             Toggle(isOn: $waitForResult) {
@@ -58,12 +58,12 @@ struct DelegateSheet: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .accessibilityIdentifier("delegate.waitToggle")
+            .xrayId("delegate.waitToggle")
 
             HStack {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                    .accessibilityIdentifier("delegate.cancelButton")
+                    .xrayId("delegate.cancelButton")
 
                 Spacer()
 
@@ -75,7 +75,7 @@ struct DelegateSheet: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(taskText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .keyboardShortcut(.defaultAction)
-                .accessibilityIdentifier("delegate.submitButton")
+                .xrayId("delegate.submitButton")
             }
         }
         .padding(20)
@@ -104,7 +104,7 @@ struct DelegateSheet: View {
                     .lineLimit(2)
             }
         }
-        .accessibilityIdentifier("delegate.agentHeader")
+        .xrayId("delegate.agentHeader")
     }
 
     private func performDelegation() {

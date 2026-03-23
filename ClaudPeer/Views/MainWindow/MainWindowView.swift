@@ -24,7 +24,7 @@ struct MainWindowView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(SplitViewConfigurator(autosaveName: "claudpeer.chatInspectorSplit"))
-                    .accessibilityIdentifier("mainWindow.chatInspectorSplit")
+                    .xrayId("mainWindow.chatInspectorSplit")
                 } else {
                     mainDetailPane
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -43,7 +43,7 @@ struct MainWindowView: View {
                 }
                 .keyboardShortcut("n", modifiers: .command)
                 .help("New session (⌘N)")
-                .accessibilityIdentifier("mainWindow.newSessionButton")
+                .xrayId("mainWindow.newSessionButton")
 
                 Button {
                     createQuickChat()
@@ -52,7 +52,7 @@ struct MainWindowView: View {
                 }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 .help("Quick chat (⌘⇧N)")
-                .accessibilityIdentifier("mainWindow.quickChatButton")
+                .xrayId("mainWindow.quickChatButton")
             }
 
             ToolbarItem(placement: .status) {
@@ -67,7 +67,7 @@ struct MainWindowView: View {
                 }
                 .keyboardShortcut("a", modifiers: [.command, .shift])
                 .help("Agent comms (⌘⇧A)")
-                .accessibilityIdentifier("mainWindow.agentCommsButton")
+                .xrayId("mainWindow.agentCommsButton")
                 .badge(appState.commsEvents.count)
             }
 
@@ -79,7 +79,7 @@ struct MainWindowView: View {
                 }
                 .keyboardShortcut("p", modifiers: [.command, .shift])
                 .help("Peer network (⌘⇧P)")
-                .accessibilityIdentifier("mainWindow.peerNetworkButton")
+                .xrayId("mainWindow.peerNetworkButton")
             }
 
             ToolbarItem(placement: .automatic) {
@@ -93,7 +93,7 @@ struct MainWindowView: View {
                 }
                 .keyboardShortcut("0", modifiers: [.command, .option])
                 .help(inspectorVisible ? "Hide inspector (⌘⌥0)" : "Show inspector (⌘⌥0)")
-                .accessibilityIdentifier("mainWindow.inspectorToggle")
+                .xrayId("mainWindow.inspectorToggle")
             }
         }
         .sheet(isPresented: $appState.showNewSessionSheet) {
@@ -131,7 +131,7 @@ struct MainWindowView: View {
                 systemImage: "bubble.left.and.bubble.right",
                 description: Text("Select a conversation from the sidebar or start a new one.")
             )
-            .accessibilityIdentifier("mainWindow.noConversationPlaceholder")
+            .xrayId("mainWindow.noConversationPlaceholder")
         }
     }
 
@@ -144,7 +144,7 @@ struct MainWindowView: View {
             Text("Inspector")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityIdentifier("mainWindow.inspectorPlaceholder")
+                .xrayId("mainWindow.inspectorPlaceholder")
         }
     }
 
@@ -166,7 +166,7 @@ struct MainWindowView: View {
         }
         .buttonStyle(.plain)
         .help("Sidecar status")
-        .accessibilityIdentifier("mainWindow.sidecarStatusPill")
+        .xrayId("mainWindow.sidecarStatusPill")
         .accessibilityLabel("Sidecar \(statusShortLabel)")
         .popover(isPresented: $showStatusPopover, arrowEdge: .bottom) {
             statusPopoverContent
@@ -230,7 +230,7 @@ struct MainWindowView: View {
                         appState.connectSidecar()
                     }
                     .controlSize(.small)
-                    .accessibilityIdentifier("mainWindow.statusPopover.reconnectButton")
+                    .xrayId("mainWindow.statusPopover.reconnectButton")
 
                     Button("Stop") {
                         showStatusPopover = false
@@ -238,7 +238,7 @@ struct MainWindowView: View {
                     }
                     .controlSize(.small)
                     .foregroundStyle(.red)
-                    .accessibilityIdentifier("mainWindow.statusPopover.stopButton")
+                    .xrayId("mainWindow.statusPopover.stopButton")
 
                 case .disconnected, .error:
                     Button("Connect") {
@@ -247,7 +247,7 @@ struct MainWindowView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
-                    .accessibilityIdentifier("mainWindow.statusPopover.connectButton")
+                    .xrayId("mainWindow.statusPopover.connectButton")
 
                 case .connecting:
                     Text("Connecting...")
@@ -258,7 +258,7 @@ struct MainWindowView: View {
         }
         .padding()
         .frame(width: 240)
-        .accessibilityIdentifier("mainWindow.statusPopover")
+        .xrayId("mainWindow.statusPopover")
     }
 
     // MARK: - Actions

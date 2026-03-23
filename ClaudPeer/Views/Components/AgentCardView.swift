@@ -19,11 +19,11 @@ struct AgentCardView: View {
                     Text(agent.name)
                         .font(.headline)
                         .lineLimit(1)
-                        .accessibilityIdentifier("agentCard.name")
+                        .xrayId("agentCard.name")
                     Text(originLabel)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("agentCard.originLabel")
+                        .xrayId("agentCard.originLabel")
                 }
                 Spacer()
             }
@@ -33,7 +33,7 @@ struct AgentCardView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
-                    .accessibilityIdentifier("agentCard.description")
+                    .xrayId("agentCard.description")
             }
 
             Divider()
@@ -54,11 +54,11 @@ struct AgentCardView: View {
                 Button("Start", action: onStart)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
-                    .accessibilityIdentifier("agentCard.startButton")
+                    .xrayId("agentCard.startButton")
 
                 Button("Edit", action: onEdit)
                     .controlSize(.small)
-                    .accessibilityIdentifier("agentCard.editButton")
+                    .xrayId("agentCard.editButton")
             }
         }
         .padding(12)

@@ -37,12 +37,12 @@ struct MCPLibraryView: View {
             } else {
                 List(filteredMCPs) { mcp in
                     mcpRow(mcp)
-                        .accessibilityIdentifier("mcpLibrary.mcpRow.\(mcp.id.uuidString)")
+                        .xrayId("mcpLibrary.mcpRow.\(mcp.id.uuidString)")
                         .contextMenu {
                             Button("Edit") { editingMCP = mcp }
-                                .accessibilityIdentifier("mcpLibrary.contextMenu.edit.\(mcp.id.uuidString)")
+                                .xrayId("mcpLibrary.contextMenu.edit.\(mcp.id.uuidString)")
                             Button("Duplicate") { duplicateMCP(mcp) }
-                                .accessibilityIdentifier("mcpLibrary.contextMenu.duplicate.\(mcp.id.uuidString)")
+                                .xrayId("mcpLibrary.contextMenu.duplicate.\(mcp.id.uuidString)")
                             Divider()
                             Button("Delete", role: .destructive) {
                                 if skillsUsing(mcp).isEmpty {
@@ -52,11 +52,11 @@ struct MCPLibraryView: View {
                                     showDeleteConfirmation = true
                                 }
                             }
-                            .accessibilityIdentifier("mcpLibrary.contextMenu.delete.\(mcp.id.uuidString)")
+                            .xrayId("mcpLibrary.contextMenu.delete.\(mcp.id.uuidString)")
                         }
                 }
                 .listStyle(.inset)
-                .accessibilityIdentifier("mcpLibrary.mcpList")
+                .xrayId("mcpLibrary.mcpList")
             }
         }
         .sheet(item: $editingMCP) { mcp in
@@ -106,20 +106,20 @@ struct MCPLibraryView: View {
             TextField("Search...", text: $searchText)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 200)
-                .accessibilityIdentifier("mcpLibrary.searchField")
+                .xrayId("mcpLibrary.searchField")
             Button {
                 showingNewMCP = true
             } label: {
                 Label("New", systemImage: "plus")
             }
             .buttonStyle(.borderedProminent)
-            .accessibilityIdentifier("mcpLibrary.newButton")
+            .xrayId("mcpLibrary.newButton")
             Button {
                 showCatalog = true
             } label: {
                 Label("Catalog", systemImage: "square.grid.2x2")
             }
-            .accessibilityIdentifier("mcpLibrary.catalogButton")
+            .xrayId("mcpLibrary.catalogButton")
             Button {
                 dismiss()
             } label: {
@@ -128,7 +128,7 @@ struct MCPLibraryView: View {
             }
             .buttonStyle(.borderless)
             .help("Close")
-            .accessibilityIdentifier("mcpLibrary.closeButton")
+            .xrayId("mcpLibrary.closeButton")
             .accessibilityLabel("Close")
         }
         .padding()
@@ -200,7 +200,7 @@ struct MCPLibraryView: View {
             .fill(color)
             .frame(width: 10, height: 10)
             .accessibilityLabel(String(describing: status))
-            .accessibilityIdentifier("mcpLibrary.statusDot")
+            .xrayId("mcpLibrary.statusDot")
     }
 
     private func skillsUsing(_ mcp: MCPServer) -> [Skill] {
@@ -262,25 +262,25 @@ private struct MCPCatalogSheet: View {
                         try? modelContext.save()
                     }
                     .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier("mcpCatalogSheet.installButton.\(entry.catalogId)")
+                    .xrayId("mcpCatalogSheet.installButton.\(entry.catalogId)")
                 }
                 .padding(.vertical, 2)
-                .accessibilityIdentifier("mcpCatalogSheet.row.\(entry.catalogId)")
+                .xrayId("mcpCatalogSheet.row.\(entry.catalogId)")
                 .contextMenu {
                     Button("Install") {
                         CatalogService.shared.installMCP(entry.catalogId, into: modelContext)
                         try? modelContext.save()
                     }
-                    .accessibilityIdentifier("mcpCatalogSheet.contextMenu.install.\(entry.catalogId)")
+                    .xrayId("mcpCatalogSheet.contextMenu.install.\(entry.catalogId)")
                 }
             }
-            .accessibilityIdentifier("mcpCatalogSheet.list")
+            .xrayId("mcpCatalogSheet.list")
             .navigationTitle("MCP Catalog")
             .searchable(text: $searchText, prompt: "Search catalog")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
-                        .accessibilityIdentifier("mcpCatalogSheet.doneButton")
+                        .xrayId("mcpCatalogSheet.doneButton")
                 }
             }
         }

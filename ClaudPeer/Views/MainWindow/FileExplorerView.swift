@@ -44,7 +44,7 @@ struct FileExplorerView: View {
                 .lineLimit(1)
                 .truncationMode(.head)
                 .help(workingDirectory)
-                .accessibilityIdentifier("inspector.fileTree.pathLabel")
+                .xrayId("inspector.fileTree.pathLabel")
 
             Spacer()
 
@@ -56,23 +56,23 @@ struct FileExplorerView: View {
             }
             .buttonStyle(.borderless)
             .help("Refresh file tree")
-            .accessibilityIdentifier("inspector.fileTree.refreshButton")
+            .xrayId("inspector.fileTree.refreshButton")
             .accessibilityLabel("Refresh file tree")
 
             Menu {
                 Toggle("Show Hidden Files", isOn: $showHidden)
-                    .accessibilityIdentifier("inspector.fileTree.showHiddenToggle")
+                    .xrayId("inspector.fileTree.showHiddenToggle")
                 Toggle("Changes Only", isOn: $changesOnly)
-                    .accessibilityIdentifier("inspector.fileTree.changesOnlyMenuToggle")
+                    .xrayId("inspector.fileTree.changesOnlyMenuToggle")
                 Divider()
                 Button("Reveal in Finder") {
                     NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: workingDirectory)
                 }
-                .accessibilityIdentifier("inspector.fileTree.revealInFinderButton")
+                .xrayId("inspector.fileTree.revealInFinderButton")
                 Button("Open in Terminal") {
                     openInTerminal(workingDirectory)
                 }
-                .accessibilityIdentifier("inspector.fileTree.openInTerminalButton")
+                .xrayId("inspector.fileTree.openInTerminalButton")
             } label: {
                 Image(systemName: "gearshape")
                     .font(.caption)
@@ -80,7 +80,7 @@ struct FileExplorerView: View {
             .menuStyle(.borderlessButton)
             .frame(width: 20)
             .help("File explorer settings")
-            .accessibilityIdentifier("inspector.fileTree.settingsButton")
+            .xrayId("inspector.fileTree.settingsButton")
             .accessibilityLabel("File explorer settings")
 
             Button {
@@ -92,7 +92,7 @@ struct FileExplorerView: View {
             }
             .buttonStyle(.borderless)
             .help(changesOnly ? "Show all files" : "Show changes only")
-            .accessibilityIdentifier("inspector.fileTree.changesOnlyToggle")
+            .xrayId("inspector.fileTree.changesOnlyToggle")
             .accessibilityLabel(changesOnly ? "Show all files" : "Show changes only")
         }
         .padding(.horizontal, 8)

@@ -29,7 +29,7 @@ struct SidebarView: View {
             }
             .listStyle(.sidebar)
             .searchable(text: $searchText, prompt: "Search conversations...")
-            .accessibilityIdentifier("sidebar.conversationList")
+            .xrayId("sidebar.conversationList")
 
             Divider()
 
@@ -60,6 +60,7 @@ struct SidebarView: View {
                     if appState.selectedConversationId == convo.id {
                         appState.selectedConversationId = nil
                     }
+                    appState.clearSessionActivity(for: convo.sessions.map(\.id.uuidString))
                     modelContext.delete(convo)
                     try? modelContext.save()
                 }
@@ -84,7 +85,7 @@ struct SidebarView: View {
             }
             .buttonStyle(.plain)
             .help("Browse catalog")
-            .accessibilityIdentifier("sidebar.catalogButton")
+            .xrayId("sidebar.catalogButton")
 
             Divider()
                 .frame(height: 16)
@@ -98,7 +99,7 @@ struct SidebarView: View {
             }
             .buttonStyle(.plain)
             .help("Agent library")
-            .accessibilityIdentifier("sidebar.agentsButton")
+            .xrayId("sidebar.agentsButton")
 
             Divider()
                 .frame(height: 16)
@@ -112,11 +113,11 @@ struct SidebarView: View {
             }
             .buttonStyle(.plain)
             .help("New session")
-            .accessibilityIdentifier("sidebar.newSessionButton")
+            .xrayId("sidebar.newSessionButton")
         }
         .padding(.vertical, 6)
         .background(.bar)
-        .accessibilityIdentifier("sidebar.bottomBar")
+        .xrayId("sidebar.bottomBar")
     }
 
     // MARK: - Empty State
@@ -143,7 +144,7 @@ struct SidebarView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .help("Start a new session")
-                .accessibilityIdentifier("sidebar.emptyState.newSessionButton")
+                .xrayId("sidebar.emptyState.newSessionButton")
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
@@ -225,7 +226,7 @@ struct SidebarView: View {
                     Label("Archived (\(visible.count))", systemImage: "archivebox")
                         .foregroundStyle(.secondary)
                 }
-                .accessibilityIdentifier("sidebar.archivedSection")
+                .xrayId("sidebar.archivedSection")
             }
         }
     }
@@ -322,12 +323,12 @@ struct SidebarView: View {
                             .clipShape(Capsule())
                     }
                 }
-                .accessibilityIdentifier("sidebar.agentRow.\(agent.id.uuidString)")
+                .xrayId("sidebar.agentRow.\(agent.id.uuidString)")
                 .contextMenu {
                     Button("Start Session") {
                         startSession(with: agent)
                     }
-                    .accessibilityIdentifier("sidebar.agentRow.startSession.\(agent.id.uuidString)")
+                    .xrayId("sidebar.agentRow.startSession.\(agent.id.uuidString)")
                 }
             }
         }
@@ -336,7 +337,8 @@ struct SidebarView: View {
     // MARK: - Conversation Row
 
     private func conversationRow(_ convo: Conversation) -> some View {
-        HStack(spacing: 8) {
+        let activity = appState.conversationActivity(for: convo)
+        return HStack(spacing: 8) {
             conversationIcon(convo)
             VStack(alignment: .leading, spacing: 2) {
                 Text(convo.topic ?? "Untitled")
@@ -361,16 +363,21 @@ struct SidebarView: View {
                             .lineLimit(1)
                     }
                 }
+                if case .working(let count) = activity.aggregate {
+                    Text(count == 1 ? "Agent working\u{2026}" : "\(count) agents working\u{2026}")
+                        .font(.caption2)
+                        .foregroundStyle(.blue)
+                        .lineLimit(1)
+                }
             }
             Spacer()
-            if convo.status == .active {
-                Circle()
-                    .fill(.green)
-                    .frame(width: 6, height: 6)
-                    .accessibilityLabel("Active")
-            }
+            SidebarActivityIndicator(
+                summary: activity,
+                conversationStatus: convo.status
+            )
+            .xrayId("sidebar.activityIndicator.\(convo.id.uuidString)")
         }
-        .accessibilityIdentifier("sidebar.conversationRow.\(convo.id.uuidString)")
+        .xrayId("sidebar.conversationRow.\(convo.id.uuidString)")
         .contextMenu {
             Button {
                 renameText = convo.topic ?? ""
@@ -540,10 +547,12 @@ struct SidebarView: View {
     private func closeConversation(_ convo: Conversation) {
         convo.status = .closed
         convo.closedAt = Date()
+        let sessionKeys = convo.sessions.map(\.id.uuidString)
         for session in convo.sessions {
             appState.sendToSidecar(.sessionPause(sessionId: session.id.uuidString))
             session.status = .paused
         }
+        appState.clearSessionActivity(for: sessionKeys)
         try? modelContext.save()
     }
 

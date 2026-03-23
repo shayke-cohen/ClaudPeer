@@ -55,7 +55,7 @@ struct ImagePreviewOverlay: View {
         }
         .frame(minWidth: 500, minHeight: 400)
         .background(.background)
-        .accessibilityIdentifier("imagePreview.overlay")
+        .xrayId("imagePreview.overlay")
         .task {
             loadImage()
         }
@@ -72,7 +72,7 @@ struct ImagePreviewOverlay: View {
             }
             .buttonStyle(.borderless)
             .keyboardShortcut(.escape, modifiers: [])
-            .accessibilityIdentifier("imagePreview.closeButton")
+            .xrayId("imagePreview.closeButton")
             .accessibilityLabel("Close preview")
             .help("Close (Esc)")
 
@@ -83,7 +83,7 @@ struct ImagePreviewOverlay: View {
                     Image(systemName: "plus.magnifyingglass")
                 }
                 .buttonStyle(.borderless)
-                .accessibilityIdentifier("imagePreview.zoomInButton")
+                .xrayId("imagePreview.zoomInButton")
                 .accessibilityLabel("Zoom in")
                 .help("Zoom in")
 
@@ -91,7 +91,7 @@ struct ImagePreviewOverlay: View {
                     Image(systemName: "minus.magnifyingglass")
                 }
                 .buttonStyle(.borderless)
-                .accessibilityIdentifier("imagePreview.zoomOutButton")
+                .xrayId("imagePreview.zoomOutButton")
                 .accessibilityLabel("Zoom out")
                 .help("Zoom out")
 
@@ -102,7 +102,7 @@ struct ImagePreviewOverlay: View {
                         .frame(minWidth: 40)
                 }
                 .buttonStyle(.borderless)
-                .accessibilityIdentifier("imagePreview.resetZoomButton")
+                .xrayId("imagePreview.resetZoomButton")
                 .accessibilityLabel("Reset zoom")
                 .help("Reset zoom")
 
@@ -112,7 +112,7 @@ struct ImagePreviewOverlay: View {
                     Image(systemName: "doc.on.doc")
                 }
                 .buttonStyle(.borderless)
-                .accessibilityIdentifier("imagePreview.copyButton")
+                .xrayId("imagePreview.copyButton")
                 .accessibilityLabel("Copy to clipboard")
                 .help("Copy to clipboard")
 
@@ -121,7 +121,7 @@ struct ImagePreviewOverlay: View {
                         Image(systemName: "folder")
                     }
                     .buttonStyle(.borderless)
-                    .accessibilityIdentifier("imagePreview.openInFinderButton")
+                    .xrayId("imagePreview.openInFinderButton")
                     .accessibilityLabel("Show in Finder")
                     .help("Show in Finder")
                 }

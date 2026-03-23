@@ -51,7 +51,7 @@ struct InspectorView: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .accessibilityIdentifier("inspector.tabPicker")
+                .xrayId("inspector.tabPicker")
             }
 
             switch inspectorTab {
@@ -97,7 +97,7 @@ struct InspectorView: View {
             }
             .padding()
         }
-        .accessibilityIdentifier("inspector.scrollView")
+        .xrayId("inspector.scrollView")
     }
 
     // MARK: - Session Section
@@ -107,9 +107,9 @@ struct InspectorView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Session", systemImage: "terminal")
                 .font(.headline)
-                .accessibilityIdentifier("inspector.sessionHeading")
+                .xrayId("inspector.sessionHeading")
 
-            InfoRow(label: "Status", value: session.status.rawValue.capitalized)
+            InfoRow(label: "Status", value: appState.sessionActivity[session.id.uuidString]?.displayLabel ?? session.status.rawValue.capitalized)
             InfoRow(label: "Model", value: modelShortName(session.agent?.model ?? ""))
             InfoRow(label: "Mode", value: session.mode.rawValue.capitalized)
 
@@ -124,7 +124,7 @@ struct InspectorView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Sessions in this conversation", systemImage: "person.3")
                 .font(.headline)
-                .accessibilityIdentifier("inspector.sessionsListHeading")
+                .xrayId("inspector.sessionsListHeading")
 
             ForEach(orderedSessions, id: \.id) { session in
                 multiSessionRow(session: session)
@@ -138,17 +138,24 @@ struct InspectorView: View {
         let agent = session.agent
         let liveTokens = live?.tokenCount ?? session.tokenCount
         let liveCost = live?.cost ?? session.totalCost
-        let streaming = live?.isStreaming == true ? "active" : session.status.rawValue.capitalized
+        let activityState = appState.sessionActivity[session.id.uuidString]
+        let statusText = activityState?.displayLabel ?? session.status.rawValue.capitalized
 
         VStack(alignment: .leading, spacing: 6) {
-            Text(agent?.name ?? "Agent")
-                .font(.subheadline)
-                .fontWeight(.semibold)
-            InfoRow(label: "Status", value: streaming)
+            HStack(spacing: 6) {
+                Text(agent?.name ?? "Agent")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                if let state = activityState, state.isActive {
+                    ActivityDot(state: state)
+                        .frame(width: 6, height: 6)
+                }
+            }
+            InfoRow(label: "Status", value: statusText)
             InfoRow(label: "Model", value: modelShortName(agent?.model ?? ""))
             InfoRow(label: "Tokens", value: formatNumber(liveTokens))
             InfoRow(label: "Cost", value: String(format: "$%.4f", liveCost))
-            InfoRow(label: "Tool Calls", value: "\(session.toolCallCount)")
+            InfoRow(label: "Tool Calls", value: "\(live?.toolCallCount ?? session.toolCallCount)")
             if let agent {
                 Button {
                     appState.showAgentLibrary = true
@@ -157,11 +164,11 @@ struct InspectorView: View {
                         .font(.caption)
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("inspector.sessionRow.agentLink.\(session.id.uuidString)")
+                .xrayId("inspector.sessionRow.agentLink.\(session.id.uuidString)")
             }
         }
         .padding(.vertical, 4)
-        .accessibilityIdentifier("inspector.sessionRow.\(session.id.uuidString)")
+        .xrayId("inspector.sessionRow.\(session.id.uuidString)")
     }
 
     // MARK: - Usage Section
@@ -172,13 +179,13 @@ struct InspectorView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Usage", systemImage: "chart.bar")
                 .font(.headline)
-                .accessibilityIdentifier("inspector.usageHeading")
+                .xrayId("inspector.usageHeading")
 
             let live = liveInfo(for: session)
             let liveTokens = live?.tokenCount ?? session.tokenCount
             let liveCost = live?.cost ?? session.totalCost
             let maxTurns = agent?.maxTurns ?? 30
-            let toolCalls = session.toolCallCount
+            let toolCalls = live?.toolCallCount ?? session.toolCallCount
 
             InfoRow(label: "Tokens", value: formatNumber(liveTokens))
             InfoRow(label: "Cost", value: String(format: "$%.4f", liveCost))
@@ -194,12 +201,12 @@ struct InspectorView: View {
                         .font(.caption)
                         .monospacedDigit()
                 }
-                .accessibilityIdentifier("inspector.turnsLabel")
+                .xrayId("inspector.turnsLabel")
 
                 ProgressView(value: min(Double(toolCalls), Double(maxTurns)), total: Double(maxTurns))
                     .tint(turnProgressColor(used: toolCalls, max: maxTurns))
                     .padding(.leading, 84)
-                    .accessibilityIdentifier("inspector.turnsProgress")
+                    .xrayId("inspector.turnsProgress")
             }
         }
     }
@@ -213,7 +220,7 @@ struct InspectorView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Working directory", systemImage: "folder")
                     .font(.headline)
-                    .accessibilityIdentifier("inspector.workspaceHeading")
+                    .xrayId("inspector.workspaceHeading")
 
                 InfoRow(label: "Path", value: abbreviatePath(session.workingDirectory))
 
@@ -228,7 +235,7 @@ struct InspectorView: View {
                     .controlSize(.small)
                     .help("Reveal working directory in Finder")
                     .accessibilityLabel("Reveal in Finder")
-                    .accessibilityIdentifier("inspector.openFinderButton")
+                    .xrayId("inspector.openFinderButton")
 
                     Button {
                         openInTerminal(session.workingDirectory)
@@ -239,7 +246,7 @@ struct InspectorView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .help("Open working directory in Terminal")
-                    .accessibilityIdentifier("inspector.openTerminalButton")
+                    .xrayId("inspector.openTerminalButton")
 
                     Button {
                         revealSandboxesRootInFinder()
@@ -250,7 +257,7 @@ struct InspectorView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .help("Open ~/.claudpeer/sandboxes in Finder")
-                    .accessibilityIdentifier("inspector.openSandboxesFinderButton")
+                    .xrayId("inspector.openSandboxesFinderButton")
                 }
             }
         }
@@ -265,7 +272,7 @@ struct InspectorView: View {
             Label("Agent", systemImage: agent.icon)
                 .font(.headline)
                 .foregroundStyle(Color.fromAgentColor(agent.color))
-                .accessibilityIdentifier("inspector.agentHeading")
+                .xrayId("inspector.agentHeading")
 
             Button {
                 appState.showAgentLibrary = true
@@ -280,7 +287,7 @@ struct InspectorView: View {
             }
             .buttonStyle(.plain)
             .help("Open \(agent.name) in editor")
-            .accessibilityIdentifier("inspector.agentNameButton")
+            .xrayId("inspector.agentNameButton")
 
             HStack(spacing: 12) {
                 Label("\(agent.skillIds.count) skills", systemImage: "book")
@@ -290,7 +297,7 @@ struct InspectorView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .accessibilityIdentifier("inspector.agentCapabilities")
+            .xrayId("inspector.agentCapabilities")
 
             InfoRow(label: "Policy", value: policyLabel(agent.instancePolicy))
         }
@@ -305,7 +312,7 @@ struct InspectorView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Label("History", systemImage: "clock")
                     .font(.headline)
-                    .accessibilityIdentifier("inspector.historyHeading")
+                    .xrayId("inspector.historyHeading")
 
                 InfoRow(label: "Started", value: convo.startedAt.formatted(.relative(presentation: .named)))
                 InfoRow(label: "Messages", value: "\(convo.messages.count)")
@@ -405,7 +412,7 @@ struct InfoRow: View {
                 .font(.caption)
                 .lineLimit(2)
         }
-        .accessibilityIdentifier("infoRow.\(label.lowercased().replacingOccurrences(of: " ", with: ""))")
+        .xrayId("infoRow.\(label.lowercased().replacingOccurrences(of: " ", with: ""))")
         .accessibilityLabel("\(label): \(value)")
     }
 }

@@ -8,7 +8,7 @@ struct MarkdownContent: View {
         Markdown(text)
             .markdownTheme(.claudPeer)
             .textSelection(.enabled)
-            .accessibilityIdentifier("markdownContent")
+            .xrayId("markdownContent")
     }
 }
 

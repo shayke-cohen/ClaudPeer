@@ -68,7 +68,7 @@ struct SkillEditorView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Close")
-                .accessibilityIdentifier("skillEditor.closeButton")
+                .xrayId("skillEditor.closeButton")
                 .accessibilityLabel("Close")
             }
             .padding()
@@ -76,23 +76,23 @@ struct SkillEditorView: View {
             Form {
                 Section("Basic Info") {
                     TextField("Name", text: $name)
-                        .accessibilityIdentifier("skillEditor.nameField")
+                        .xrayId("skillEditor.nameField")
                     TextField("Description", text: $skillDescription, axis: .vertical)
                         .lineLimit(3...8)
-                        .accessibilityIdentifier("skillEditor.descriptionField")
+                        .xrayId("skillEditor.descriptionField")
                     Picker("Category", selection: $category) {
                         ForEach(categoriesForPicker, id: \.self) { c in
                             Text(c).tag(c)
                         }
                     }
-                    .accessibilityIdentifier("skillEditor.categoryPicker")
+                    .xrayId("skillEditor.categoryPicker")
                     TextField("Version", text: $version)
-                        .accessibilityIdentifier("skillEditor.versionField")
+                        .xrayId("skillEditor.versionField")
                 }
 
                 Section {
                     TextField("Triggers (comma-separated)", text: $triggersText)
-                        .accessibilityIdentifier("skillEditor.triggersField")
+                        .xrayId("skillEditor.triggersField")
                 } header: {
                     Text("Triggers")
                 } footer: {
@@ -115,12 +115,12 @@ struct SkillEditorView: View {
                             Text("\(content.count) chars")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
-                                .accessibilityIdentifier("skillEditor.charCount")
+                                .xrayId("skillEditor.charCount")
                         }
                         TextEditor(text: $content)
                             .font(.system(.body, design: .monospaced))
                             .frame(minHeight: 160)
-                            .accessibilityIdentifier("skillEditor.contentEditor")
+                            .xrayId("skillEditor.contentEditor")
                     }
                 }
             }
@@ -133,13 +133,13 @@ struct SkillEditorView: View {
                 Button("Cancel") {
                     dismiss()
                 }
-                .accessibilityIdentifier("skillEditor.cancelButton")
+                .xrayId("skillEditor.cancelButton")
                 Button("Save") {
                     saveSkill()
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .accessibilityIdentifier("skillEditor.saveButton")
+                .xrayId("skillEditor.saveButton")
             }
             .padding()
         }
@@ -169,12 +169,12 @@ struct SkillEditorView: View {
                             }
                             .buttonStyle(.borderless)
                             .help("Remove MCP server")
-                            .accessibilityIdentifier("skillEditor.mcps.removeButton.\(mcp.id.uuidString)")
+                            .xrayId("skillEditor.mcps.removeButton.\(mcp.id.uuidString)")
                             .accessibilityLabel("Remove \(mcp.name)")
                         }
                     }
                 }
-                .accessibilityIdentifier("skillEditor.mcps.selectedList")
+                .xrayId("skillEditor.mcps.selectedList")
             }
             .frame(maxWidth: .infinity)
 
@@ -201,12 +201,12 @@ struct SkillEditorView: View {
                             }
                             .buttonStyle(.borderless)
                             .help("Add MCP server")
-                            .accessibilityIdentifier("skillEditor.mcps.addButton.\(mcp.id.uuidString)")
+                            .xrayId("skillEditor.mcps.addButton.\(mcp.id.uuidString)")
                             .accessibilityLabel("Add \(mcp.name)")
                         }
                     }
                 }
-                .accessibilityIdentifier("skillEditor.mcps.availableList")
+                .xrayId("skillEditor.mcps.availableList")
             }
             .frame(maxWidth: .infinity)
         }

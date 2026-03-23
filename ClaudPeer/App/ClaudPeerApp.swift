@@ -15,10 +15,7 @@ struct ClaudPeerApp: App {
 
     init() {
         #if DEBUG
-        AppXray.shared.start(config: AppXrayConfig(
-            appName: "ClaudPeer",
-            mode: .client
-        ))
+        AppXray.shared.start(appName: "ClaudPeer")
         #endif
 
         InstanceConfig.ensureDirectories()
@@ -82,7 +79,21 @@ struct ClaudPeerApp: App {
                 }
                 // Start P2P discovery & advertising so peers can find us even when the sheet is closed
                 p2pNetworkManager.attach(modelContext: modelContainer.mainContext)
+                p2pNetworkManager.sidecarManager = appState.sidecarManager
+                p2pNetworkManager.setSidecarWsPort(appState.allocatedWsPort)
                 p2pNetworkManager.start()
+
+                // Prune orphaned git worktrees from crashed sessions
+                Task {
+                    let ctx = modelContainer.mainContext
+                    let kind = "worktree"
+                    let descriptor = FetchDescriptor<Session>(predicate: #Predicate { s in
+                        s.workspaceTypeKind == kind
+                    })
+                    let worktreeSessions = (try? ctx.fetch(descriptor)) ?? []
+                    let active = worktreeSessions.filter { $0.status == .active || $0.status == .paused }
+                    await WorktreeCleanup.pruneOrphaned(activeSessions: active)
+                }
                 #if DEBUG
                 AppXray.shared.registerObservableObject(appState, name: "appState")
                 #endif

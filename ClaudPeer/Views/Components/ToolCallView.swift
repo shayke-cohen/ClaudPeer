@@ -19,7 +19,7 @@ struct ToolCallView: View {
                     Text(message.toolName ?? "Tool")
                         .font(.caption)
                         .fontWeight(.medium)
-                        .accessibilityIdentifier("toolCall.title.\(message.id.uuidString)")
+                        .xrayId("toolCall.title.\(message.id.uuidString)")
 
                     if message.type == .toolResult {
                         Text("completed")
@@ -39,7 +39,7 @@ struct ToolCallView: View {
             }
             .buttonStyle(.plain)
             .help(isExpanded ? "Collapse tool details" : "Expand tool details")
-            .accessibilityIdentifier("toolCall.toggleButton.\(message.id.uuidString)")
+            .xrayId("toolCall.toggleButton.\(message.id.uuidString)")
             .accessibilityLabel("\(message.toolName ?? "Tool") - \(isExpanded ? "collapse" : "expand")")
 
             if isExpanded {
@@ -79,6 +79,6 @@ struct ToolCallView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(.secondary.opacity(0.2), lineWidth: 0.5)
         )
-        .accessibilityIdentifier("toolCall.container.\(message.id.uuidString)")
+        .xrayId("toolCall.container.\(message.id.uuidString)")
     }
 }

@@ -31,7 +31,7 @@ struct AddAgentsToChatSheet: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Add agents")
                 .font(.headline)
-                .accessibilityIdentifier("addAgents.title")
+                .xrayId("addAgents.title")
 
             Text("Selected agents join this conversation and receive the next messages.")
                 .font(.caption)
@@ -52,7 +52,7 @@ struct AddAgentsToChatSheet: View {
                                 Text(agent.name)
                             }
                         }
-                        .accessibilityIdentifier("addAgents.toggle.\(agent.id.uuidString)")
+                        .xrayId("addAgents.toggle.\(agent.id.uuidString)")
                     }
                 }
             }
@@ -61,13 +61,13 @@ struct AddAgentsToChatSheet: View {
             HStack {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                    .accessibilityIdentifier("addAgents.cancelButton")
+                    .xrayId("addAgents.cancelButton")
                 Spacer()
                 Button("Add") { addSelected() }
                     .buttonStyle(.borderedProminent)
                     .disabled(selectedIds.isEmpty)
                     .keyboardShortcut(.defaultAction)
-                    .accessibilityIdentifier("addAgents.confirmButton")
+                    .xrayId("addAgents.confirmButton")
             }
         }
         .padding(20)

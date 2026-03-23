@@ -22,11 +22,19 @@ struct NewSessionSheet: View {
         case inheritOrDefault = 0
         case customFolder = 1
         case githubClone = 2
+        case worktree = 3
     }
 
     @State private var dirMode: SessionDirMode = .inheritOrDefault
+    @State private var worktreeBranch = ""
+    @State private var githubIssueNumber = ""
+    @State private var fetchedIssueTitle: String?
     @State private var isWorkspacePreparing = false
     @State private var workspacePrepError: String?
+    @State private var showCreateFromPrompt = false
+    @State private var createFromPromptText = ""
+    @Query(sort: \Skill.name) private var allSkills: [Skill]
+    @Query(sort: \MCPServer.name) private var allMCPs: [MCPServer]
 
     private var recentAgents: [Agent] {
         var seen = Set<UUID>()
@@ -63,6 +71,7 @@ struct NewSessionSheet: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    createFromPromptSection
                     if !recentAgents.isEmpty {
                         recentAgentsRow
                     }
@@ -71,7 +80,20 @@ struct NewSessionSheet: View {
                         Text("Selected: \(orderedSelectedAgents.map(\.name).joined(separator: ", "))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("newSession.selectedAgentsSummary")
+                            .xrayId("newSession.selectedAgentsSummary")
+                    }
+                    if orderedSelectedAgents.count == 1, let agent = orderedSelectedAgents.first {
+                        if agent.instancePolicyKind == "singleton" {
+                            Label("Singleton — new sessions reuse the existing one", systemImage: "1.circle")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                                .xrayId("newSession.policyLabel")
+                        } else if agent.instancePolicyKind == "pool" {
+                            Label("Pool (\(agent.instancePolicyPoolMax ?? 3) max) — sessions are load-balanced", systemImage: "square.3.layers.3d")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                                .xrayId("newSession.policyLabel")
+                        }
                     }
                     if let ga = singleAgentWithGithub {
                         githubWorkspaceSection(agent: ga)
@@ -109,12 +131,13 @@ struct NewSessionSheet: View {
             Text("Working directory")
                 .font(.headline)
             Picker("", selection: $dirMode) {
-                Text("Default / inherit").tag(SessionDirMode.inheritOrDefault)
-                Text("Custom folder").tag(SessionDirMode.customFolder)
-                Text("GitHub clone").tag(SessionDirMode.githubClone)
+                Text("Default").tag(SessionDirMode.inheritOrDefault)
+                Text("Custom").tag(SessionDirMode.customFolder)
+                Text("Clone").tag(SessionDirMode.githubClone)
+                Text("Worktree").tag(SessionDirMode.worktree)
             }
             .pickerStyle(.segmented)
-            .accessibilityIdentifier("newSession.githubWorkspaceModePicker")
+            .xrayId("newSession.githubWorkspaceModePicker")
 
             Group {
                 Text("Repo: \(repo)")
@@ -131,13 +154,13 @@ struct NewSessionSheet: View {
                 }
             }
             .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("newSession.githubStatusSummary")
+            .xrayId("newSession.githubStatusSummary")
 
             if let workspacePrepError {
                 Text(workspacePrepError)
                     .font(.caption)
                     .foregroundStyle(.red)
-                    .accessibilityIdentifier("newSession.githubWorkspaceError")
+                    .xrayId("newSession.githubWorkspaceError")
             }
 
             if dirMode == .githubClone {
@@ -154,9 +177,53 @@ struct NewSessionSheet: View {
                         Task { await prepareGithubClone(agent: agent) }
                     }
                     .disabled(isWorkspacePreparing)
-                    .accessibilityIdentifier("newSession.githubValidateButton")
+                    .xrayId("newSession.githubValidateButton")
                 }
             }
+
+            if dirMode == .worktree {
+                HStack {
+                    Text("Branch:")
+                        .font(.caption)
+                    TextField("feature/my-branch", text: $worktreeBranch)
+                        .textFieldStyle(.roundedBorder)
+                        .xrayId("newSession.worktreeBranchField")
+                }
+                let wtPath = WorkspaceResolver.worktreeDestinationPath(repoInput: repo, branch: worktreeBranch.isEmpty ? "branch" : worktreeBranch)
+                Text("Worktree: \(wtPath)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .textSelection(.enabled)
+                Text("Creates an isolated copy on this branch. The base clone is shared.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            // GitHub issue (optional, for any git workspace mode)
+            Divider()
+            HStack {
+                Text("Issue:")
+                    .font(.caption)
+                TextField("#123", text: $githubIssueNumber)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 80)
+                    .xrayId("newSession.githubIssueField")
+                if let title = fetchedIssueTitle {
+                    Text(title)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Button("Fetch") {
+                    Task { await fetchIssue(agent: agent) }
+                }
+                .disabled(githubIssueNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .xrayId("newSession.githubIssueFetchButton")
+            }
+            Text("Optional — fetches issue context into the agent's system prompt")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 4)
     }
@@ -164,6 +231,24 @@ struct NewSessionSheet: View {
     private func githubBranchLabel(_ agent: Agent) -> String {
         let b = agent.githubDefaultBranch?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return b.isEmpty ? "main" : b
+    }
+
+    private func fetchIssue(agent: Agent) async {
+        let numberStr = githubIssueNumber.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+        guard let number = Int(numberStr),
+              let repo = agent.githubRepo?.trimmingCharacters(in: .whitespacesAndNewlines), !repo.isEmpty else {
+            workspacePrepError = "Enter a valid issue number"
+            return
+        }
+        do {
+            let issue = try await GitHubIntegration.fetchIssue(repoInput: repo, issueNumber: number)
+            fetchedIssueTitle = issue.title
+            if mission.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                mission = issue.body
+            }
+        } catch {
+            workspacePrepError = error.localizedDescription
+        }
     }
 
     private func prepareGithubClone(agent: Agent) async {
@@ -189,7 +274,7 @@ struct NewSessionSheet: View {
             Text("New Session")
                 .font(.title2)
                 .fontWeight(.semibold)
-                .accessibilityIdentifier("newSession.title")
+                .xrayId("newSession.title")
             Spacer()
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
@@ -198,10 +283,117 @@ struct NewSessionSheet: View {
             }
             .buttonStyle(.borderless)
             .help("Close")
-            .accessibilityIdentifier("newSession.closeButton")
+            .xrayId("newSession.closeButton")
             .accessibilityLabel("Close")
         }
         .padding(16)
+    }
+
+    // MARK: - Create from Prompt
+
+    @ViewBuilder
+    private var createFromPromptSection: some View {
+        DisclosureGroup("Create agent from prompt", isExpanded: $showCreateFromPrompt) {
+            VStack(alignment: .leading, spacing: 10) {
+                if appState.generatedAgentSpec == nil && !appState.isGeneratingAgent {
+                    HStack(spacing: 8) {
+                        TextField("Describe an agent to create...", text: $createFromPromptText)
+                            .textFieldStyle(.roundedBorder)
+                            .xrayId("newSession.fromPrompt.textField")
+                        Button {
+                            generateAgentFromPrompt()
+                        } label: {
+                            Label("Generate", systemImage: "wand.and.stars")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .disabled(createFromPromptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .xrayId("newSession.fromPrompt.generateButton")
+                    }
+                    Text("e.g. \"A code reviewer focused on security\"")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+
+                if appState.isGeneratingAgent {
+                    HStack {
+                        ProgressView().scaleEffect(0.7)
+                        Text("Generating...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .xrayId("newSession.fromPrompt.loading")
+                }
+
+                if let error = appState.generateAgentError {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                            .font(.caption)
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .lineLimit(2)
+                        Button("Retry") { generateAgentFromPrompt() }
+                            .controlSize(.small)
+                            .xrayId("newSession.fromPrompt.retryButton")
+                    }
+                }
+
+                if let spec = appState.generatedAgentSpec {
+                    AgentPreviewCard(
+                        spec: spec,
+                        onSave: { agent in
+                            modelContext.insert(agent)
+                            try? modelContext.save()
+                            isFreeformChat = false
+                            selectedAgentIds = [agent.id]
+                            appState.generatedAgentSpec = nil
+                            appState.generateAgentError = nil
+                        },
+                        onSaveAndStart: { agent in
+                            modelContext.insert(agent)
+                            try? modelContext.save()
+                            isFreeformChat = false
+                            selectedAgentIds = [agent.id]
+                            appState.generatedAgentSpec = nil
+                            appState.generateAgentError = nil
+                            Task { await createSessionAsync() }
+                        },
+                        onCancel: {
+                            appState.generatedAgentSpec = nil
+                            appState.generateAgentError = nil
+                        }
+                    )
+                }
+            }
+            .padding(.top, 8)
+        }
+        .font(.headline)
+        .xrayId("newSession.fromPrompt.disclosure")
+    }
+
+    private func generateAgentFromPrompt() {
+        let skillEntries = allSkills.map { skill in
+            SkillCatalogEntry(
+                id: skill.id.uuidString,
+                name: skill.name,
+                description: skill.skillDescription,
+                category: skill.category
+            )
+        }
+        let mcpEntries = allMCPs.map { mcp in
+            MCPCatalogEntry(
+                id: mcp.id.uuidString,
+                name: mcp.name,
+                description: mcp.serverDescription
+            )
+        }
+        appState.requestAgentGeneration(
+            prompt: createFromPromptText.trimmingCharacters(in: .whitespacesAndNewlines),
+            skills: skillEntries,
+            mcps: mcpEntries
+        )
     }
 
     // MARK: - Recent Agents
@@ -248,7 +440,7 @@ struct NewSessionSheet: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("newSession.recentAgent.\(agent.id.uuidString)")
+                    .xrayId("newSession.recentAgent.\(agent.id.uuidString)")
                 }
                 Spacer()
             }
@@ -338,7 +530,7 @@ struct NewSessionSheet: View {
         }
         .buttonStyle(.plain)
         .help(name)
-        .accessibilityIdentifier(identifier)
+        .xrayId(identifier)
     }
 
     // MARK: - Options
@@ -362,7 +554,7 @@ struct NewSessionSheet: View {
                     }
                     .labelsHidden()
                     .frame(width: 220)
-                    .accessibilityIdentifier("newSession.modelPicker")
+                    .xrayId("newSession.modelPicker")
                 }
 
                 HStack(alignment: .firstTextBaseline) {
@@ -381,7 +573,7 @@ struct NewSessionSheet: View {
                     .pickerStyle(.segmented)
                     .frame(width: 280)
                     .labelsHidden()
-                    .accessibilityIdentifier("newSession.modePicker")
+                    .xrayId("newSession.modePicker")
                 }
 
                 modeDescription
@@ -395,7 +587,7 @@ struct NewSessionSheet: View {
                     TextField("Describe the goal for this session...", text: $mission, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .lineLimit(2...4)
-                        .accessibilityIdentifier("newSession.missionField")
+                        .xrayId("newSession.missionField")
                 }
 
                 HStack(alignment: .firstTextBaseline) {
@@ -405,8 +597,8 @@ struct NewSessionSheet: View {
                         .foregroundStyle(.secondary)
                     TextField("~/projects/my-app", text: $workingDirectory)
                         .textFieldStyle(.roundedBorder)
-                        .disabled(singleAgentWithGithub != nil && dirMode == .githubClone)
-                        .accessibilityIdentifier("newSession.workingDirectoryField")
+                        .disabled(singleAgentWithGithub != nil && (dirMode == .githubClone || dirMode == .worktree))
+                        .xrayId("newSession.workingDirectoryField")
                     Button {
                         pickDirectory()
                     } label: {
@@ -414,14 +606,14 @@ struct NewSessionSheet: View {
                     }
                     .buttonStyle(.borderless)
                     .help("Browse for directory")
-                    .disabled(singleAgentWithGithub != nil && dirMode == .githubClone)
-                    .accessibilityIdentifier("newSession.browseDirectoryButton")
+                    .disabled(singleAgentWithGithub != nil && (dirMode == .githubClone || dirMode == .worktree))
+                    .xrayId("newSession.browseDirectoryButton")
                     .accessibilityLabel("Browse for directory")
                 }
             }
             .padding(.top, 8)
         }
-        .accessibilityIdentifier("newSession.optionsDisclosure")
+        .xrayId("newSession.optionsDisclosure")
     }
 
     @ViewBuilder
@@ -440,7 +632,7 @@ struct NewSessionSheet: View {
             }
             .font(.caption)
             .foregroundStyle(.tertiary)
-            .accessibilityIdentifier("newSession.modeDescription")
+            .xrayId("newSession.modeDescription")
         }
     }
 
@@ -457,14 +649,14 @@ struct NewSessionSheet: View {
                 createQuickChat()
             }
             .keyboardShortcut("n", modifiers: [.command, .shift])
-            .accessibilityIdentifier("newSession.quickChatButton")
+            .xrayId("newSession.quickChatButton")
             Button("Start Session") {
                 Task { await createSessionAsync() }
             }
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.return)
             .disabled(!canStartSession)
-            .accessibilityIdentifier("newSession.startSessionButton")
+            .xrayId("newSession.startSessionButton")
         }
         .padding(16)
     }
@@ -475,18 +667,40 @@ struct NewSessionSheet: View {
         let missionText = mission.trimmingCharacters(in: .whitespacesAndNewlines)
         let dirText = workingDirectory.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if let ga = singleAgentWithGithub, orderedSelectedAgents.count == 1, dirMode == .githubClone,
+        if let ga = singleAgentWithGithub, orderedSelectedAgents.count == 1,
            let repo = ga.githubRepo?.trimmingCharacters(in: .whitespacesAndNewlines), !repo.isEmpty {
-            isWorkspacePreparing = true
-            workspacePrepError = nil
-            defer { isWorkspacePreparing = false }
-            let path = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
-            let branch = githubBranchLabel(ga)
-            do {
-                try await GitHubIntegration.ensureClone(repoInput: repo, branch: branch, destinationPath: path)
-            } catch {
-                workspacePrepError = error.localizedDescription
-                return
+            if dirMode == .githubClone {
+                isWorkspacePreparing = true
+                workspacePrepError = nil
+                defer { isWorkspacePreparing = false }
+                let path = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
+                let branch = githubBranchLabel(ga)
+                do {
+                    try await GitHubIntegration.ensureClone(repoInput: repo, branch: branch, destinationPath: path)
+                } catch {
+                    workspacePrepError = error.localizedDescription
+                    return
+                }
+            } else if dirMode == .worktree {
+                let branch = worktreeBranch.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !branch.isEmpty else {
+                    workspacePrepError = "Branch name is required for worktree mode."
+                    return
+                }
+                isWorkspacePreparing = true
+                workspacePrepError = nil
+                defer { isWorkspacePreparing = false }
+                let baseClonePath = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
+                let worktreePath = WorkspaceResolver.worktreeDestinationPath(repoInput: repo, branch: branch)
+                do {
+                    try await GitHubIntegration.ensureWorktree(
+                        repoInput: repo, branch: branch,
+                        baseClonePath: baseClonePath, worktreePath: worktreePath
+                    )
+                } catch {
+                    workspacePrepError = error.localizedDescription
+                    return
+                }
             }
         }
 
@@ -526,9 +740,17 @@ struct NewSessionSheet: View {
 
         for agent in selectedList {
             let wd: String
-            if let ga = singleAgentWithGithub, selectedList.count == 1, dirMode == .githubClone,
+            if let ga = singleAgentWithGithub, selectedList.count == 1,
                let repo = ga.githubRepo?.trimmingCharacters(in: .whitespacesAndNewlines), !repo.isEmpty {
-                wd = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
+                if dirMode == .githubClone {
+                    wd = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
+                } else if dirMode == .worktree {
+                    wd = WorkspaceResolver.worktreeDestinationPath(repoInput: repo, branch: worktreeBranch.trimmingCharacters(in: .whitespacesAndNewlines))
+                } else if !dirText.isEmpty {
+                    wd = dirText
+                } else {
+                    wd = agent.defaultWorkingDirectory ?? appState.instanceWorkingDirectory ?? ""
+                }
             } else if !dirText.isEmpty {
                 wd = dirText
             } else if selectedList.count > 1 {
@@ -542,9 +764,15 @@ struct NewSessionSheet: View {
                 mode: sessionMode,
                 workingDirectory: wd
             )
-            if let ga = singleAgentWithGithub, selectedList.count == 1, dirMode == .githubClone, agent.id == ga.id,
+            if let ga = singleAgentWithGithub, selectedList.count == 1, agent.id == ga.id,
                let repo = ga.githubRepo?.trimmingCharacters(in: .whitespacesAndNewlines), !repo.isEmpty {
-                session.workspaceType = .githubClone(repoUrl: repo)
+                if dirMode == .githubClone {
+                    session.workspaceType = .githubClone(repoUrl: repo)
+                } else if dirMode == .worktree {
+                    let branch = worktreeBranch.trimmingCharacters(in: .whitespacesAndNewlines)
+                    session.workspaceType = .worktree(repoUrl: repo, branch: branch)
+                    session.worktreePath = wd
+                }
             } else if !dirText.isEmpty {
                 session.workspaceType = .explicit(path: dirText)
             }
