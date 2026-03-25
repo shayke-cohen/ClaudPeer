@@ -41,6 +41,7 @@ struct ChatView: View {
 
     @Query private var allConversations: [Conversation]
     @Query private var allAgents: [Agent]
+    @Query private var allGroups: [AgentGroup]
 
     private var conversation: Conversation? {
         allConversations.first { $0.id == conversationId }
@@ -853,8 +854,6 @@ struct ChatView: View {
     }
 
     // MARK: - Chat Empty State
-
-    @Query private var allGroups: [AgentGroup]
 
     private var sourceGroup: AgentGroup? {
         guard let gid = conversation?.sourceGroupId else { return nil }

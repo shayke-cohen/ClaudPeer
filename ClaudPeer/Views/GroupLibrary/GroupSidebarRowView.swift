@@ -5,10 +5,15 @@ struct GroupSidebarRowView: View {
     let group: AgentGroup
     let agentCount: Int
     let conversations: [Conversation]
+    let allAgents: [Agent]
     @Binding var isExpanded: Bool
     let onNewChat: () -> Void
     let onNewAutonomousChat: (() -> Void)?
     let onSelectConversation: (Conversation) -> Void
+    var onSelectGroup: (() -> Void)?
+    var onEdit: (() -> Void)?
+    var onDuplicate: (() -> Void)?
+
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
@@ -34,15 +39,19 @@ struct GroupSidebarRowView: View {
             }
         } label: {
             HStack(spacing: 8) {
-                Text(group.icon)
-                    .font(.body)
-                    .frame(width: 22, height: 22)
-                    .background(Color.fromAgentColor(group.color).opacity(0.15))
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                HStack(spacing: 8) {
+                    Text(group.icon)
+                        .font(.body)
+                        .frame(width: 22, height: 22)
+                        .background(Color.fromAgentColor(group.color).opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
 
-                Text(group.name)
-                    .font(.body)
-                    .lineLimit(1)
+                    Text(group.name)
+                        .font(.body)
+                        .lineLimit(1)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { onSelectGroup?() }
 
                 Spacer()
 

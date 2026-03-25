@@ -99,9 +99,15 @@ struct InspectorView: View {
             now = Date()
         }
         .onChange(of: isGroupConversation) {
-            // Reset to valid tab if group tab disappears
-            if !availableTabs.contains(inspectorTab) {
+            if isGroupConversation {
+                inspectorTab = .group
+            } else if !availableTabs.contains(inspectorTab) {
                 inspectorTab = .info
+            }
+        }
+        .onAppear {
+            if isGroupConversation {
+                inspectorTab = .group
             }
         }
         .sheet(item: $editingGroup) { g in
