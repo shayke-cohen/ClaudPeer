@@ -22,6 +22,9 @@ enum WorkshopTab: String, CaseIterable, Identifiable {
 }
 
 struct WorkshopEntityBrowser: View {
+    @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var appState: AppState
+
     @Query(sort: \Agent.name) private var agents: [Agent]
     @Query(sort: \AgentGroup.name) private var groups: [AgentGroup]
     @Query(sort: \Skill.name) private var skills: [Skill]
@@ -63,7 +66,12 @@ struct WorkshopEntityBrowser: View {
                                 name: agent.name,
                                 subtitle: agent.agentDescription,
                                 isEnabled: agent.isEnabled,
-                                badges: [agent.model, "\(agent.skillIds.count) skills"]
+                                badges: [agent.model, "\(agent.skillIds.count) skills"],
+                                onToggleEnabled: {
+                                    agent.isEnabled.toggle()
+                                    try? modelContext.save()
+                                    appState.configSyncService?.writeBack(agent: agent)
+                                }
                             ) {
                                 selectedEntityContext = agentContextString(agent)
                             }
@@ -77,7 +85,12 @@ struct WorkshopEntityBrowser: View {
                                 name: group.name,
                                 subtitle: group.groupDescription,
                                 isEnabled: group.isEnabled,
-                                badges: ["\(group.agentIds.count) agents"]
+                                badges: ["\(group.agentIds.count) agents"],
+                                onToggleEnabled: {
+                                    group.isEnabled.toggle()
+                                    try? modelContext.save()
+                                    appState.configSyncService?.writeBack(group: group)
+                                }
                             ) {
                                 selectedEntityContext = groupContextString(group)
                             }
@@ -91,7 +104,12 @@ struct WorkshopEntityBrowser: View {
                                 name: skill.name,
                                 subtitle: skill.skillDescription,
                                 isEnabled: skill.isEnabled,
-                                badges: [skill.category, "v\(skill.version)"]
+                                badges: [skill.category, "v\(skill.version)"],
+                                onToggleEnabled: {
+                                    skill.isEnabled.toggle()
+                                    try? modelContext.save()
+                                    appState.configSyncService?.writeBack(skill: skill)
+                                }
                             ) {
                                 selectedEntityContext = skillContextString(skill)
                             }
@@ -105,7 +123,12 @@ struct WorkshopEntityBrowser: View {
                                 name: mcp.name,
                                 subtitle: mcp.serverDescription,
                                 isEnabled: mcp.isEnabled,
-                                badges: [mcp.transportKind]
+                                badges: [mcp.transportKind],
+                                onToggleEnabled: {
+                                    mcp.isEnabled.toggle()
+                                    try? modelContext.save()
+                                    appState.configSyncService?.writeBack(mcp: mcp)
+                                }
                             ) {
                                 selectedEntityContext = mcpContextString(mcp)
                             }
@@ -119,7 +142,12 @@ struct WorkshopEntityBrowser: View {
                                 name: perm.name,
                                 subtitle: "\(perm.allowRules.count) allow, \(perm.denyRules.count) deny",
                                 isEnabled: perm.isEnabled,
-                                badges: [perm.permissionMode]
+                                badges: [perm.permissionMode],
+                                onToggleEnabled: {
+                                    perm.isEnabled.toggle()
+                                    try? modelContext.save()
+                                    appState.configSyncService?.writeBack(permission: perm)
+                                }
                             ) {
                                 selectedEntityContext = permContextString(perm)
                             }

@@ -7,6 +7,7 @@ struct WorkshopEntityRow: View {
     let subtitle: String
     let isEnabled: Bool
     let badges: [String]
+    var onToggleEnabled: (() -> Void)?
     let onTap: () -> Void
 
     @State private var isHovered = false
@@ -44,6 +45,18 @@ struct WorkshopEntityRow: View {
                 }
 
                 Spacer()
+
+                if let toggle = onToggleEnabled {
+                    Button {
+                        toggle()
+                    } label: {
+                        Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(isEnabled ? .green : .secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .help(isEnabled ? "Disable" : "Enable")
+                    .xrayId("workshop.toggleEnabled")
+                }
 
                 HStack(spacing: 6) {
                     ForEach(badges.filter { !$0.isEmpty }, id: \.self) { badge in

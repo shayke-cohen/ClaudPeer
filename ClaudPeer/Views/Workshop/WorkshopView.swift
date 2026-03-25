@@ -52,7 +52,7 @@ struct WorkshopView: View {
         }
         .onChange(of: selectedEntityContext) { _, newValue in
             if let context = newValue, configConversationId != nil {
-                pendingContextMessage = context
+                injectContext(context)
             }
         }
     }
@@ -114,6 +114,24 @@ struct WorkshopView: View {
             .xrayId("workshop.startConfigButton")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Context Injection
+
+    private func injectContext(_ context: String) {
+        guard let convId = configConversationId else { return }
+
+        let descriptor = FetchDescriptor<Conversation>()
+        let conversations = (try? modelContext.fetch(descriptor)) ?? []
+        guard let conversation = conversations.first(where: { $0.id == convId }) else { return }
+
+        let contextMessage = ConversationMessage(
+            text: context,
+            type: .system,
+            conversation: conversation
+        )
+        modelContext.insert(contextMessage)
+        try? modelContext.save()
     }
 
     // MARK: - Session Management
