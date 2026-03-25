@@ -10,6 +10,7 @@ struct WelcomeView: View {
 
     var onQuickChat: () -> Void
     var onStartAgent: (Agent) -> Void
+    var onStartGroup: (AgentGroup) -> Void
 
     // MARK: - Computed
 
@@ -242,7 +243,7 @@ struct WelcomeView: View {
 
     private func welcomeGroupCard(_ group: AgentGroup) -> some View {
         Button {
-            appState.selectPendingGroup(group.id)
+            onStartGroup(group)
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {

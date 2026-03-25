@@ -38,12 +38,6 @@ struct SidebarView: View {
             .listStyle(.sidebar)
             .searchable(text: $searchText, prompt: "Search conversations...")
             .xrayId("sidebar.conversationList")
-            .onChange(of: appState.selectedConversationId) { _, newValue in
-                // When List selection clears to nil but we have a pending agent/group, keep it
-                if newValue == nil, appState.pendingAgentId != nil || appState.pendingGroupId != nil {
-                    // Pending state is still valid, do nothing
-                }
-            }
 
             Divider()
 
@@ -385,11 +379,10 @@ struct SidebarView: View {
                         appState.selectedConversationId = conv.id
                     },
                     onSelectGroup: {
-                        appState.selectPendingGroup(group.id)
+                        selectOrCreateGroupChat(group)
                     },
                     onEdit: { editingGroup = group },
-                    onDuplicate: { duplicateGroup(group) },
-                    isSelected: appState.pendingGroupId == group.id
+                    onDuplicate: { duplicateGroup(group) }
                 )
                 .contextMenu {
                     Button("Start Chat") {
@@ -439,9 +432,8 @@ struct SidebarView: View {
                         appState.selectedConversationId = conv.id
                     },
                     onSelectAgent: {
-                        appState.selectPendingAgent(agent.id)
-                    },
-                    isSelected: appState.pendingAgentId == agent.id
+                        selectOrCreateAgentChat(agent)
+                    }
                 )
                 .contextMenu {
                     Button("Start Session") {
@@ -743,6 +735,22 @@ struct SidebarView: View {
         modelContext.insert(newConvo)
         try? modelContext.save()
         appState.selectedConversationId = newConvo.id
+    }
+
+    private func selectOrCreateAgentChat(_ agent: Agent) {
+        if let existing = conversationsForAgent(agent).first(where: { !$0.isArchived }) {
+            appState.selectedConversationId = existing.id
+        } else {
+            startSession(with: agent)
+        }
+    }
+
+    private func selectOrCreateGroupChat(_ group: AgentGroup) {
+        if let existing = conversationsForGroup(group).first(where: { !$0.isArchived }) {
+            appState.selectedConversationId = existing.id
+        } else {
+            appState.startGroupChat(group: group, modelContext: modelContext)
+        }
     }
 
     private func startSession(with agent: Agent) {

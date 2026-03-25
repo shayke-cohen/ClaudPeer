@@ -13,39 +13,10 @@ final class AppState: ObservableObject {
 
     @Published var sidecarStatus: SidecarStatus = .disconnected
     @Published var selectedConversationId: UUID? {
-        didSet {
-            if selectedConversationId != nil {
-                selectedGroupId = nil
-                pendingAgentId = nil
-                pendingGroupId = nil
-            }
-        }
+        didSet { if selectedConversationId != nil { selectedGroupId = nil } }
     }
     @Published var selectedGroupId: UUID? {
-        didSet {
-            if selectedGroupId != nil {
-                selectedConversationId = nil
-                pendingAgentId = nil
-                pendingGroupId = nil
-            }
-        }
-    }
-    @Published var pendingAgentId: UUID?
-    @Published var pendingGroupId: UUID?
-
-    /// Set pending agent/group and clear other selections.
-    func selectPendingAgent(_ id: UUID) {
-        selectedConversationId = nil
-        selectedGroupId = nil
-        pendingGroupId = nil
-        pendingAgentId = id
-    }
-
-    func selectPendingGroup(_ id: UUID) {
-        selectedConversationId = nil
-        selectedGroupId = nil
-        pendingAgentId = nil
-        pendingGroupId = id
+        didSet { if selectedGroupId != nil { selectedConversationId = nil } }
     }
     @Published var showAgentLibrary = false
     @Published var showGroupLibrary = false

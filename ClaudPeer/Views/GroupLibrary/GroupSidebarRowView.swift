@@ -13,7 +13,6 @@ struct GroupSidebarRowView: View {
     var onSelectGroup: (() -> Void)?
     var onEdit: (() -> Void)?
     var onDuplicate: (() -> Void)?
-    var isSelected: Bool = false
 
 
     var body: some View {
@@ -88,14 +87,6 @@ struct GroupSidebarRowView: View {
                 .accessibilityIdentifier("sidebar.groupRow.\(group.id.uuidString).newChatButton")
             }
             .accessibilityIdentifier("sidebar.groupRow.\(group.id.uuidString)")
-            .padding(.vertical, 2)
-            .padding(.horizontal, 4)
-            .background(
-                isSelected
-                    ? Color.accentColor.opacity(0.15)
-                    : Color.clear
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 6))
         }
     }
 }

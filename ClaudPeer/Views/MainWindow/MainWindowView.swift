@@ -5,8 +5,6 @@ struct MainWindowView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var p2pNetworkManager: P2PNetworkManager
     @Environment(\.modelContext) private var modelContext
-    @Query private var allAgents: [Agent]
-    @Query private var allGroups: [AgentGroup]
     @State private var columnVisibility = NavigationSplitViewVisibility.all
     @State private var showStatusPopover = false
     @State private var inspectorVisible = true
@@ -136,21 +134,14 @@ struct MainWindowView: View {
         if let conversationId = appState.selectedConversationId {
             ChatView(conversationId: conversationId)
                 .id(conversationId)
-        } else if let agentId = appState.pendingAgentId,
-                  let agent = allAgents.first(where: { $0.id == agentId }) {
-            PendingChatView(agent: agent, group: nil)
-                .id(agentId)
-        } else if let groupId = appState.pendingGroupId,
-                  let group = allGroups.first(where: { $0.id == groupId }) {
-            PendingChatView(agent: nil, group: group)
-                .id(groupId)
         } else if let groupId = appState.selectedGroupId {
             GroupDetailView(groupId: groupId)
                 .id(groupId)
         } else {
             WelcomeView(
                 onQuickChat: { createQuickChat() },
-                onStartAgent: { agent in appState.selectPendingAgent(agent.id) }
+                onStartAgent: { agent in startSessionWithAgent(agent) },
+                onStartGroup: { group in startGroupChat(group) }
             )
             .xrayId("mainWindow.welcomeView")
         }
@@ -161,14 +152,6 @@ struct MainWindowView: View {
         if let conversationId = appState.selectedConversationId {
             InspectorView(conversationId: conversationId)
                 .id(conversationId)
-        } else if let agentId = appState.pendingAgentId,
-                  let agent = allAgents.first(where: { $0.id == agentId }) {
-            PendingInspectorView(agent: agent, group: nil)
-                .id(agentId)
-        } else if let groupId = appState.pendingGroupId,
-                  let group = allGroups.first(where: { $0.id == groupId }) {
-            PendingInspectorView(agent: nil, group: group)
-                .id(groupId)
         } else {
             Text("Inspector")
                 .foregroundStyle(.secondary)
@@ -323,6 +306,10 @@ struct MainWindowView: View {
 
         try? modelContext.save()
         appState.selectedConversationId = conversation.id
+    }
+
+    private func startGroupChat(_ group: AgentGroup) {
+        appState.startGroupChat(group: group, modelContext: modelContext)
     }
 }
 
