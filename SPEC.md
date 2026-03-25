@@ -531,6 +531,29 @@ Backend services supporting the file explorer.
 | FR-20.6: Main toolbar — Peer Network button, ⌘⇧P, sheet; `mainWindow.peerNetworkButton` | Done |
 | FR-20.7: `P2PNetworkManager` injected via `environmentObject` from app entry | Done |
 
+### FR-21: Launch Parameters & URL Scheme
+
+**Status:** Implemented
+
+The app accepts CLI arguments and `claudestudio://` URLs to open directly into a chat, agent session, or group — with optional auto-send prompt.
+
+| Requirement | Status |
+|---|---|
+| FR-21.1: `LaunchIntent` parsed from `CommandLine.arguments` at init (no SwiftData dependency) | Done |
+| FR-21.2: `--chat` flag creates a freeform conversation on launch | Done |
+| FR-21.3: `--agent <name>` starts a session with a named agent (case-insensitive match) | Done |
+| FR-21.4: `--group <name>` starts a group chat with a named group (case-insensitive match) | Done |
+| FR-21.5: `--prompt <text>` queues an initial message, auto-sent when sidecar connects | Done |
+| FR-21.6: `--workdir <path>` overrides the session working directory | Done |
+| FR-21.7: `--autonomous` starts the session in autonomous mode | Done |
+| FR-21.8: `claudestudio://` URL scheme registered in Info.plist | Done |
+| FR-21.9: `claudestudio://chat`, `claudestudio://agent/<name>`, `claudestudio://group/<name>` URL patterns | Done |
+| FR-21.10: URL query parameters: `prompt`, `workdir`, `autonomous` | Done |
+| FR-21.11: `onOpenURL` handler parses URL into `LaunchIntent` and executes | Done |
+| FR-21.12: Error alert when agent/group name not found (`AppState.launchError`) | Done |
+| FR-21.13: Pending prompt drained on sidecar `.connected` event | Done |
+| FR-21.14: Combinable with `--instance` for per-instance launch | Done |
+
 ### Phase 9 — UX principles
 
 - **Workspace truth** — Clone path and repo/branch shown in New Session and Agent Editor before tools run; failures show inline with retry (Validate / update clone).
@@ -756,6 +779,22 @@ Backend services supporting the file explorer.
 - [x] “Browse agents” fetches `/claudestudio/v1/agents` over TCP
 - [x] Import creates a new `Agent` with skills/MCPs/permission matched by name where present
 - [x] Imported agents use `origin: .peer` with a stable source UUID per selected peer session
+
+### US-20: Launch App into a Specific Mode
+
+**As a** developer, **I want to** launch ClaudeStudio from the terminal or a URL directly into a chat, agent, or group session, **so that** I can script and automate my AI workflows.
+
+**Acceptance criteria:**
+
+- [x] `open ClaudeStudio.app --args --chat` opens a freeform chat
+- [x] `open ClaudeStudio.app --args --agent Coder` opens a session with the Coder agent
+- [x] `open ClaudeStudio.app --args --group "Dev Team"` opens a group chat
+- [x] `--prompt "text"` auto-sends a message when the sidecar connects
+- [x] `--workdir /path` overrides the session working directory
+- [x] `--autonomous` starts the session in autonomous mode
+- [x] `claudestudio://agent/Coder?prompt=Fix%20tests` works as a deeplink from browser/Alfred/Shortcuts
+- [x] Error alert shown if agent or group name is not found
+- [x] Combinable with `--instance` for per-instance launches
 
 ### US-14: Read Rich Markdown Responses
 **As a** developer, **I want to** see Claude's responses rendered with proper markdown formatting, **so that** code blocks, links, headers, and lists are easy to read and interact with.
@@ -1062,6 +1101,31 @@ flowchart TD
     row --> swift[PeerAgentImporter inserts Agent in SwiftData]
 ```
 
+### Flow 17: Launch with CLI args or URL scheme
+
+```mermaid
+flowchart TD
+    Launch(["open ClaudeStudio.app\n--args --agent Coder --prompt 'Fix tests'"]) --> Parse["LaunchIntent.fromCommandLine()\nmode=.agent('Coder'), prompt='Fix tests'"]
+    Parse --> Boot["App boots: sidecar starts,\nmodelContext set"]
+    Boot --> Execute["AppState.executeLaunchIntent()\nFetch Agent by name from SwiftData"]
+    Execute --> Found{Agent found?}
+    Found -->|No| Error["launchError alert:\n'Agent not found: Coder'"]
+    Found -->|Yes| Create["Create Session + Conversation\nSet selectedConversationId"]
+    Create --> Queue["Queue pendingAutoPrompt\n(conversationId, sessions, text)"]
+    Queue --> Connect["Sidecar connects\n(.connected event)"]
+    Connect --> Drain["drainPendingAutoPrompt()\nsessionCreate + sessionMessage"]
+    Drain --> Stream["Agent processes prompt\nTokens stream back"]
+```
+
+URL scheme follows the same path but enters via `onOpenURL`:
+
+```mermaid
+flowchart TD
+    URL(["claudestudio://agent/Coder\n?prompt=Fix%20tests"]) --> Parse["LaunchIntent.fromURL()\nmode=.agent('Coder'), prompt='Fix tests'"]
+    Parse --> Execute["AppState.executeLaunchIntent()"]
+    Execute --> Same["Same flow as CLI args"]
+```
+
 ---
 
 ## 5. Non-Functional Requirements
@@ -1101,3 +1165,4 @@ flowchart TD
 | 2026-03-22 | Phase 8: Group conversations (`Conversation.sessions`), per-session transcript watermarks, `GroupPromptBuilder` injection, sequential multi-agent sends, New Session multi-select, `/help` `/topic` `/rename` `/agents`, @-mention routing and add-on-send with autocomplete hints, fork from message + `session.fork`/`session.forked` with explicit child session id, inspector multi-session list, ⌘↩ to send / Return for newline in composer. | FR-4.9, FR-5.8, FR-5.10, FR-5.11, FR-3.11 |
 | 2026-03-22 | Group chat peer fan-out: each user turn messages **all** sessions; after each assistant reply, automatic `session.message` to other agents (`Group chat: peer message`) with `GroupPeerFanOutContext` turn budget + dedup; skip fan-out to sessions still pending their user-turn message. Extended `GroupPromptBuilderTests`; sidecar E2E GC-2; docs in README, TESTING.md, AGENTS.md, CLAUDE.md. | FR-4.9, FR-5.10, NFR (tests) |
 | 2026-03-22 | Phase 9: GitHub workspace (`WorkspaceResolver`, `GitHubIntegration`, `GitWorkspacePreparer`), New Session GitHub mode + Agent Editor validate/update clone, `ChatView` pre-provision clone; P2P v1 (`P2PNetworkManager`, `PeerCatalogServer`, `PeerNetworkView`, `PeerAgentImporter`, wire DTOs), toolbar ⌘⇧P; `WorkspaceResolverTests`; `xcodegen` for new Swift files. Flows 14–16, FR-19–20, US-18–19. | FR-19, FR-20, US-18, US-19, Flow 14–16, NFR |
+| 2026-03-25 | Launch parameters & URL scheme: `LaunchIntent` type with CLI (`--chat`, `--agent`, `--group`, `--prompt`, `--workdir`, `--autonomous`) and `claudestudio://` URL parsers. `AppState.executeLaunchIntent()` creates session from SwiftData lookup. Auto-send prompt queued and drained on sidecar connect. `Info.plist` registers URL scheme. Error alert for missing agent/group. Combinable with `--instance`. | FR-21, US-20, Flow 17 |

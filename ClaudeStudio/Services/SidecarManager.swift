@@ -44,8 +44,22 @@ final class SidecarManager: ObservableObject, Sendable {
         }
 
         try launchSidecar()
-        try await Task.sleep(for: .milliseconds(800))
-        try await connectWebSocket()
+
+        // Retry connecting with backoff — sidecar may take a moment to bind the port
+        var connected = false
+        for attempt in 1...5 {
+            try await Task.sleep(for: .milliseconds(attempt == 1 ? 800 : 1500))
+            do {
+                try await connectWebSocket()
+                connected = true
+                break
+            } catch {
+                print("[SidecarManager] Connect attempt \(attempt)/5 failed: \(error.localizedDescription)")
+            }
+        }
+        guard connected else {
+            throw SidecarError.notConnected
+        }
     }
 
     func stop() {
@@ -88,6 +102,8 @@ final class SidecarManager: ObservableObject, Sendable {
         let sidecarPath = findSidecarPath()
         print("[SidecarManager] Bun: \(bunPath)")
         print("[SidecarManager] Sidecar: \(sidecarPath)")
+        print("[SidecarManager] Sidecar exists: \(FileManager.default.fileExists(atPath: sidecarPath))")
+        print("[SidecarManager] Bun exists: \(FileManager.default.fileExists(atPath: bunPath))")
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: bunPath)
@@ -122,12 +138,19 @@ final class SidecarManager: ObservableObject, Sendable {
     private func connectWebSocket() async throws {
         let url = URL(string: "ws://localhost:\(config.wsPort)")!
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForRequest = 5
         let session = URLSession(configuration: config)
         self.urlSession = session
         let task = session.webSocketTask(with: url)
         self.webSocketTask = task
         task.resume()
+
+        // Verify connection by receiving the sidecar.ready message
+        let message = try await task.receive()
+        if case .string(let text) = message {
+            print("[SidecarManager] Handshake received: \(text.prefix(80))")
+        }
+
         eventContinuation?.yield(.connected)
         receiveMessages()
         startPingPong()
@@ -245,9 +268,14 @@ final class SidecarManager: ObservableObject, Sendable {
         let devPath = "\(fm.currentDirectoryPath)/sidecar/src/index.ts"
         if fm.fileExists(atPath: devPath) { return devPath }
 
-        let wellKnown = "\(NSHomeDirectory())/ClaudeStudio/sidecar/src/index.ts"
-        if fm.fileExists(atPath: wellKnown) { return wellKnown }
+        let wellKnownPaths = [
+            "\(NSHomeDirectory())/ClaudeStudio/sidecar/src/index.ts",
+            "\(NSHomeDirectory())/ClaudPeer/sidecar/src/index.ts",
+        ]
+        for path in wellKnownPaths {
+            if fm.fileExists(atPath: path) { return path }
+        }
 
-        return wellKnown
+        return wellKnownPaths.first!
     }
 }

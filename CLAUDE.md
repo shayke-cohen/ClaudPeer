@@ -105,6 +105,7 @@ Core entities (all in `ClaudeStudio/Models/`):
 - Resizable chat/inspector split with persistent divider
 - Conversation archive/unarchive
 - Multi-instance support (`InstanceConfig`, `--instance` flag)
+- Launch parameters (`LaunchIntent`, `--chat`/`--agent`/`--group`/`--prompt`/`--workdir`/`--autonomous`) and `claudestudio://` URL scheme
 - Group peer fan-out (`GroupPeerFanOutContext`, budget limiter, deduplication)
 - P2P LAN networking (Bonjour discovery, `PeerCatalogServer`, `PeerAgentImporter`, `PeerNetworkView`)
 - Full accessibility coverage (347+ identifiers)
@@ -210,3 +211,18 @@ See `TESTING.md` for the complete testing guide, including:
 2. Add Swift enum case in `SidecarEvent` in `SidecarProtocol.swift`
 3. Add decoding case in `IncomingWireMessage.toEvent()`
 4. Add handler in `AppState.handleEvent()`
+
+### Adding a new launch parameter
+
+1. Add the flag to `LaunchIntent.fromCommandLine()` in `ClaudeStudio/App/LaunchIntent.swift`
+2. Add the URL query parameter to `LaunchIntent.fromURL()` in the same file
+3. Add any new fields to the `LaunchIntent` struct
+4. Handle the new field in `AppState.executeLaunchIntent()` in `ClaudeStudio/App/AppState.swift`
+
+### Launch parameter flow
+
+- **Parsing**: `LaunchIntent.fromCommandLine()` (eager, at `init()` time) or `LaunchIntent.fromURL()` (on `onOpenURL`)
+- **Execution**: `AppState.executeLaunchIntent(_:modelContext:)` — SwiftData lookup + session creation
+- **Prompt queue**: `AppState.pendingAutoPrompt` — drained on sidecar `.connected` event via `drainPendingAutoPrompt()`
+- **Errors**: `AppState.launchError` — shown as alert in `MainWindowView`
+- **URL scheme**: `claudestudio://` registered in `ClaudeStudio/Resources/Info.plist`

@@ -33,6 +33,12 @@ targets:
           - "Resources/Catalog/**"
       - path: ClaudeStudio/Resources/Catalog
         type: folder
+      - path: ClaudeStudio/Resources/DefaultAgents
+        type: folder
+      - path: ClaudeStudio/Resources/DefaultSkills
+        type: folder
+      - path: ClaudeStudio/Resources/SystemPromptTemplates
+        type: folder
     dependencies:
       - package: AppXray
       - package: MarkdownUI

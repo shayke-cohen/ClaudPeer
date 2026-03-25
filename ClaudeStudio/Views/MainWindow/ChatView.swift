@@ -215,6 +215,8 @@ struct ChatView: View {
                 checkForPendingResponse()
             }
         }
+        .onChange(of: appState.autoSendText) { _, _ in consumeAutoSendText() }
+        .onAppear { consumeAutoSendText() }
         .onChange(of: appState.sessionActivity) { _, _ in
             if let convo = conversation {
                 let summary = appState.conversationActivity(for: convo)
@@ -1368,6 +1370,23 @@ struct ChatView: View {
         lastPlanResponseMessageId = nil
         inputText = "Go ahead and execute the plan above."
         sendMessage()
+    }
+
+    // MARK: - Auto-Send from Launch Intent
+
+    private func consumeAutoSendText() {
+        guard let text = appState.autoSendText else { return }
+        appState.autoSendText = nil
+        inputText = text
+        Task { @MainActor in
+            for _ in 0..<30 {
+                if appState.sidecarStatus == .connected { break }
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+            if appState.sidecarStatus == .connected {
+                sendMessage()
+            }
+        }
     }
 
     // MARK: - Send Message

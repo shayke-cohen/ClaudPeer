@@ -142,6 +142,51 @@ Environment variables:
 - `CLAUDESTUDIO_WS_PORT` — WebSocket port (default: `9849`)
 - `CLAUDESTUDIO_HTTP_PORT` — Blackboard HTTP API port (default: `9850`)
 
+## Launch Parameters
+
+ClaudeStudio accepts CLI arguments and a `claudestudio://` URL scheme for scripting, automation, and deeplinks.
+
+### CLI arguments
+
+```bash
+# Freeform chat (no agent)
+open ClaudeStudio.app --args --chat
+
+# Start with a specific agent
+open ClaudeStudio.app --args --agent Coder
+
+# Agent with auto-sent prompt and custom working directory
+open ClaudeStudio.app --args --agent Coder --prompt "Fix the failing tests" --workdir ~/code/my-project
+
+# Group chat in autonomous mode
+open ClaudeStudio.app --args --group "Dev Team" --autonomous --prompt "Ship the login feature"
+
+# Combined with --instance for isolated workspaces
+open -n ClaudeStudio.app --args --instance project-x --agent Coder --workdir ~/code/project-x
+```
+
+| Flag | Description |
+|---|---|
+| `--chat` | Open a freeform chat (no agent) |
+| `--agent <name>` | Start a session with a named agent (case-insensitive) |
+| `--group <name>` | Start a group chat with a named group (case-insensitive) |
+| `--prompt <text>` | Initial message, auto-sent when sidecar connects |
+| `--workdir <path>` | Override the session working directory |
+| `--autonomous` | Start in autonomous mode |
+| `--instance <name>` | Run in an isolated instance (existing flag) |
+
+### URL scheme
+
+```bash
+open "claudestudio://chat?prompt=Hello"
+open "claudestudio://agent/Coder?prompt=Fix%20the%20tests&workdir=/Users/me/project"
+open "claudestudio://group/Dev%20Team?autonomous=true"
+```
+
+URL format: `claudestudio://<mode>/<name>?prompt=...&workdir=...&autonomous=true`
+
+Where `<mode>` is `chat`, `agent`, or `group`. Query parameters are optional.
+
 ## Communication Protocol
 
 ### Swift → Sidecar (commands)

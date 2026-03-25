@@ -51,8 +51,9 @@ final class AppState: ObservableObject {
     @Published var pendingSuggestions: [String: [SuggestionItem]] = [:]
     @Published var launchError: String?
 
-    /// Queued auto-send prompt from a launch intent, drained when sidecar connects.
-    var pendingAutoPrompt: (conversationId: UUID, sessions: [Session], text: String)?
+    /// Text to auto-send in the active chat once the sidecar connects.
+    /// Set by `executeLaunchIntent`, consumed by ChatView.
+    @Published var autoSendText: String?
 
     /// File-based config sync service (set by ClaudeStudioApp on appear)
     var configSyncService: ConfigSyncService?
@@ -216,9 +217,29 @@ final class AppState: ObservableObject {
             let userParticipant = Participant(type: .user, displayName: "You")
             userParticipant.conversation = conversation
             conversation.participants.append(userParticipant)
+
+            // If a prompt is provided, create a freeform sidecar session so the prompt can be sent
+            if intent.prompt != nil {
+                let wd = intent.workingDirectory ?? instanceWorkingDirectory ?? NSHomeDirectory()
+                let freeformSession = Session(agent: nil, mode: .interactive, workingDirectory: wd)
+                freeformSession.conversations = [conversation]
+                conversation.sessions.append(freeformSession)
+                let agentParticipant = Participant(
+                    type: .agentSession(sessionId: freeformSession.id),
+                    displayName: "Claude"
+                )
+                agentParticipant.conversation = conversation
+                conversation.participants.append(agentParticipant)
+                modelContext.insert(freeformSession)
+            }
+
             modelContext.insert(conversation)
             try? modelContext.save()
             selectedConversationId = conversation.id
+
+            if intent.prompt != nil {
+                autoSendText = intent.prompt
+            }
 
         case .agent(let name):
             let descriptor = FetchDescriptor<Agent>()
@@ -251,8 +272,8 @@ final class AppState: ObservableObject {
             try? modelContext.save()
             selectedConversationId = conversation.id
 
-            if let prompt = intent.prompt {
-                pendingAutoPrompt = (conversationId: conversation.id, sessions: [session], text: prompt)
+            if intent.prompt != nil {
+                autoSendText = intent.prompt
             }
 
         case .group(let name):
@@ -269,82 +290,12 @@ final class AppState: ObservableObject {
                 startAutonomousGroupChat(group: group, mission: prompt, modelContext: modelContext)
             } else {
                 startGroupChat(group: group, modelContext: modelContext)
-                // For non-autonomous groups, queue the prompt for auto-send
-                if let prompt = intent.prompt, let convoId = selectedConversationId {
-                    let descriptor = FetchDescriptor<Conversation>(predicate: #Predicate { c in c.id == convoId })
-                    if let convo = try? modelContext.fetch(descriptor).first {
-                        pendingAutoPrompt = (conversationId: convo.id, sessions: convo.sessions, text: prompt)
-                    }
+                if intent.prompt != nil {
+                    autoSendText = intent.prompt
                 }
             }
         }
-    }
 
-    /// Drains the pending auto-prompt queue by sending the message to the sidecar.
-    /// Called when sidecar status transitions to `.connected`.
-    func drainPendingAutoPrompt() {
-        guard let pending = pendingAutoPrompt, let ctx = modelContext else { return }
-        pendingAutoPrompt = nil
-
-        let targetId = pending.conversationId
-        let descriptor = FetchDescriptor<Conversation>(predicate: #Predicate { c in c.id == targetId })
-        guard let conversation = try? ctx.fetch(descriptor).first else { return }
-
-        // Insert user message into conversation
-        let userParticipant = conversation.participants.first(where: {
-            if case .user = $0.type { return true }
-            return false
-        })
-        let userMessage = ConversationMessage(
-            senderParticipantId: userParticipant?.id,
-            text: pending.text,
-            type: .chat,
-            conversation: conversation
-        )
-        conversation.messages.append(userMessage)
-        try? ctx.save()
-
-        // Send to sidecar
-        guard let manager = sidecarManager else { return }
-        for session in pending.sessions {
-            let sessionId = session.id.uuidString
-            let provisioner = AgentProvisioner(modelContext: ctx)
-            let agent = session.agent
-            let config: AgentConfig
-            if let agent {
-                (config, _) = provisioner.provision(agent: agent, mission: session.mission)
-            } else {
-                config = AgentConfig(
-                    name: "Claude",
-                    systemPrompt: "You are a helpful assistant.",
-                    allowedTools: [],
-                    mcpServers: [],
-                    model: "claude-sonnet-4-6",
-                    maxTurns: nil,
-                    maxBudget: nil,
-                    maxThinkingTokens: 10000,
-                    workingDirectory: instanceWorkingDirectory ?? NSHomeDirectory(),
-                    skills: []
-                )
-            }
-
-            if !createdSessions.contains(sessionId) {
-                streamingText.removeValue(forKey: sessionId)
-                lastSessionEvent.removeValue(forKey: sessionId)
-
-                Task {
-                    try? await manager.send(.sessionCreate(
-                        conversationId: sessionId,
-                        agentConfig: config
-                    ))
-                    try? await manager.send(.sessionMessage(
-                        sessionId: sessionId,
-                        text: pending.text
-                    ))
-                }
-                createdSessions.insert(sessionId)
-            }
-        }
     }
 
     // MARK: - Group Chat
@@ -879,18 +830,124 @@ final class AppState: ObservableObject {
             generateAgentRequestId = nil
             print("[AppState] Agent generation error: \(error)")
 
+        case .taskCreated(let task):
+            persistTask(task)
+
+        case .taskUpdated(let task):
+            persistTask(task)
+
+        case .taskListResult(let tasks):
+            for task in tasks { persistTask(task) }
+
         case .connected:
             sidecarStatus = .connected
             disconnectTimer?.invalidate()
             disconnectTimer = nil
             Task { await recoverSessions() }
-            drainPendingAutoPrompt()
+            sendToSidecar(.taskList(filter: nil))
 
         case .disconnected:
             sidecarStatus = .disconnected
             pendingQuestions.removeAll()
             startDisconnectTimer()
         }
+    }
+
+    // MARK: - Task Board
+
+    private func persistTask(_ wire: TaskWireSwift) {
+        guard let ctx = modelContext else { return }
+        guard let taskId = UUID(uuidString: wire.id) else { return }
+
+        let descriptor = FetchDescriptor<TaskItem>(predicate: #Predicate { t in t.id == taskId })
+
+        if let existing = try? ctx.fetch(descriptor).first {
+            existing.title = wire.title
+            existing.taskDescription = wire.description
+            existing.status = TaskStatus(rawValue: wire.status) ?? .ready
+            existing.priority = TaskPriority(rawValue: wire.priority) ?? .medium
+            existing.labels = wire.labels
+            existing.result = wire.result
+            existing.parentTaskId = wire.parentTaskId.flatMap(UUID.init)
+            existing.assignedAgentId = wire.assignedAgentId.flatMap(UUID.init)
+            existing.assignedGroupId = wire.assignedGroupId.flatMap(UUID.init)
+            existing.conversationId = wire.conversationId.flatMap(UUID.init)
+            existing.startedAt = wire.startedAt.flatMap { ISO8601DateFormatter().date(from: $0) }
+            existing.completedAt = wire.completedAt.flatMap { ISO8601DateFormatter().date(from: $0) }
+        } else {
+            let item = TaskItem(
+                title: wire.title,
+                taskDescription: wire.description,
+                priority: TaskPriority(rawValue: wire.priority) ?? .medium,
+                labels: wire.labels,
+                status: TaskStatus(rawValue: wire.status) ?? .backlog
+            )
+            item.id = taskId
+            item.parentTaskId = wire.parentTaskId.flatMap(UUID.init)
+            item.assignedAgentId = wire.assignedAgentId.flatMap(UUID.init)
+            item.assignedGroupId = wire.assignedGroupId.flatMap(UUID.init)
+            item.conversationId = wire.conversationId.flatMap(UUID.init)
+            item.result = wire.result
+            item.startedAt = wire.startedAt.flatMap { ISO8601DateFormatter().date(from: $0) }
+            item.completedAt = wire.completedAt.flatMap { ISO8601DateFormatter().date(from: $0) }
+            ctx.insert(item)
+        }
+        try? ctx.save()
+    }
+
+    func createTask(title: String, description: String, priority: TaskPriority, labels: [String], markReady: Bool) {
+        let id = UUID()
+        let status: TaskStatus = markReady ? .ready : .backlog
+        let now = ISO8601DateFormatter().string(from: Date())
+
+        let wire = TaskWireSwift(
+            id: id.uuidString,
+            title: title,
+            description: description,
+            status: status.rawValue,
+            priority: priority.rawValue,
+            labels: labels,
+            result: nil,
+            parentTaskId: nil,
+            assignedAgentId: nil,
+            assignedGroupId: nil,
+            conversationId: nil,
+            createdAt: now,
+            startedAt: nil,
+            completedAt: nil
+        )
+        sendToSidecar(.taskCreate(task: wire))
+        persistTask(wire)
+    }
+
+    func updateTaskStatus(_ task: TaskItem, status: TaskStatus) {
+        let wire = TaskWireSwift(
+            id: task.id.uuidString,
+            title: task.title,
+            description: task.taskDescription,
+            status: status.rawValue,
+            priority: task.priority.rawValue,
+            labels: task.labels,
+            result: task.result,
+            parentTaskId: task.parentTaskId?.uuidString,
+            assignedAgentId: task.assignedAgentId?.uuidString,
+            assignedGroupId: task.assignedGroupId?.uuidString,
+            conversationId: task.conversationId?.uuidString,
+            createdAt: ISO8601DateFormatter().string(from: task.createdAt),
+            startedAt: task.startedAt.map { ISO8601DateFormatter().string(from: $0) },
+            completedAt: task.completedAt.map { ISO8601DateFormatter().string(from: $0) }
+        )
+        sendToSidecar(.taskUpdate(taskId: task.id.uuidString, updates: wire))
+        task.status = status
+        if status == .inProgress && task.startedAt == nil { task.startedAt = Date() }
+        if status == .done || status == .failed { task.completedAt = Date() }
+        if status == .ready || status == .backlog {
+            task.startedAt = nil
+            task.completedAt = nil
+            task.assignedAgentId = nil
+            task.assignedGroupId = nil
+        }
+        try? modelContext?.save()
     }
 
     #if DEBUG

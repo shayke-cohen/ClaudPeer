@@ -38,6 +38,7 @@ struct ClaudeStudioApp: App {
                 BlackboardEntry.self,
                 Peer.self,
                 AgentGroup.self,
+                TaskItem.self,
             ])
             modelContainer = try ModelContainer(
                 for: schema,
@@ -106,8 +107,13 @@ struct ClaudeStudioApp: App {
                     await WorktreeCleanup.pruneOrphaned(activeSessions: active)
                 }
                 // Execute launch intent (CLI args: --chat, --agent, --group, etc.)
+                // Delay briefly so ConfigSyncService can finish seeding default agents/groups.
                 if let intent = launchIntent {
-                    appState.executeLaunchIntent(intent, modelContext: modelContainer.mainContext)
+                    let ctx = modelContainer.mainContext
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(800))
+                        appState.executeLaunchIntent(intent, modelContext: ctx)
+                    }
                 }
 
                 #if DEBUG

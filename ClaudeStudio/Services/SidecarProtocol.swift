@@ -15,6 +15,10 @@ enum SidecarCommand: Sendable {
     case questionAnswer(sessionId: String, questionId: String, answer: String, selectedOptions: [String]?)
     case confirmationAnswer(sessionId: String, confirmationId: String, approved: Bool, modifiedAction: String?)
     case sessionUpdateCwd(sessionId: String, workingDirectory: String)
+    case taskCreate(task: TaskWireSwift)
+    case taskUpdate(taskId: String, updates: TaskWireSwift)
+    case taskList(filter: TaskListFilter?)
+    case taskClaim(taskId: String, agentName: String)
 
     func encodeToJSON() throws -> Data {
         let encoder = JSONEncoder()
@@ -80,6 +84,22 @@ enum SidecarCommand: Sendable {
         case .sessionUpdateCwd(let sessionId, let workingDirectory):
             return try encoder.encode(
                 SessionUpdateCwdWire(type: "session.updateCwd", sessionId: sessionId, workingDirectory: workingDirectory)
+            )
+        case .taskCreate(let task):
+            return try encoder.encode(
+                TaskCreateWire(type: "task.create", task: task)
+            )
+        case .taskUpdate(let taskId, let updates):
+            return try encoder.encode(
+                TaskUpdateWire(type: "task.update", taskId: taskId, updates: updates)
+            )
+        case .taskList(let filter):
+            return try encoder.encode(
+                TaskListWire(type: "task.list", filter: filter)
+            )
+        case .taskClaim(let taskId, let agentName):
+            return try encoder.encode(
+                TaskClaimWire(type: "task.claim", taskId: taskId, agentName: agentName)
             )
         }
     }
@@ -220,6 +240,49 @@ struct GeneratedAgentSpec: Codable, Sendable {
     let maxBudget: Double?
 }
 
+struct TaskWireSwift: Codable, Sendable {
+    let id: String
+    let title: String
+    let description: String
+    let status: String
+    let priority: String
+    let labels: [String]
+    let result: String?
+    let parentTaskId: String?
+    let assignedAgentId: String?
+    let assignedGroupId: String?
+    let conversationId: String?
+    let createdAt: String
+    let startedAt: String?
+    let completedAt: String?
+}
+
+private struct TaskCreateWire: Encodable {
+    let type: String
+    let task: TaskWireSwift
+}
+
+private struct TaskUpdateWire: Encodable {
+    let type: String
+    let taskId: String
+    let updates: TaskWireSwift
+}
+
+private struct TaskListWire: Encodable {
+    let type: String
+    let filter: TaskListFilter?
+}
+
+struct TaskListFilter: Codable, Sendable {
+    let status: String?
+}
+
+private struct TaskClaimWire: Encodable {
+    let type: String
+    let taskId: String
+    let agentName: String
+}
+
 struct AgentConfig: Codable, Sendable {
     let name: String
     let systemPrompt: String
@@ -268,6 +331,9 @@ enum SidecarEvent: Sendable {
     case streamRichContent(sessionId: String, format: String, title: String?, content: String, height: Int?)
     case streamProgress(sessionId: String, progressId: String, title: String, steps: [ProgressStep])
     case streamSuggestions(sessionId: String, suggestions: [SuggestionItem])
+    case taskCreated(task: TaskWireSwift)
+    case taskUpdated(task: TaskWireSwift)
+    case taskListResult(tasks: [TaskWireSwift])
     case connected
     case disconnected
 }
@@ -328,7 +394,6 @@ struct IncomingWireMessage: Codable, Sendable {
     let from: String?
     let to: String?
     let message: String?
-    let task: String?
     let key: String?
     let value: String?
     let writtenBy: String?
@@ -362,6 +427,22 @@ struct IncomingWireMessage: Codable, Sendable {
     let progressId: String?
     let steps: [ProgressStep]?
     let suggestions: [SuggestionItem]?
+    let taskWire: TaskWireSwift?
+    let tasks: [TaskWireSwift]?
+
+    enum CodingKeys: String, CodingKey {
+        case type, sessionId, text, tool, input, output, result, cost
+        case inputTokens, outputTokens, numTurns, toolCallCount
+        case error, channelId, from, to, message, key, value, writtenBy
+        case parentSessionId, childSessionId, originalSessionId, reusedSessionId
+        case imageData, mediaType, filePath, fileType, fileName
+        case requestId, spec, questionId, question, options, multiSelect
+        case `private`, inputType, inputConfig
+        case confirmationId, action, reason, riskLevel, details
+        case format, title, content, height, progressId, steps, suggestions
+        case taskWire = "task"
+        case tasks
+    }
 
     func toEvent() -> SidecarEvent? {
         switch type {
@@ -389,7 +470,7 @@ struct IncomingWireMessage: Codable, Sendable {
             guard let ch = channelId, let f = from, let m = message else { return nil }
             return .peerChat(channelId: ch, from: f, message: m)
         case "peer.delegate":
-            guard let f = from, let t = to, let tk = task else { return nil }
+            guard let f = from, let t = to, let tk = text ?? message else { return nil }
             return .peerDelegate(from: f, to: t, task: tk)
         case "blackboard.update":
             guard let k = key, let v = value, let w = writtenBy else { return nil }
@@ -427,6 +508,14 @@ struct IncomingWireMessage: Codable, Sendable {
         case "stream.suggestions":
             guard let sid = sessionId, let s = suggestions else { return nil }
             return .streamSuggestions(sessionId: sid, suggestions: s)
+        case "task.created":
+            guard let t = taskWire else { return nil }
+            return .taskCreated(task: t)
+        case "task.updated":
+            guard let t = taskWire else { return nil }
+            return .taskUpdated(task: t)
+        case "task.list.result":
+            return .taskListResult(tasks: tasks ?? [])
         default:
             return nil
         }
