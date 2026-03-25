@@ -11,6 +11,7 @@ export class SessionRegistry {
       status: "active",
       tokenCount: 0,
       cost: 0,
+      toolCallCount: 0,
       startedAt: new Date().toISOString(),
     };
     this.sessions.set(id, state);
@@ -30,6 +31,13 @@ export class SessionRegistry {
     const session = this.sessions.get(id);
     if (session) {
       Object.assign(session, updates);
+    }
+  }
+
+  updateConfig(id: string, updates: Partial<AgentConfig>): void {
+    const config = this.configs.get(id);
+    if (config) {
+      Object.assign(config, updates);
     }
   }
 

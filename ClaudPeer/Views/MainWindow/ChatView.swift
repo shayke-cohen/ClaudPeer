@@ -36,6 +36,7 @@ struct ChatView: View {
     @State private var planModeEnabled = false
     /// The ID of the last assistant message produced while plan mode was active (for showing the Execute Plan action bar).
     @State private var lastPlanResponseMessageId: UUID?
+    @State private var showAttachRepoSheet = false
     @FocusState private var topicFieldFocused: Bool
 
     @Query private var allConversations: [Conversation]
@@ -265,6 +266,11 @@ struct ChatView: View {
         }
         .sheet(isPresented: $showAddAgentsSheet) {
             AddAgentsToChatSheet(conversationId: conversationId)
+                .environmentObject(appState)
+                .environment(\.modelContext, modelContext)
+        }
+        .sheet(isPresented: $showAttachRepoSheet) {
+            AttachRepoSheet(conversationId: conversationId)
                 .environmentObject(appState)
                 .environment(\.modelContext, modelContext)
         }
@@ -505,6 +511,11 @@ struct ChatView: View {
                 .disabled(!canExportChat)
                 .xrayId("chat.shareSubmenu")
                 .accessibilityLabel("Share chat")
+                Divider()
+                Button { showAttachRepoSheet = true } label: {
+                    Label("Attach GitHub Repo", systemImage: "arrow.triangle.branch")
+                }
+                .xrayId("chat.moreOptions.attachRepo")
                 Divider()
                 Button { showClearConfirmation = true } label: {
                     Label("Clear Messages", systemImage: "trash")

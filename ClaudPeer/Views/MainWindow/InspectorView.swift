@@ -5,6 +5,7 @@ import AppKit
 enum InspectorTab: String, CaseIterable, Identifiable {
     case info = "Info"
     case files = "Files"
+    case group = "Group"
 
     var id: String { rawValue }
 }
@@ -14,13 +15,32 @@ struct InspectorView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var allConversations: [Conversation]
     @EnvironmentObject private var appState: AppState
+    @Query private var allGroups: [AgentGroup]
+    @Query private var allAgents: [Agent]
     @State private var now = Date()
     @State private var inspectorTab: InspectorTab = .info
+    @State private var editingGroup: AgentGroup?
+    @State private var instructionExpanded = false
+    @State private var showAttachRepoSheet = false
 
     private let durationTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var conversation: Conversation? {
         allConversations.first { $0.id == conversationId }
+    }
+
+    private var sourceGroup: AgentGroup? {
+        guard let gid = conversation?.sourceGroupId else { return nil }
+        return allGroups.first { $0.id == gid }
+    }
+
+    private var isGroupConversation: Bool { sourceGroup != nil }
+
+    private var availableTabs: [InspectorTab] {
+        var tabs: [InspectorTab] = [.info]
+        if hasWorkingDirectory { tabs.append(.files) }
+        if isGroupConversation { tabs.append(.group) }
+        return tabs
     }
 
     private var orderedSessions: [Session] {
@@ -42,9 +62,9 @@ struct InspectorView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if hasWorkingDirectory {
+            if availableTabs.count > 1 {
                 Picker("Inspector Tab", selection: $inspectorTab) {
-                    ForEach(InspectorTab.allCases) { tab in
+                    ForEach(availableTabs) { tab in
                         Text(tab.rawValue).tag(tab)
                     }
                 }
@@ -66,11 +86,31 @@ struct InspectorView: View {
                 } else {
                     infoContent
                 }
+            case .group:
+                if let group = sourceGroup {
+                    groupContent(group)
+                } else {
+                    infoContent
+                }
             }
         }
         .frame(minWidth: 220, idealWidth: 280, maxWidth: .infinity, maxHeight: .infinity)
         .onReceive(durationTimer) { _ in
             now = Date()
+        }
+        .onChange(of: isGroupConversation) {
+            // Reset to valid tab if group tab disappears
+            if !availableTabs.contains(inspectorTab) {
+                inspectorTab = .info
+            }
+        }
+        .sheet(item: $editingGroup) { g in
+            GroupEditorView(group: g)
+        }
+        .sheet(isPresented: $showAttachRepoSheet) {
+            AttachRepoSheet(conversationId: conversationId)
+                .environmentObject(appState)
+                .environment(\.modelContext, modelContext)
         }
     }
 
@@ -92,6 +132,16 @@ struct InspectorView: View {
                 }
                 if hasWorkingDirectory {
                     workspaceSection
+                }
+                if !orderedSessions.isEmpty {
+                    Button { showAttachRepoSheet = true } label: {
+                        Label("Attach GitHub Repo", systemImage: "arrow.triangle.branch")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Attach a GitHub repository to this conversation")
+                    .xrayId("inspector.attachRepoButton")
                 }
                 historySection
             }
@@ -329,6 +379,268 @@ struct InspectorView: View {
         }
     }
 
+    // MARK: - Group Content (Drawer — Option C)
+
+    @ViewBuilder
+    private func groupContent(_ group: AgentGroup) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // Header
+                VStack(spacing: 8) {
+                    Text(group.icon)
+                        .font(.title)
+                        .frame(width: 48, height: 48)
+                        .background(Color.fromAgentColor(group.color).opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    Text(group.name)
+                        .font(.headline)
+                        .xrayId("inspector.group.name")
+
+                    HStack(spacing: 4) {
+                        if group.autoReplyEnabled {
+                            groupMiniPill("Auto-Reply", color: .green)
+                        }
+                        if group.autonomousCapable {
+                            groupMiniPill("Autonomous", color: .orange)
+                        }
+                        if group.workflow != nil {
+                            groupMiniPill("Workflow", color: .teal)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .xrayId("inspector.group.header")
+
+                // Actions
+                HStack(spacing: 6) {
+                    Button {
+                        appState.startGroupChat(group: group, modelContext: modelContext)
+                    } label: {
+                        Label("New Chat", systemImage: "play.fill")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .xrayId("inspector.group.newChatButton")
+
+                    Button {
+                        editingGroup = group
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .xrayId("inspector.group.editButton")
+                }
+                .frame(maxWidth: .infinity)
+
+                // Workflow progress
+                if let steps = group.workflow, !steps.isEmpty {
+                    Divider()
+                    groupWorkflowSection(steps, group: group)
+                }
+
+                // Team
+                Divider()
+                groupTeamSection(group)
+
+                // Instruction
+                if !group.groupInstruction.isEmpty {
+                    Divider()
+                    groupInstructionSection(group.groupInstruction)
+                }
+
+                // Recent chats from this group
+                Divider()
+                groupRecentSection(group)
+            }
+            .padding()
+        }
+        .xrayId("inspector.group.scrollView")
+    }
+
+    @ViewBuilder
+    private func groupWorkflowSection(_ steps: [WorkflowStep], group: AgentGroup) -> some View {
+        let agentById = Dictionary(uniqueKeysWithValues: allAgents.map { ($0.id, $0) })
+        let currentStep = conversation?.workflowCurrentStep
+        let completedSteps = conversation?.workflowCompletedSteps ?? []
+
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Workflow Progress", systemImage: "arrow.triangle.branch")
+                .font(.headline)
+                .xrayId("inspector.group.workflowHeading")
+
+            ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+                HStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .fill(stepColor(index: index, current: currentStep, completed: completedSteps))
+                            .frame(width: 22, height: 22)
+                        if completedSteps.contains(index) {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.white)
+                        } else {
+                            Text("\(index + 1)")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundStyle(index == currentStep ? .white : .secondary)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(step.stepLabel ?? "Step \(index + 1)")
+                            .font(.caption)
+                            .fontWeight(index == currentStep ? .semibold : .regular)
+                            .foregroundStyle(index == currentStep ? .primary : .secondary)
+                        if let agent = agentById[step.agentId] {
+                            Text(agent.name)
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    Spacer()
+                }
+                .xrayId("inspector.group.workflowStep.\(index)")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func groupTeamSection(_ group: AgentGroup) -> some View {
+        let agentById = Dictionary(uniqueKeysWithValues: allAgents.map { ($0.id, $0) })
+        let resolved = group.agentIds.compactMap { agentById[$0] }
+
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Team", systemImage: "person.3")
+                .font(.headline)
+                .xrayId("inspector.group.teamHeading")
+
+            ForEach(resolved) { agent in
+                HStack(spacing: 8) {
+                    Image(systemName: agent.icon)
+                        .font(.caption2)
+                        .frame(width: 22, height: 22)
+                        .foregroundStyle(Color.fromAgentColor(agent.color))
+                        .background(Color.fromAgentColor(agent.color).opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+
+                    Text(agent.name)
+                        .font(.caption)
+
+                    Spacer()
+
+                    let role = group.roleFor(agentId: agent.id)
+                    if role != .participant {
+                        Text(role.displayName)
+                            .font(.system(size: 9))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(groupRoleColor(role).opacity(0.12))
+                            .foregroundStyle(groupRoleColor(role))
+                            .clipShape(Capsule())
+                    }
+                }
+                .xrayId("inspector.group.agentRow.\(agent.id.uuidString)")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func groupInstructionSection(_ instruction: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Instruction", systemImage: "text.quote")
+                .font(.headline)
+                .xrayId("inspector.group.instructionHeading")
+
+            Text(instruction)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(instructionExpanded ? nil : 4)
+                .xrayId("inspector.group.instructionText")
+
+            if instruction.count > 120 {
+                Button(instructionExpanded ? "Show Less" : "Show More") {
+                    withAnimation { instructionExpanded.toggle() }
+                }
+                .font(.caption2)
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func groupRecentSection(_ group: AgentGroup) -> some View {
+        let convos = allConversations
+            .filter { $0.sourceGroupId == group.id }
+            .sorted { $0.startedAt > $1.startedAt }
+
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Recent Chats", systemImage: "clock")
+                .font(.headline)
+                .xrayId("inspector.group.recentHeading")
+
+            if convos.isEmpty {
+                Text("No conversations yet")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            } else {
+                ForEach(convos.prefix(5)) { conv in
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(conv.id == conversationId ? Color.accentColor : Color.gray.opacity(0.4))
+                            .frame(width: 6, height: 6)
+                        Text(conv.topic ?? "Untitled")
+                            .font(.caption)
+                            .lineLimit(1)
+                            .fontWeight(conv.id == conversationId ? .semibold : .regular)
+                        Spacer()
+                        Text(conv.startedAt, style: .relative)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        appState.selectedConversationId = conv.id
+                    }
+                    .xrayId("inspector.group.recentRow.\(conv.id.uuidString)")
+                }
+            }
+        }
+    }
+
+    // MARK: - Group Helpers
+
+    private func stepColor(index: Int, current: Int?, completed: [Int]) -> Color {
+        if completed.contains(index) { return .green }
+        if index == current { return .accentColor }
+        return Color.gray.opacity(0.3)
+    }
+
+    private func groupRoleColor(_ role: GroupRole) -> Color {
+        switch role {
+        case .coordinator: .orange
+        case .scribe: .purple
+        case .observer: .gray
+        case .participant: .secondary
+        }
+    }
+
+    @ViewBuilder
+    private func groupMiniPill(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 9))
+            .fontWeight(.medium)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.12))
+            .foregroundStyle(color)
+            .clipShape(Capsule())
+    }
+
     // MARK: - Helpers
 
     private func durationString(from start: Date) -> String {
@@ -352,7 +664,7 @@ struct InspectorView: View {
     private func modelShortName(_ model: String) -> String {
         if model.contains("sonnet") { return "Sonnet 4.6" }
         if model.contains("opus") { return "Opus 4.6" }
-        if model.contains("haiku") { return "Haiku 4.6" }
+        if model.contains("haiku") { return "Haiku 4.5" }
         return model
     }
 

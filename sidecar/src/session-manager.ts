@@ -3,10 +3,19 @@ import { randomUUID } from "crypto";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-import type { AgentConfig, FileAttachment, SidecarEvent } from "./types.js";
+import { appendFileSync } from "fs";
+import type { AgentConfig, BulkResumeEntry, FileAttachment, SidecarEvent } from "./types.js";
 import type { SessionRegistry } from "./stores/session-registry.js";
 import type { ToolContext } from "./tools/tool-context.js";
 import { createPeerBusServer } from "./tools/peerbus-server.js";
+import { pendingQuestions, questionsBySession } from "./tools/ask-user-tool.js";
+
+const DEBUG_LOG = join(homedir(), ".claudpeer", "debug-ask-user.log");
+function debugLog(msg: string) {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  try { appendFileSync(DEBUG_LOG, line); } catch {}
+  console.log(msg);
+}
 
 const FILE_PATH_REGEX = /(?:^|\s)(\/[\w.\-/]+\.(?:png|jpe?g|gif|webp|svg|ico|html?|pdf))(?:\s|$|[.,;)}\]])/gi;
 
@@ -43,11 +52,16 @@ export class SessionManager {
   private activeAborts = new Map<string, AbortController>();
   private toolCtx: ToolContext;
   private autonomousResults = new Map<string, { resolve: (result: string) => void }>();
+  /** Tracks questionIds issued by each session for cleanup on pause. */
 
   constructor(emit: EventEmitter, registry: SessionRegistry, toolCtx: ToolContext) {
     this.emit = emit;
     this.registry = registry;
     this.toolCtx = toolCtx;
+  }
+
+  updateSessionCwd(sessionId: string, workingDirectory: string): void {
+    this.registry.updateConfig(sessionId, { workingDirectory });
   }
 
   async createSession(conversationId: string, config: AgentConfig): Promise<void> {
@@ -59,7 +73,7 @@ export class SessionManager {
     console.log(`[session] Created session ${conversationId} for "${config.name}" (model: ${config.model})`);
   }
 
-  async sendMessage(sessionId: string, text: string, attachments?: FileAttachment[]): Promise<void> {
+  async sendMessage(sessionId: string, text: string, attachments?: FileAttachment[], planMode?: boolean): Promise<void> {
     const config = this.registry.getConfig(sessionId);
     if (!config) {
       this.emit({ type: "session.error", sessionId, error: "Session not found" });
@@ -83,7 +97,7 @@ export class SessionManager {
     this.registry.update(sessionId, { status: "active" });
 
     try {
-      const options = this.buildQueryOptions(sessionId, config, state.claudeSessionId, abortController, attachments?.length ?? 0);
+      const options = this.buildQueryOptions(sessionId, config, state.claudeSessionId, abortController, attachments?.length ?? 0, planMode);
       const sdkSessionId = options.sessionId ?? options.resume;
 
       if (options.cwd && !existsSync(options.cwd)) {
@@ -93,13 +107,18 @@ export class SessionManager {
 
       const prompt = this.buildPrompt(text, attachments);
       const attachmentCount = attachments?.length ?? 0;
-      console.log(`[session] query() start for ${sessionId} (model=${options.model}, cwd=${options.cwd ?? "none"}, turns=${options.maxTurns}, attachments=${attachmentCount})`);
+      const mcpNames = Object.keys(options.mcpServers ?? {});
+      debugLog(`[session] query() start for ${sessionId} (model=${options.model}, cwd=${options.cwd ?? "none"}, turns=${options.maxTurns}, attachments=${attachmentCount}, mcpServers=${mcpNames.join(",")})`);
       const stream = query({ prompt, options });
       let resultText = "";
+      const usageAccum = { inputTokens: 0, outputTokens: 0, numTurns: 0 };
 
       for await (const message of stream) {
         if (abortController.signal.aborted) break;
-        await this.handleSDKMessage(sessionId, message, (t) => { resultText += t; });
+        const msgType = (message as any).type ?? "unknown";
+        const extra = msgType === "result" ? ` subtype="${(message as any).subtype}" result="${((message as any).result ?? "").substring(0, 200)}"` : "";
+        debugLog(`[session:${sessionId}] SDK msg type="${msgType}"${extra}`);
+        await this.handleSDKMessage(sessionId, message, (t) => { resultText += t; }, usageAccum);
       }
 
       console.log(`[session] query() done for ${sessionId} (${resultText.length} chars)`);
@@ -109,11 +128,16 @@ export class SessionManager {
       }
 
       const sessionState = this.registry.get(sessionId);
+      console.log(`[session:${sessionId}] Emitting session.result: cost=${sessionState?.cost ?? 0}, inputTokens=${usageAccum.inputTokens}, outputTokens=${usageAccum.outputTokens}, numTurns=${usageAccum.numTurns}, toolCallCount=${sessionState?.toolCallCount ?? 0}`);
       this.emit({
         type: "session.result",
         sessionId,
         result: resultText || "(no text response)",
         cost: sessionState?.cost ?? 0,
+        inputTokens: usageAccum.inputTokens,
+        outputTokens: usageAccum.outputTokens,
+        numTurns: usageAccum.numTurns,
+        toolCallCount: sessionState?.toolCallCount ?? 0,
       });
       this.registry.update(sessionId, { status: "completed" });
 
@@ -185,6 +209,21 @@ export class SessionManager {
     });
   }
 
+  async bulkResume(sessions: BulkResumeEntry[]): Promise<void> {
+    let restored = 0;
+    for (const entry of sessions) {
+      if (!this.registry.get(entry.sessionId)) {
+        this.registry.create(entry.sessionId, entry.agentConfig);
+      }
+      this.registry.update(entry.sessionId, {
+        claudeSessionId: entry.claudeSessionId,
+        status: "active",
+      });
+      restored++;
+    }
+    console.log(`[session] Bulk resume: restored ${restored}/${sessions.length} sessions`);
+  }
+
   async forkSession(parentSessionId: string, childSessionId: string): Promise<void> {
     const config = this.registry.getConfig(parentSessionId);
     const parentState = this.registry.get(parentSessionId);
@@ -206,6 +245,19 @@ export class SessionManager {
     if (abort) {
       abort.abort();
     }
+    // Resolve any pending ask_user questions for this session (so the agent can exit cleanly)
+    const qids = questionsBySession.get(sessionId);
+    if (qids) {
+      for (const qid of [...qids]) {
+        const pending = pendingQuestions.get(qid);
+        if (pending) {
+          clearTimeout(pending.timer);
+          pending.resolve({ answer: "[Session was paused before you could answer.]" });
+          pendingQuestions.delete(qid);
+        }
+      }
+      questionsBySession.delete(sessionId);
+    }
     this.registry.update(sessionId, { status: "paused" });
   }
 
@@ -216,7 +268,7 @@ export class SessionManager {
   private static readonly MODEL_ALIASES: Record<string, string> = {
     sonnet: "claude-sonnet-4-6",
     opus: "claude-opus-4-6",
-    haiku: "claude-haiku-4-6",
+    haiku: "claude-haiku-4-5-20251001",
   };
 
   private static resolveModel(model: string | undefined): string {
@@ -230,19 +282,24 @@ export class SessionManager {
     claudeSessionId: string | undefined,
     abortController: AbortController,
     attachmentCount: number = 0,
+    planMode?: boolean,
   ): Record<string, any> {
     let maxTurns = config.maxTurns ?? 5;
     if (attachmentCount > 0 && maxTurns < 3) {
       maxTurns = 3;
     }
     const resolvedModel = SessionManager.resolveModel(config.model);
+    const usePlanMode = planMode === true;
+    const env = { ...process.env };
+    delete env.CLAUDECODE;
     const options: Record<string, any> = {
       model: resolvedModel,
       maxTurns,
       abortController,
       cwd: config.workingDirectory || undefined,
-      permissionMode: "bypassPermissions",
-      allowDangerouslySkipPermissions: true,
+      permissionMode: usePlanMode ? "plan" : "bypassPermissions",
+      allowDangerouslySkipPermissions: !usePlanMode,
+      env,
     };
 
     if (config.systemPrompt) {
@@ -285,7 +342,10 @@ export class SessionManager {
       }
     }
 
-    mcpServers["peerbus"] = createPeerBusServer(this.toolCtx, sessionId);
+    const isInteractive = config.interactive ?? false;
+    debugLog(`[session:${sessionId}] config.interactive=${config.interactive}, isInteractive=${isInteractive}, maxTurns=${config.maxTurns}`);
+    // Include ask_user in the peerbus in-process MCP server for interactive sessions
+    mcpServers["peerbus"] = createPeerBusServer(this.toolCtx, sessionId, isInteractive);
     options.mcpServers = mcpServers;
 
     if (claudeSessionId) {
@@ -361,6 +421,20 @@ export class SessionManager {
   private buildSystemPromptAppend(config: AgentConfig): string {
     let append = config.systemPrompt || "";
 
+    if (config.interactive) {
+      append += `\n\n## Asking the User
+
+You have an \`ask_user\` MCP tool available. When you need to ask the user a question, get a decision, or need clarification, you MUST use the \`ask_user\` tool instead of writing the question as regular text. The tool blocks until the user responds and returns their answer directly to you.
+
+Parameters:
+- \`question\` (required): The question text
+- \`options\` (optional): Array of {label, description} for structured choices
+- \`multi_select\` (optional): Allow multiple selections (default: false)
+- \`private\` (optional): Hide from other agents in group chat (default: true)
+
+IMPORTANT: Never write questions as plain text output. Always use the ask_user tool so the user gets an interactive prompt.\n`;
+    }
+
     if (config.skills && config.skills.length > 0) {
       append += "\n\n## Skills\n\n";
       for (const skill of config.skills) {
@@ -375,6 +449,7 @@ export class SessionManager {
     sessionId: string,
     message: any,
     collectText: (text: string) => void,
+    usageAccum?: { inputTokens: number; outputTokens: number; numTurns: number },
   ): Promise<void> {
     switch (message.type) {
       case "assistant":
@@ -398,6 +473,7 @@ export class SessionManager {
         break;
 
       case "tool_use":
+        console.log(`[session:${sessionId}] tool_use: name="${message.name}" id="${message.id}" input=${JSON.stringify(message.input ?? {}).substring(0, 100)}`);
         this.emit({
           type: "stream.toolCall",
           sessionId,
@@ -406,6 +482,10 @@ export class SessionManager {
             ? message.input
             : JSON.stringify(message.input ?? {}),
         });
+        {
+          const st = this.registry.get(sessionId);
+          this.registry.update(sessionId, { toolCallCount: (st?.toolCallCount ?? 0) + 1 });
+        }
         break;
 
       case "tool_result":
@@ -453,11 +533,27 @@ export class SessionManager {
         break;
 
       case "result":
-        if (message.cost_usd != null) {
+        console.log(`[session:${sessionId}] SDK result keys: ${Object.keys(message).join(", ")}`);
+        console.log(`[session:${sessionId}] SDK result usage: ${JSON.stringify(message.usage)}`);
+        console.log(`[session:${sessionId}] SDK result cost_usd=${message.cost_usd} total_cost_usd=${message.total_cost_usd} num_turns=${message.num_turns}`);
+        if (message.errors && message.errors.length > 0) {
+          console.log(`[session:${sessionId}] SDK result ERRORS: ${JSON.stringify(message.errors)}`);
+        }
+        if (message.permission_denials && message.permission_denials.length > 0) {
+          console.log(`[session:${sessionId}] SDK result permission_denials: ${JSON.stringify(message.permission_denials)}`);
+        }
+        if (message.cost_usd != null || message.total_cost_usd != null) {
+          const cost = message.total_cost_usd ?? message.cost_usd ?? 0;
           const state = this.registry.get(sessionId);
           this.registry.update(sessionId, {
-            cost: (state?.cost ?? 0) + message.cost_usd,
+            cost: (state?.cost ?? 0) + cost,
           });
+        }
+        if (usageAccum) {
+          const usage = message.usage ?? {};
+          usageAccum.inputTokens = usage.input_tokens ?? usage.inputTokens ?? 0;
+          usageAccum.outputTokens = usage.output_tokens ?? usage.outputTokens ?? 0;
+          usageAccum.numTurns = message.num_turns ?? 0;
         }
         if (message.session_id) {
           this.registry.update(sessionId, { claudeSessionId: message.session_id });
@@ -473,6 +569,12 @@ export class SessionManager {
         break;
 
       default:
+        if (message.type && message.type !== "system") {
+          const extra = message.type === "user" && message.tool_use_result
+            ? ` tool_use_result=${JSON.stringify(message.tool_use_result).substring(0, 200)}`
+            : "";
+          console.log(`[session:${sessionId}] SDK message type="${message.type}" name="${message.name ?? ""}" keys=${Object.keys(message).join(",")}${extra}`);
+        }
         break;
     }
   }

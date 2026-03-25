@@ -2,6 +2,8 @@ import type { ServerWebSocket } from "bun";
 import type { SidecarCommand, SidecarEvent } from "./types.js";
 import type { SessionManager } from "./session-manager.js";
 import type { ToolContext } from "./tools/tool-context.js";
+import { resolveQuestion } from "./tools/ask-user-tool.js";
+import Anthropic from "@anthropic-ai/sdk";
 
 export class WsServer {
   private clients = new Set<ServerWebSocket<unknown>>();
@@ -54,17 +56,55 @@ export class WsServer {
 
   private async handleCommand(command: SidecarCommand): Promise<void> {
     switch (command.type) {
-      case "session.create":
+      case "session.create": {
+        const policy = command.agentConfig.instancePolicy ?? command.agentConfig.instancePolicyKind ?? "spawn";
+        if (policy === "singleton") {
+          const existing = this.ctx.sessions.findByAgentName(command.agentConfig.name)
+            .filter(s => s.status === "active");
+          if (existing.length > 0) {
+            console.log(`[ws] session.create: singleton reuse → ${existing[0].id}`);
+            this.broadcast({
+              type: "session.reused",
+              originalSessionId: command.conversationId,
+              reusedSessionId: existing[0].id,
+            });
+            break;
+          }
+        } else if (policy === "pool") {
+          const existing = this.ctx.sessions.findByAgentName(command.agentConfig.name)
+            .filter(s => s.status === "active");
+          const poolMax = command.agentConfig.instancePolicyPoolMax ?? 3;
+          if (existing.length >= poolMax) {
+            let minMessages = Infinity;
+            let target = existing[0].id;
+            for (const s of existing) {
+              const count = this.ctx.messages.peek(s.id);
+              if (count < minMessages) {
+                minMessages = count;
+                target = s.id;
+              }
+            }
+            console.log(`[ws] session.create: pool full (${existing.length}/${poolMax}), routing → ${target}`);
+            this.broadcast({
+              type: "session.reused",
+              originalSessionId: command.conversationId,
+              reusedSessionId: target,
+            });
+            break;
+          }
+        }
         await this.sessionManager.createSession(
           command.conversationId,
           command.agentConfig,
         );
         break;
+      }
       case "session.message":
         await this.sessionManager.sendMessage(
           command.sessionId,
           command.text,
           command.attachments,
+          command.planMode,
         );
         break;
       case "session.resume":
@@ -78,6 +118,13 @@ export class WsServer {
         break;
       case "session.pause":
         await this.sessionManager.pauseSession(command.sessionId);
+        break;
+      case "session.updateCwd":
+        this.sessionManager.updateSessionCwd(command.sessionId, command.workingDirectory);
+        console.log(`[ws] Updated cwd for ${command.sessionId} → ${command.workingDirectory}`);
+        break;
+      case "session.bulkResume":
+        await this.sessionManager.bulkResume(command.sessions);
         break;
       case "agent.register":
         for (const def of command.agents) {
@@ -103,6 +150,42 @@ export class WsServer {
       case "delegate.task":
         await this.handleDelegateTask(command);
         break;
+
+      case "peer.register":
+        this.ctx.peerRegistry.register(
+          command.name,
+          command.endpoint,
+          command.agents.map((a: any) => ({ name: a.name, config: a.config })),
+        );
+        break;
+      case "peer.remove":
+        this.ctx.peerRegistry.remove(command.name);
+        break;
+
+      case "generate.agent":
+        this.handleGenerateAgent(command).catch((err) => {
+          console.error("[ws] generate.agent handler error:", err);
+          this.broadcast({
+            type: "generate.agent.error",
+            requestId: command.requestId,
+            error: err.message ?? "Unknown error",
+          });
+        });
+        break;
+
+      case "session.questionAnswer": {
+        const resolved = resolveQuestion(
+          command.questionId,
+          command.answer,
+          command.selectedOptions,
+        );
+        if (resolved) {
+          console.log(`[ws] session.questionAnswer: resolved question ${command.questionId} for session ${command.sessionId}`);
+        } else {
+          console.warn(`[ws] session.questionAnswer: no pending question found for ${command.questionId}`);
+        }
+        break;
+      }
     }
   }
 
@@ -181,6 +264,120 @@ export class WsServer {
         });
       }
     }
+  }
+
+  private async handleGenerateAgent(
+    command: Extract<SidecarCommand, { type: "generate.agent" }>
+  ): Promise<void> {
+    const anthropic = new Anthropic();
+
+    const validIcons = [
+      "cpu", "brain", "terminal", "doc.text", "magnifyingglass", "shield",
+      "wrench.and.screwdriver", "paintbrush", "chart.bar", "bubble.left.and.bubble.right",
+      "network", "globe", "folder", "gear", "lightbulb", "book", "hammer",
+      "ant", "ladybug", "leaf", "bolt", "wand.and.stars", "pencil.and.outline",
+      "person.crop.circle", "star", "flag", "bell", "map", "eye", "lock.shield",
+      "server.rack", "externaldrive", "icloud", "arrow.triangle.branch",
+      "text.badge.checkmark", "checkmark.seal", "clock", "calendar",
+      "exclamationmark.triangle", "play", "stop", "shuffle", "repeat",
+      "square.and.pencil", "rectangle.and.text.magnifyingglass",
+      "doc.on.clipboard", "tray.2", "archivebox", "shippingbox",
+    ];
+    const validColors = ["blue", "red", "green", "purple", "orange", "teal", "pink", "indigo", "gray"];
+
+    const skillsCatalog = command.availableSkills.length > 0
+      ? command.availableSkills
+          .map((s) => `- ID: ${s.id} | Name: ${s.name} | Category: ${s.category} | Description: ${s.description}`)
+          .join("\n")
+      : "(no skills available)";
+
+    const mcpsCatalog = command.availableMCPs.length > 0
+      ? command.availableMCPs
+          .map((m) => `- ID: ${m.id} | Name: ${m.name} | Description: ${m.description}`)
+          .join("\n")
+      : "(no MCP servers available)";
+
+    const systemPrompt = `You are an agent designer. Given a user's description of an AI agent they want to create, generate a complete agent definition as JSON.
+
+## Output Format
+Return ONLY valid JSON (no markdown, no code fences) with this exact schema:
+{
+  "name": "string (short, 2-4 words)",
+  "description": "string (one sentence describing what the agent does)",
+  "systemPrompt": "string (detailed system prompt for the agent, 200-800 words, written in second person addressing the agent)",
+  "model": "sonnet" | "opus" | "haiku",
+  "icon": "string (SF Symbol name from the allowed list)",
+  "color": "string (from the allowed list)",
+  "matchedSkillIds": ["array of skill ID strings that are relevant"],
+  "matchedMCPIds": ["array of MCP server ID strings that are relevant"],
+  "maxTurns": null,
+  "maxBudget": null
+}
+
+## Constraints
+- icon must be one of: ${JSON.stringify(validIcons)}
+- color must be one of: ${JSON.stringify(validColors)}
+- model: use "sonnet" for most agents, "opus" for agents that need deep reasoning or complex analysis, "haiku" for simple/fast agents
+- matchedSkillIds: only include IDs from the available skills catalog below. Pick skills that are directly relevant.
+- matchedMCPIds: only include IDs from the available MCPs catalog below. Pick MCPs that are directly relevant.
+- The systemPrompt should be focused, actionable, and specific to the agent's purpose. Write it as instructions to the AI agent.
+
+## Available Skills
+${skillsCatalog}
+
+## Available MCP Servers
+${mcpsCatalog}`;
+
+    console.log(`[ws] generate.agent: generating agent from prompt: "${command.prompt.substring(0, 100)}..."`);
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [{ role: "user", content: command.prompt }],
+    });
+
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      throw new Error("No text response from Claude");
+    }
+
+    let jsonText = textBlock.text.trim();
+    // Strip markdown code fences if present
+    if (jsonText.startsWith("```")) {
+      jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+    }
+
+    const spec = JSON.parse(jsonText);
+
+    // Validate required fields
+    if (!spec.name || !spec.systemPrompt) {
+      throw new Error("Generated spec missing required fields (name, systemPrompt)");
+    }
+
+    // Ensure valid icon and color
+    if (!validIcons.includes(spec.icon)) spec.icon = "cpu";
+    if (!validColors.includes(spec.color)) spec.color = "blue";
+    if (!["sonnet", "opus", "haiku"].includes(spec.model)) spec.model = "sonnet";
+
+    console.log(`[ws] generate.agent: generated "${spec.name}" with ${spec.matchedSkillIds?.length ?? 0} skills, ${spec.matchedMCPIds?.length ?? 0} MCPs`);
+
+    this.broadcast({
+      type: "generate.agent.result",
+      requestId: command.requestId,
+      spec: {
+        name: spec.name,
+        description: spec.description ?? "",
+        systemPrompt: spec.systemPrompt,
+        model: spec.model ?? "sonnet",
+        icon: spec.icon ?? "cpu",
+        color: spec.color ?? "blue",
+        matchedSkillIds: Array.isArray(spec.matchedSkillIds) ? spec.matchedSkillIds : [],
+        matchedMCPIds: Array.isArray(spec.matchedMCPIds) ? spec.matchedMCPIds : [],
+        maxTurns: spec.maxTurns ?? undefined,
+        maxBudget: spec.maxBudget ?? undefined,
+      },
+    });
   }
 
   broadcast(event: SidecarEvent): void {

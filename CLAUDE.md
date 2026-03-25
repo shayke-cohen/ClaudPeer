@@ -82,25 +82,40 @@ Core entities (all in `ClaudPeer/Models/`):
 
 ## What's Implemented vs Planned
 
-**Implemented:**
+**Implemented (Phases 1–6):**
 - SwiftData models for all entities
 - SidecarManager (process launch, WebSocket, reconnect)
-- SidecarProtocol (commands: create/message/resume/fork/pause; events: token/toolCall/toolResult/result/error)
+- SidecarProtocol (commands: create/message/resume/fork/pause; events: token/toolCall/toolResult/result/error/streamImage/streamFileCard/streamThinking)
 - AgentProvisioner (resolves skills, MCPs, permissions, working directory → AgentConfig)
 - SessionManager in sidecar (Agent SDK `query()`, streaming, resume, fork, pause)
 - Blackboard store (in-memory + disk + HTTP REST API)
 - Main UI (NavigationSplitView with sidebar, chat, inspector)
-- Agent library and editor views
+- Agent library, editor, and catalog browser views
+- PeerBus SDK tools (peer_chat_*, peer_send_*, blackboard_*, workspace_*) with stores
+- Agent-to-agent messaging, blocking chats, delegation routing
+- Agent Comms view (unified timeline with filter tabs)
+- Built-in ecosystem (default agents, skills, MCPs, permission presets, system prompt templates, first-launch seeding)
+- Session persistence (SwiftData + `claudeSessionId` for SDK resume)
+- Conversation forking (from any pivot message, with lineage tracking)
+- GitHub workspace clone (`GitHubIntegration.swift`, `WorkspaceResolver.swift`)
+- Chat export/share (Markdown, HTML, PDF via `ChatTranscriptExport`)
+- File and image attachments (drag-drop, thumbnails, `MessageAttachment` model)
+- Streaming images, file cards, and extended thinking from sidecar
+- Inspector file tree with git status integration
+- Resizable chat/inspector split with persistent divider
+- Conversation archive/unarchive
+- Multi-instance support (`InstanceConfig`, `--instance` flag)
+- Group peer fan-out (`GroupPeerFanOutContext`, budget limiter, deduplication)
+- P2P LAN networking (Bonjour discovery, `PeerCatalogServer`, `PeerAgentImporter`, `PeerNetworkView`)
+- Full accessibility coverage (347+ identifiers)
 
 **Not yet implemented (specified in vision doc):**
-- PeerBus custom SDK tools (peer_chat_*, peer_send_*, blackboard_*, workspace_*)
-- Hook engine (PreToolUse/PostToolUse event hooks)
-- Agent-to-agent conversations and delegation routing
-- Instance policy enforcement (.singleton, .pool)
-- P2P networking (Bonjour discovery, agent sharing, cross-machine relay)
-- WorkspaceResolver.swift, GitHubIntegration.swift, P2PNetworkManager.swift
-- Agent Comms view, Peer Network panel
-- Skill/MCP pool management views
+
+- Crash recovery (sidecar watchdog, automatic session reconnect on restart)
+- Instance policy enforcement (.singleton, .pool with load balancing)
+- GitHub CLI (`gh`) integration, branch-from-issue workflow
+- P2P v2: peer registry in sidecar, PeerBus remote routing, cross-machine relay
+- Blackboard as MCP server (universal AI tool integration)
 
 ## Accessibility Identifiers (AppXray / UI Testing)
 
@@ -163,6 +178,7 @@ Dot-separated `viewName.elementName` in camelCase:
 | FileContentView | `inspector.fileContent.*` |
 | FileTreeView | `inspector.fileTree.*` |
 | WorkingDirectoryPicker | `directoryPicker.*` |
+| AttachRepoSheet | `attachRepo.*` |
 
 When adding new views, pick a unique camelCase prefix and annotate every interactive element.
 
