@@ -364,7 +364,11 @@ struct SidebarView: View {
                         appState.selectedConversationId = conv.id
                     },
                     onSelectGroup: {
-                        appState.startGroupChat(group: group, modelContext: modelContext)
+                        if let recent = conversationsForGroup(group).first {
+                            appState.selectedConversationId = recent.id
+                        } else {
+                            appState.startGroupChat(group: group, modelContext: modelContext)
+                        }
                     },
                     onEdit: { editingGroup = group },
                     onDuplicate: { duplicateGroup(group) }
@@ -415,6 +419,13 @@ struct SidebarView: View {
                     onNewChat: { startSession(with: agent) },
                     onSelectConversation: { conv in
                         appState.selectedConversationId = conv.id
+                    },
+                    onSelectAgent: {
+                        if let recent = conversationsForAgent(agent).first {
+                            appState.selectedConversationId = recent.id
+                        } else {
+                            startSession(with: agent)
+                        }
                     }
                 )
                 .contextMenu {

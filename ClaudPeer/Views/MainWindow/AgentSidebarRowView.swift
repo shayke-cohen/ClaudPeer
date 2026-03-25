@@ -7,6 +7,7 @@ struct AgentSidebarRowView: View {
     @Binding var isExpanded: Bool
     let onNewChat: () -> Void
     let onSelectConversation: (Conversation) -> Void
+    var onSelectAgent: (() -> Void)?
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
@@ -33,9 +34,13 @@ struct AgentSidebarRowView: View {
 
         } label: {
             HStack {
-                Image(systemName: agent.icon)
-                    .foregroundStyle(Color.fromAgentColor(agent.color))
-                Text(agent.name)
+                HStack(spacing: 8) {
+                    Image(systemName: agent.icon)
+                        .foregroundStyle(Color.fromAgentColor(agent.color))
+                    Text(agent.name)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { onSelectAgent?() }
                 Spacer()
                 if !conversations.isEmpty {
                     Text("\(conversations.count)")
