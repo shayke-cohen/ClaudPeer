@@ -129,13 +129,15 @@ struct MainWindowView: View {
         if let conversationId = appState.selectedConversationId {
             ChatView(conversationId: conversationId)
                 .id(conversationId)
+        } else if let groupId = appState.selectedGroupId {
+            GroupDetailView(groupId: groupId)
+                .id(groupId)
         } else {
-            ContentUnavailableView(
-                "No Conversation Selected",
-                systemImage: "bubble.left.and.bubble.right",
-                description: Text("Select a conversation from the sidebar or start a new one.")
+            WelcomeView(
+                onQuickChat: { createQuickChat() },
+                onStartAgent: { agent in startSessionWithAgent(agent) }
             )
-            .xrayId("mainWindow.noConversationPlaceholder")
+            .xrayId("mainWindow.welcomeView")
         }
     }
 
@@ -273,6 +275,29 @@ struct MainWindowView: View {
         userParticipant.conversation = conversation
         conversation.participants.append(userParticipant)
         modelContext.insert(conversation)
+        try? modelContext.save()
+        appState.selectedConversationId = conversation.id
+    }
+
+    private func startSessionWithAgent(_ agent: Agent) {
+        let conversation = Conversation(topic: agent.name)
+        let userParticipant = Participant(type: .user, displayName: "You")
+        userParticipant.conversation = conversation
+        conversation.participants.append(userParticipant)
+
+        let session = Session(agent: agent, mode: .interactive)
+        session.workingDirectory = agent.defaultWorkingDirectory ?? ""
+        modelContext.insert(conversation)
+        modelContext.insert(session)
+        conversation.sessions.append(session)
+
+        let agentParticipant = Participant(
+            type: .agentSession(sessionId: session.id),
+            displayName: agent.name
+        )
+        agentParticipant.conversation = conversation
+        conversation.participants.append(agentParticipant)
+
         try? modelContext.save()
         appState.selectedConversationId = conversation.id
     }

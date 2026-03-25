@@ -540,6 +540,10 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
+                    if sortedMessages.isEmpty && !isProcessing {
+                        chatEmptyState
+                    }
+
                     ForEach(sortedMessages) { message in
                         MessageBubble(
                             message: message,
@@ -659,6 +663,10 @@ struct ChatView: View {
                     .padding(.vertical, 4)
                 }
                 .xrayId("chat.mentionSuggestions")
+            }
+
+            if sortedMessages.isEmpty && !isProcessing && mentionAutocompleteAgents.isEmpty {
+                actionChipsStrip
             }
 
             HStack(alignment: .bottom, spacing: 8) {
@@ -838,6 +846,127 @@ struct ChatView: View {
         case "application/pdf": return "doc.richtext"
         default: return mediaType.hasPrefix("image/") ? "photo" : "doc"
         }
+    }
+
+    // MARK: - Chat Empty State
+
+    @ViewBuilder
+    private var chatEmptyState: some View {
+        VStack(spacing: 16) {
+            if let agent = primarySession?.agent {
+                VStack(spacing: 8) {
+                    Image(systemName: agent.icon)
+                        .font(.system(size: 36))
+                        .foregroundStyle(Color.fromAgentColor(agent.color))
+                        .frame(width: 64, height: 64)
+                        .background(Color.fromAgentColor(agent.color).opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                    Text(agent.name)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+
+                    if !agent.agentDescription.isEmpty {
+                        Text(agent.agentDescription)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(3)
+                            .frame(maxWidth: 400)
+                    }
+                }
+                .xrayId("chat.emptyState.agentInfo")
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.blue)
+                        .frame(width: 64, height: 64)
+                        .background(Color.blue.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                    Text("Quick Chat")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                    Text("Ask anything \u{2014} no agent profile attached.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .xrayId("chat.emptyState.freeformInfo")
+            }
+
+            let suggestions = primarySession?.agent.map { AgentSuggestions.suggestions(for: $0) }
+                ?? AgentSuggestions.freeformSuggestions
+
+            VStack(spacing: 8) {
+                Text("Try asking")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.tertiary)
+
+                VStack(spacing: 6) {
+                    ForEach(Array(suggestions.starters.prefix(4).enumerated()), id: \.offset) { index, prompt in
+                        Button {
+                            inputText = prompt
+                        } label: {
+                            HStack {
+                                Text(prompt)
+                                    .font(.callout)
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(.background)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(.quaternary, lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
+                        .xrayId("chat.emptyState.starter.\(index)")
+                    }
+                }
+                .frame(maxWidth: 440)
+            }
+            .xrayId("chat.emptyState.suggestions")
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 40)
+        .padding(.bottom, 20)
+        .xrayId("chat.emptyState")
+    }
+
+    // MARK: - Action Chips
+
+    @ViewBuilder
+    private var actionChipsStrip: some View {
+        let suggestions = primarySession?.agent.map { AgentSuggestions.suggestions(for: $0) }
+            ?? AgentSuggestions.freeformSuggestions
+
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(suggestions.chips, id: \.self) { chip in
+                    Button {
+                        inputText = chip
+                    } label: {
+                        Text(chip)
+                            .font(.caption)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color.accentColor.opacity(0.1))
+                            .foregroundStyle(Color.accentColor)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .xrayId("chat.actionChip.\(chip.lowercased().replacingOccurrences(of: " ", with: "-"))")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+        }
+        .xrayId("chat.actionChips")
     }
 
     // MARK: - Image Input Handlers
