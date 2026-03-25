@@ -1,5 +1,5 @@
 import XCTest
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 @MainActor
 final class FileExplorerIntegrationTests: XCTestCase {
@@ -9,7 +9,7 @@ final class FileExplorerIntegrationTests: XCTestCase {
     override func setUp() {
         tempDir = FileManager.default.temporaryDirectory
             .resolvingSymlinksInPath()
-            .appendingPathComponent("ClaudPeerExplorerTests-\(UUID().uuidString)")
+            .appendingPathComponent("ClaudeStudioExplorerTests-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
     }
 

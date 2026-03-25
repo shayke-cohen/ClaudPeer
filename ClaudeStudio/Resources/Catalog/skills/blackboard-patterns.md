@@ -2,7 +2,7 @@
 
 ## When to Activate
 
-Use when teams or agents share a durable knowledge layer (e.g., ClaudPeer blackboard HTTP API, Redis, or JSON files under `~/.claudpeer/blackboard/`). Use for facts, tasks, decisions, and cross-session memory—not as a chat log replacement.
+Use when teams or agents share a durable knowledge layer (e.g., ClaudeStudio blackboard HTTP API, Redis, or JSON files under `~/.claudestudio/blackboard/`). Use for facts, tasks, decisions, and cross-session memory—not as a chat log replacement.
 
 ## Process
 

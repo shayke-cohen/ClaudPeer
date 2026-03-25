@@ -49,8 +49,12 @@ final class AppState: ObservableObject {
     @Published var pendingConfirmations: [String: AgentConfirmation] = [:]
     @Published var progressTrackers: [String: ProgressTracker] = [:]
     @Published var pendingSuggestions: [String: [SuggestionItem]] = [:]
+    @Published var launchError: String?
 
-    /// File-based config sync service (set by ClaudPeerApp on appear)
+    /// Queued auto-send prompt from a launch intent, drained when sidecar connects.
+    var pendingAutoPrompt: (conversationId: UUID, sessions: [Session], text: String)?
+
+    /// File-based config sync service (set by ClaudeStudioApp on appear)
     var configSyncService: ConfigSyncService?
 
     var createdSessions: Set<String> = []
@@ -199,6 +203,148 @@ final class AppState: ObservableObject {
     func setInstanceWorkingDirectory(_ path: String) {
         instanceWorkingDirectory = path
         InstanceConfig.userDefaults.set(path, forKey: AppSettings.instanceWorkingDirectoryKey)
+    }
+
+    // MARK: - Launch Intent
+
+    /// Executes a parsed launch intent (from CLI args or URL scheme).
+    /// Must be called after `modelContext` is set.
+    func executeLaunchIntent(_ intent: LaunchIntent, modelContext: ModelContext) {
+        switch intent.mode {
+        case .chat:
+            let conversation = Conversation(topic: "New Chat")
+            let userParticipant = Participant(type: .user, displayName: "You")
+            userParticipant.conversation = conversation
+            conversation.participants.append(userParticipant)
+            modelContext.insert(conversation)
+            try? modelContext.save()
+            selectedConversationId = conversation.id
+
+        case .agent(let name):
+            let descriptor = FetchDescriptor<Agent>()
+            let allAgents = (try? modelContext.fetch(descriptor)) ?? []
+            guard let agent = allAgents.first(where: {
+                $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
+            }) else {
+                launchError = "Agent not found: \"\(name)\""
+                return
+            }
+
+            let provisioner = AgentProvisioner(modelContext: modelContext)
+            let wdOverride = intent.workingDirectory
+            let (_, session) = provisioner.provision(agent: agent, mission: nil, workingDirOverride: wdOverride)
+            if intent.autonomous { session.mode = .autonomous }
+
+            let conversation = Conversation(topic: agent.name)
+            let userParticipant = Participant(type: .user, displayName: "You")
+            let agentParticipant = Participant(
+                type: .agentSession(sessionId: session.id),
+                displayName: agent.name
+            )
+            userParticipant.conversation = conversation
+            agentParticipant.conversation = conversation
+            conversation.participants = [userParticipant, agentParticipant]
+            session.conversations = [conversation]
+
+            modelContext.insert(session)
+            modelContext.insert(conversation)
+            try? modelContext.save()
+            selectedConversationId = conversation.id
+
+            if let prompt = intent.prompt {
+                pendingAutoPrompt = (conversationId: conversation.id, sessions: [session], text: prompt)
+            }
+
+        case .group(let name):
+            let descriptor = FetchDescriptor<AgentGroup>()
+            let allGroups = (try? modelContext.fetch(descriptor)) ?? []
+            guard let group = allGroups.first(where: {
+                $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
+            }) else {
+                launchError = "Group not found: \"\(name)\""
+                return
+            }
+
+            if intent.autonomous, let prompt = intent.prompt {
+                startAutonomousGroupChat(group: group, mission: prompt, modelContext: modelContext)
+            } else {
+                startGroupChat(group: group, modelContext: modelContext)
+                // For non-autonomous groups, queue the prompt for auto-send
+                if let prompt = intent.prompt, let convoId = selectedConversationId {
+                    let descriptor = FetchDescriptor<Conversation>(predicate: #Predicate { c in c.id == convoId })
+                    if let convo = try? modelContext.fetch(descriptor).first {
+                        pendingAutoPrompt = (conversationId: convo.id, sessions: convo.sessions, text: prompt)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Drains the pending auto-prompt queue by sending the message to the sidecar.
+    /// Called when sidecar status transitions to `.connected`.
+    func drainPendingAutoPrompt() {
+        guard let pending = pendingAutoPrompt, let ctx = modelContext else { return }
+        pendingAutoPrompt = nil
+
+        let targetId = pending.conversationId
+        let descriptor = FetchDescriptor<Conversation>(predicate: #Predicate { c in c.id == targetId })
+        guard let conversation = try? ctx.fetch(descriptor).first else { return }
+
+        // Insert user message into conversation
+        let userParticipant = conversation.participants.first(where: {
+            if case .user = $0.type { return true }
+            return false
+        })
+        let userMessage = ConversationMessage(
+            senderParticipantId: userParticipant?.id,
+            text: pending.text,
+            type: .chat,
+            conversation: conversation
+        )
+        conversation.messages.append(userMessage)
+        try? ctx.save()
+
+        // Send to sidecar
+        guard let manager = sidecarManager else { return }
+        for session in pending.sessions {
+            let sessionId = session.id.uuidString
+            let provisioner = AgentProvisioner(modelContext: ctx)
+            let agent = session.agent
+            let config: AgentConfig
+            if let agent {
+                (config, _) = provisioner.provision(agent: agent, mission: session.mission)
+            } else {
+                config = AgentConfig(
+                    name: "Claude",
+                    systemPrompt: "You are a helpful assistant.",
+                    allowedTools: [],
+                    mcpServers: [],
+                    model: "claude-sonnet-4-6",
+                    maxTurns: nil,
+                    maxBudget: nil,
+                    maxThinkingTokens: 10000,
+                    workingDirectory: instanceWorkingDirectory ?? NSHomeDirectory(),
+                    skills: []
+                )
+            }
+
+            if !createdSessions.contains(sessionId) {
+                streamingText.removeValue(forKey: sessionId)
+                lastSessionEvent.removeValue(forKey: sessionId)
+
+                Task {
+                    try? await manager.send(.sessionCreate(
+                        conversationId: sessionId,
+                        agentConfig: config
+                    ))
+                    try? await manager.send(.sessionMessage(
+                        sessionId: sessionId,
+                        text: pending.text
+                    ))
+                }
+                createdSessions.insert(sessionId)
+            }
+        }
     }
 
     // MARK: - Group Chat
@@ -418,6 +564,7 @@ final class AppState: ObservableObject {
         )
         msg.toolName = agentName
         msg.toolInput = answer
+        convo.messages.append(msg)
         ctx.insert(msg)
         try? ctx.save()
     }
@@ -448,6 +595,7 @@ final class AppState: ObservableObject {
         if let thinking, !thinking.isEmpty {
             msg.thinkingText = thinking
         }
+        convo.messages.append(msg)
         ctx.insert(msg)
         try? ctx.save()
 
@@ -486,6 +634,7 @@ final class AppState: ObservableObject {
         msg.toolName = format
         msg.toolInput = title
         msg.toolOutput = height.map { String($0) }
+        convo.messages.append(msg)
         ctx.insert(msg)
         try? ctx.save()
     }
@@ -735,6 +884,7 @@ final class AppState: ObservableObject {
             disconnectTimer?.invalidate()
             disconnectTimer = nil
             Task { await recoverSessions() }
+            drainPendingAutoPrompt()
 
         case .disconnected:
             sidecarStatus = .disconnected

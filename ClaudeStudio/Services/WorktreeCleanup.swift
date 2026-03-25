@@ -15,7 +15,7 @@ enum WorktreeCleanup {
 
     /// Scan for worktree directories that don't belong to any active session and remove them.
     static func pruneOrphaned(activeSessions: [Session]) async {
-        let worktreeBase = "\(NSHomeDirectory())/.claudpeer/worktrees"
+        let worktreeBase = "\(NSHomeDirectory())/.claudestudio/worktrees"
         let fm = FileManager.default
         guard fm.fileExists(atPath: worktreeBase) else { return }
 
@@ -29,7 +29,7 @@ enum WorktreeCleanup {
                 let worktreePath = (repoPath as NSString).appendingPathComponent(branchDir)
                 if !activeWorktreePaths.contains(worktreePath) {
                     // Find the base clone to prune from
-                    let baseClonePath = "\(NSHomeDirectory())/.claudpeer/repos/\(repoDir)"
+                    let baseClonePath = "\(NSHomeDirectory())/.claudestudio/repos/\(repoDir)"
                     await GitHubIntegration.removeWorktree(baseClonePath: baseClonePath, worktreePath: worktreePath)
                 }
             }

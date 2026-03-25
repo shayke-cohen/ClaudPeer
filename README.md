@@ -1,10 +1,10 @@
-# ClaudPeer
+# ClaudeStudio
 
 A native macOS developer tool for orchestrating multiple Claude AI agent sessions. Agents chat with users and with each other, share knowledge through a blackboard, collaborate on files through shared workspaces, and discover each other across the local network.
 
 ## Architecture
 
-ClaudPeer is a **two-process** app:
+ClaudeStudio is a **two-process** app:
 
 ```
 ┌─────────────────────────────────┐     WebSocket (JSON)     ┌─────────────────────────────────┐
@@ -32,14 +32,14 @@ ClaudPeer is a **two-process** app:
 ## Project Structure
 
 ```
-ClaudPeer/
-├── ClaudPeer.xcodeproj           # Xcode project
+ClaudeStudio/
+├── ClaudeStudio.xcodeproj           # Xcode project
 ├── project.yml                   # XcodeGen spec (macOS 14+, Swift 6)
 ├── system-plan-vision.md         # Full architecture vision & roadmap
 │
-├── ClaudPeer/                    # Swift macOS App
+├── ClaudeStudio/                    # Swift macOS App
 │   ├── App/
-│   │   ├── ClaudPeerApp.swift    # @main, WindowGroup, model container
+│   │   ├── ClaudeStudioApp.swift    # @main, WindowGroup, model container
 │   │   └── AppState.swift        # Global state: sidecar status, selections, streaming
 │   ├── Models/                   # SwiftData @Model types
 │   │   ├── Agent.swift           # Agent template (skills, MCPs, permissions, instance policy)
@@ -65,9 +65,9 @@ ClaudPeer/
 │   │   └── Components/           # MessageBubble, ToolCallView, TreeNode, etc.
 │   └── Resources/
 │       ├── Assets.xcassets
-│       ├── ClaudPeer.entitlements
+│       ├── ClaudeStudio.entitlements
 │       ├── DefaultAgents/           # 7 built-in agent definitions (JSON)
-│       ├── DefaultSkills/           # 5 ClaudPeer-specific skills (SKILL.md)
+│       ├── DefaultSkills/           # 5 ClaudeStudio-specific skills (SKILL.md)
 │       │   ├── peer-collaboration/
 │       │   ├── blackboard-patterns/
 │       │   ├── delegation-patterns/
@@ -105,15 +105,15 @@ ClaudPeer/
 ### 1. Clone and install sidecar dependencies
 
 ```bash
-git clone <repo-url> ClaudPeer
-cd ClaudPeer/sidecar
+git clone <repo-url> ClaudeStudio
+cd ClaudeStudio/sidecar
 bun install
 ```
 
 ### 2. Open in Xcode
 
 ```bash
-open ClaudPeer.xcodeproj
+open ClaudeStudio.xcodeproj
 ```
 
 Or generate via XcodeGen if needed:
@@ -124,10 +124,10 @@ xcodegen generate
 
 ### 3. Build and run
 
-Build the `ClaudPeer` target in Xcode (Cmd+R). The app automatically:
+Build the `ClaudeStudio` target in Xcode (Cmd+R). The app automatically:
 1. Launches the Bun sidecar process
 2. Connects via WebSocket on `localhost:9849`
-3. Logs sidecar output to `~/.claudpeer/logs/sidecar.log`
+3. Logs sidecar output to `~/.claudestudio/logs/sidecar.log`
 
 ### Running the sidecar standalone (development)
 
@@ -139,8 +139,8 @@ bun run start        # single run
 ```
 
 Environment variables:
-- `CLAUDPEER_WS_PORT` — WebSocket port (default: `9849`)
-- `CLAUDPEER_HTTP_PORT` — Blackboard HTTP API port (default: `9850`)
+- `CLAUDESTUDIO_WS_PORT` — WebSocket port (default: `9849`)
+- `CLAUDESTUDIO_HTTP_PORT` — Blackboard HTTP API port (default: `9850`)
 
 ## Communication Protocol
 
@@ -205,7 +205,7 @@ The app uses SwiftData with these core entities:
 
 ## Built-in Ecosystem
 
-ClaudPeer ships with 7 default agents, 5 multi-agent skills, MCP integrations, permission presets, and system prompt templates -- all designed to work together out of the box. Users can modify, duplicate, or delete any default.
+ClaudeStudio ships with 7 default agents, 5 multi-agent skills, MCP integrations, permission presets, and system prompt templates -- all designed to work together out of the box. Users can modify, duplicate, or delete any default.
 
 ### Default Agents
 
@@ -219,13 +219,13 @@ ClaudPeer ships with 7 default agents, 5 multi-agent skills, MCP integrations, p
 | **DevOps** | Git workflows, CI/CD, deployment, environment setup | haiku | `.singleton` | Git Only |
 | **Writer** | Documentation, READMEs, specs, PRDs, UX copy | sonnet | `.spawn` | Read + Write Docs |
 
-### ClaudPeer-Specific Skills
+### ClaudeStudio-Specific Skills
 
 - **`peer-collaboration`** -- PeerBus usage: blocking chat vs async, deadlock avoidance, group chat etiquette
 - **`blackboard-patterns`** -- Key naming conventions, structured data patterns, subscription strategies
 - **`delegation-patterns`** -- Task decomposition, wait strategies, pipeline templates (sequential, parallel, iterative)
 - **`workspace-collaboration`** -- Multi-agent file conventions, locking, readiness signaling
-- **`agent-identity`** -- ClaudPeer context injection, peer discovery, self-introduction protocol
+- **`agent-identity`** -- ClaudeStudio context injection, peer discovery, self-introduction protocol
 
 ### MCP Integrations (pre-registered, user-enabled per agent)
 
@@ -270,11 +270,11 @@ See [`system-plan-vision.md` Section 11](system-plan-vision.md#11-built-in-ecosy
 
 | Path | Purpose |
 |---|---|
-| `~/.claudpeer/logs/` | Sidecar stdout/stderr logs |
-| `~/.claudpeer/blackboard/` | Persisted blackboard JSON files |
-| `~/.claudpeer/repos/` | Cloned GitHub repositories |
-| `~/.claudpeer/sandboxes/` | Ephemeral session working directories |
-| `~/.claudpeer/workspaces/` | Shared multi-agent workspaces |
+| `~/.claudestudio/logs/` | Sidecar stdout/stderr logs |
+| `~/.claudestudio/blackboard/` | Persisted blackboard JSON files |
+| `~/.claudestudio/repos/` | Cloned GitHub repositories |
+| `~/.claudestudio/sandboxes/` | Ephemeral session working directories |
+| `~/.claudestudio/workspaces/` | Shared multi-agent workspaces |
 
 ## License
 

@@ -92,7 +92,7 @@ struct PeerNetworkView: View {
                 ContentUnavailableView(
                     "No Peers Found",
                     systemImage: "wifi.exclamationmark",
-                    description: Text("Ensure other Macs run ClaudPeer on the same network.")
+                    description: Text("Ensure other Macs run ClaudeStudio on the same network.")
                 )
                 .xrayId("peerNetwork.emptyPeers")
             } else {
@@ -189,7 +189,7 @@ struct PeerNetworkView: View {
                 ContentUnavailableView(
                     "Select a Peer",
                     systemImage: "dot.radiowaves.left.and.right",
-                    description: Text("Choose a ClaudPeer instance on your network.")
+                    description: Text("Choose a ClaudeStudio instance on your network.")
                 )
                 .xrayId("peerNetwork.selectPeerPlaceholder")
             }

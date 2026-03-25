@@ -8,7 +8,7 @@ import { createMessagingTools } from "./messaging-tools.js";
 import { createChatTools } from "./chat-tools.js";
 import { createWorkspaceTools } from "./workspace-tools.js";
 
-const DEBUG_LOG = join(homedir(), ".claudpeer", "debug-ask-user.log");
+const DEBUG_LOG = join(homedir(), ".claudestudio", "debug-ask-user.log");
 function debugLog(msg: string) {
   const line = `[${new Date().toISOString()}] ${msg}\n`;
   try { appendFileSync(DEBUG_LOG, line); } catch {}

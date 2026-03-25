@@ -1,6 +1,6 @@
 import SwiftData
 import XCTest
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 @MainActor
 final class AppStateEventTests: XCTestCase {

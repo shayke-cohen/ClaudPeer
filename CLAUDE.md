@@ -1,10 +1,10 @@
-# ClaudPeer — Claude Code Configuration
+# ClaudeStudio — Claude Code Configuration
 
-Project-specific rules and context for AI coding agents working on ClaudPeer.
+Project-specific rules and context for AI coding agents working on ClaudeStudio.
 
 ## Project Overview
 
-ClaudPeer is a native macOS app (Swift 6 / SwiftUI / SwiftData) with a TypeScript sidecar (Bun + Claude Agent SDK). The two processes communicate over a local WebSocket. See `system-plan-vision.md` for the full architecture vision.
+ClaudeStudio is a native macOS app (Swift 6 / SwiftUI / SwiftData) with a TypeScript sidecar (Bun + Claude Agent SDK). The two processes communicate over a local WebSocket. See `system-plan-vision.md` for the full architecture vision.
 
 ## Architecture Rules
 
@@ -22,7 +22,7 @@ ClaudPeer is a native macOS app (Swift 6 / SwiftUI / SwiftData) with a TypeScrip
 - **No ViewModels** — views use `@Query` and `@Environment(\.modelContext)` directly
 - `AppState` is the single `@ObservableObject` for global UI state (sidecar status, selections, streaming buffers)
 - Use `AsyncStream` for event flows from `SidecarManager` to `AppState`
-- Target: **macOS 14.0+**, bundle ID: `com.claudpeer.app`
+- Target: **macOS 14.0+**, bundle ID: `com.claudestudio.app`
 
 ### TypeScript Conventions
 
@@ -30,12 +30,12 @@ ClaudPeer is a native macOS app (Swift 6 / SwiftUI / SwiftData) with a TypeScrip
 - **ES modules** — all imports use `.js` extensions
 - Claude Agent SDK: use `query()` from `@anthropic-ai/claude-agent-sdk`
 - Session manager uses `permissionMode: "bypassPermissions"` for development
-- Blackboard persists to `~/.claudpeer/blackboard/{scope}.json`
+- Blackboard persists to `~/.claudestudio/blackboard/{scope}.json`
 
 ### Wire Protocol
 
 Commands (Swift → Sidecar) and events (Sidecar → Swift) are defined in:
-- Swift: `ClaudPeer/Services/SidecarProtocol.swift` — `SidecarCommand`, `SidecarEvent`, `IncomingWireMessage`
+- Swift: `ClaudeStudio/Services/SidecarProtocol.swift` — `SidecarCommand`, `SidecarEvent`, `IncomingWireMessage`
 - TypeScript: `sidecar/src/types.ts` — `SidecarCommand`, `SidecarEvent`
 
 When adding a new command or event:
@@ -48,10 +48,10 @@ When adding a new command or event:
 ## File System Rules
 
 - **Never modify** `system-plan-vision.md` without explicit request — it's the architecture source of truth
-- **Swift sources** go under `ClaudPeer/` following the existing directory structure
+- **Swift sources** go under `ClaudeStudio/` following the existing directory structure
 - **Sidecar sources** go under `sidecar/src/`
 - **Tests** go under `sidecar/test/`
-- Runtime data goes under `~/.claudpeer/` (logs, blackboard, repos, sandboxes, workspaces)
+- Runtime data goes under `~/.claudestudio/` (logs, blackboard, repos, sandboxes, workspaces)
 
 ## Build System
 
@@ -65,12 +65,12 @@ When adding a new command or event:
 
 | Port | Service | Configurable Via |
 |---|---|---|
-| 9849 | WebSocket (Swift ↔ Sidecar) | `CLAUDPEER_WS_PORT` |
-| 9850 | Blackboard HTTP API | `CLAUDPEER_HTTP_PORT` |
+| 9849 | WebSocket (Swift ↔ Sidecar) | `CLAUDESTUDIO_WS_PORT` |
+| 9850 | Blackboard HTTP API | `CLAUDESTUDIO_HTTP_PORT` |
 
 ## Data Model (SwiftData)
 
-Core entities (all in `ClaudPeer/Models/`):
+Core entities (all in `ClaudeStudio/Models/`):
 
 - `Agent` — template with skills, MCPs, permissions, instance policy, optional GitHub repo
 - `Session` — running instance with status, mode, workspace type, cost tracking
@@ -185,7 +185,7 @@ When adding new views, pick a unique camelCase prefix and annotate every interac
 ## Testing
 
 See `TESTING.md` for the complete testing guide, including:
-- XCTest: group chat coverage in `ClaudPeerTests/GroupPromptBuilderTests.swift` (transcript, peer prompts, fan-out context)
+- XCTest: group chat coverage in `ClaudeStudioTests/GroupPromptBuilderTests.swift` (transcript, peer prompts, fan-out context)
 - Three testing layers (XCTest, AppXray, Argus)
 - Full screen-by-screen control inventory with all `accessibilityIdentifier` and `accessibilityLabel` values
 - AppXray selector syntax (`@testId`, `@label`, `@text`, `@type`)
@@ -195,8 +195,8 @@ See `TESTING.md` for the complete testing guide, including:
 ## Common Tasks
 
 ### Adding a new SwiftData model
-1. Create `ClaudPeer/Models/NewModel.swift` with `@Model` class
-2. Add to the model container in `ClaudPeerApp.swift` `.modelContainer(for: [...])`
+1. Create `ClaudeStudio/Models/NewModel.swift` with `@Model` class
+2. Add to the model container in `ClaudeStudioApp.swift` `.modelContainer(for: [...])`
 3. Regenerate Xcode project if needed: `xcodegen generate`
 
 ### Adding a new sidecar command

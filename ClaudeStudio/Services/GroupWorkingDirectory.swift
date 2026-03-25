@@ -52,7 +52,7 @@ enum GroupWorkingDirectory {
         } else if let inst = instanceDefault.map(trimmed), !inst.isEmpty {
             canonical = inst
         } else {
-            canonical = "\(NSHomeDirectory())/.claudpeer/sandboxes/conversations/\(conversation.id.uuidString)"
+            canonical = "\(NSHomeDirectory())/.claudestudio/sandboxes/conversations/\(conversation.id.uuidString)"
         }
 
         try? FileManager.default.createDirectory(atPath: canonical, withIntermediateDirectories: true, attributes: nil)

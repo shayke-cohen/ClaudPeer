@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-/// Watches ~/.claudpeer/config/ for changes and syncs to SwiftData.
+/// Watches ~/.claudestudio/config/ for changes and syncs to SwiftData.
 /// Also provides write-back from SwiftData to files (bidirectional sync).
 @MainActor
 @Observable
@@ -10,7 +10,7 @@ final class ConfigSyncService {
     private(set) var isWatching = false
     private var fileDescriptors: [Int32] = []
     private var dispatchSources: [DispatchSourceFileSystemObject] = []
-    private let debounceQueue = DispatchQueue(label: "com.claudpeer.config-sync.debounce")
+    private let debounceQueue = DispatchQueue(label: "com.claudestudio.config-sync.debounce")
     private var debounceWorkItem: DispatchWorkItem?
     private var isWritingBack = false // prevents feedback loop during UI write-back
 

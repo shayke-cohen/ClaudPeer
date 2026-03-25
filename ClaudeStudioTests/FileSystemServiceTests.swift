@@ -1,5 +1,5 @@
 import XCTest
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 @MainActor
 final class FileSystemServiceTests: XCTestCase {
@@ -8,7 +8,7 @@ final class FileSystemServiceTests: XCTestCase {
 
     override func setUp() {
         tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ClaudPeerTests-\(UUID().uuidString)")
+            .appendingPathComponent("ClaudeStudioTests-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
     }
 
@@ -135,11 +135,11 @@ final class FileSystemServiceTests: XCTestCase {
     // MARK: - readFileContents
 
     func testReadFileContentsReturnsContent() {
-        createFile("test.txt", content: "Hello, ClaudPeer!")
+        createFile("test.txt", content: "Hello, ClaudeStudio!")
         let url = tempDir.appendingPathComponent("test.txt")
 
         let content = FileSystemService.readFileContents(at: url)
-        XCTAssertEqual(content, "Hello, ClaudPeer!")
+        XCTAssertEqual(content, "Hello, ClaudeStudio!")
     }
 
     func testReadFileContentsRespectsMaxBytes() {

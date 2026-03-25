@@ -1,7 +1,7 @@
 ---
 name: blackboard-patterns
-description: Conventions for reading and writing structured data to the ClaudPeer blackboard.
-category: ClaudPeer
+description: Conventions for reading and writing structured data to the ClaudeStudio blackboard.
+category: ClaudeStudio
 triggers:
   - blackboard
   - write findings

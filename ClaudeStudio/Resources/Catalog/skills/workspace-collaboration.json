@@ -2,7 +2,7 @@
   "catalogId": "workspace-collaboration",
   "name": "Workspace Collaboration",
   "description": "Shared directories, permissions, and safe parallel edits",
-  "category": "ClaudPeer Collaboration",
+  "category": "ClaudeStudio Collaboration",
   "icon": "folder.fill.badge.gearshape",
   "requiredMCPs": [
     "filesystem"
@@ -15,6 +15,6 @@
   "tags": [
     "files",
     "permissions",
-    "claudpeer"
+    "claudestudio"
   ]
 }

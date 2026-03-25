@@ -2,7 +2,7 @@
   "catalogId": "agent-identity",
   "name": "Agent Identity",
   "description": "Roles, prompts, and permissions that stay consistent over time",
-  "category": "ClaudPeer Collaboration",
+  "category": "ClaudeStudio Collaboration",
   "icon": "person.crop.circle.badge.checkmark",
   "requiredMCPs": [],
   "triggers": [
@@ -13,6 +13,6 @@
   "tags": [
     "governance",
     "prompting",
-    "claudpeer"
+    "claudestudio"
   ]
 }

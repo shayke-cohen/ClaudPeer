@@ -69,8 +69,8 @@ export class WebhookManager {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-ClaudPeer-Event": event.type,
-            "X-ClaudPeer-Webhook-Id": webhook.id,
+            "X-ClaudeStudio-Event": event.type,
+            "X-ClaudeStudio-Webhook-Id": webhook.id,
           },
           body: JSON.stringify(event),
           signal: AbortSignal.timeout(10_000),

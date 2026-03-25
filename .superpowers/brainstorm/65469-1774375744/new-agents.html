@@ -1,0 +1,154 @@
+<h2>New Default Agents to Add</h2>
+<p class="subtitle">Select all that should be added to the ecosystem. These unlock new group types.</p>
+
+<style>
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+.agent-card {
+  border: 1.5px solid var(--border, #333);
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  background: var(--card-bg, #1c1c1e);
+  position: relative;
+}
+.agent-card:hover { border-color: #555; background: #242426; }
+.agent-card.selected { border-color: #0a84ff; background: rgba(10,132,255,0.08); }
+.agent-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 12px; right: 14px;
+  color: #0a84ff;
+  font-weight: 700;
+  font-size: 14px;
+}
+.agent-icon { font-size: 28px; margin-bottom: 8px; }
+.agent-name { font-weight: 700; font-size: 15px; color: var(--text, #fff); margin-bottom: 4px; }
+.agent-tagline { font-size: 12px; color: #888; margin-bottom: 10px; line-height: 1.4; }
+.agent-skills { display: flex; flex-wrap: wrap; gap: 4px; }
+.skill-tag {
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.07);
+  color: #aaa;
+}
+.existing-section { margin-bottom: 24px; }
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+.existing-agents { display: flex; gap: 8px; flex-wrap: wrap; }
+.existing-badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid #333;
+  font-size: 12px;
+  color: #666;
+}
+</style>
+
+<div class="existing-section">
+  <div class="section-label">Already seeded (7 agents)</div>
+  <div class="existing-agents">
+    <span class="existing-badge">🎯 Orchestrator</span>
+    <span class="existing-badge">💻 Coder</span>
+    <span class="existing-badge">🔍 Reviewer</span>
+    <span class="existing-badge">🧪 Tester</span>
+    <span class="existing-badge">🚀 DevOps</span>
+    <span class="existing-badge">📡 Researcher</span>
+    <span class="existing-badge">✍️ Writer</span>
+  </div>
+</div>
+
+<div class="section-label">Proposed new agents — select which to add</div>
+<div class="agents-grid" data-multiselect>
+
+  <div class="agent-card" data-choice="pm" onclick="toggleCard(this)">
+    <div class="agent-icon">📋</div>
+    <div class="agent-name">Product Manager</div>
+    <div class="agent-tagline">Defines product strategy, writes PRDs and user stories, prioritizes features, manages roadmap decisions.</div>
+    <div class="agent-skills">
+      <span class="skill-tag">PRDs</span>
+      <span class="skill-tag">User stories</span>
+      <span class="skill-tag">Roadmaps</span>
+      <span class="skill-tag">Prioritization</span>
+    </div>
+  </div>
+
+  <div class="agent-card" data-choice="analyst" onclick="toggleCard(this)">
+    <div class="agent-icon">📊</div>
+    <div class="agent-name">Analyst</div>
+    <div class="agent-tagline">Interprets data, writes SQL/analytics queries, builds dashboards, surfaces insights and anomalies.</div>
+    <div class="agent-skills">
+      <span class="skill-tag">Data analysis</span>
+      <span class="skill-tag">SQL</span>
+      <span class="skill-tag">Metrics</span>
+      <span class="skill-tag">Reporting</span>
+    </div>
+  </div>
+
+  <div class="agent-card" data-choice="designer" onclick="toggleCard(this)">
+    <div class="agent-icon">🎨</div>
+    <div class="agent-name">Designer</div>
+    <div class="agent-tagline">UX/UI feedback, design system guidance, wireframe critiques, accessibility and visual hierarchy reviews.</div>
+    <div class="agent-skills">
+      <span class="skill-tag">UX feedback</span>
+      <span class="skill-tag">Design systems</span>
+      <span class="skill-tag">Accessibility</span>
+    </div>
+  </div>
+
+  <div class="agent-card" data-choice="security" onclick="toggleCard(this)">
+    <div class="agent-icon">🛡️</div>
+    <div class="agent-name">Security Engineer</div>
+    <div class="agent-tagline">Dedicated security specialist — threat modeling, OWASP audits, dependency scans, hardening recommendations.</div>
+    <div class="agent-skills">
+      <span class="skill-tag">Threat modeling</span>
+      <span class="skill-tag">OWASP</span>
+      <span class="skill-tag">Pen testing</span>
+    </div>
+  </div>
+
+  <div class="agent-card" data-choice="datascientist" onclick="toggleCard(this)">
+    <div class="agent-icon">🧠</div>
+    <div class="agent-name">Data Scientist</div>
+    <div class="agent-tagline">ML modeling, feature engineering, statistical analysis, experiment design, hypothesis testing.</div>
+    <div class="agent-skills">
+      <span class="skill-tag">ML/AI</span>
+      <span class="skill-tag">Statistics</span>
+      <span class="skill-tag">Experiments</span>
+    </div>
+  </div>
+
+  <div class="agent-card" data-choice="qa" onclick="toggleCard(this)">
+    <div class="agent-icon">🎯</div>
+    <div class="agent-name">QA Lead</div>
+    <div class="agent-tagline">Manages test strategy, writes E2E test plans, coordinates coverage across the product, reports quality gates.</div>
+    <div class="agent-skills">
+      <span class="skill-tag">Test strategy</span>
+      <span class="skill-tag">E2E plans</span>
+      <span class="skill-tag">Quality gates</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggleCard(el) {
+  el.classList.toggle('selected');
+  const choice = el.dataset.choice;
+  const name = el.querySelector('.agent-name').textContent;
+  window.__companion?.recordEvent({ type: 'click', choice, text: name });
+}
+</script>

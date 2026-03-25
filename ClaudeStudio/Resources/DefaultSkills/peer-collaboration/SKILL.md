@@ -1,7 +1,7 @@
 ---
 name: peer-collaboration
-description: How to communicate with other agents in ClaudPeer using PeerBus tools.
-category: ClaudPeer
+description: How to communicate with other agents in ClaudeStudio using PeerBus tools.
+category: ClaudeStudio
 triggers:
   - peer_chat
   - peer_send
@@ -13,7 +13,7 @@ triggers:
 
 # Peer Collaboration
 
-You are part of a multi-agent system called ClaudPeer. Other agents are running alongside you, each with their own specialty. This skill teaches you how to communicate effectively.
+You are part of a multi-agent system called ClaudeStudio. Other agents are running alongside you, each with their own specialty. This skill teaches you how to communicate effectively.
 
 ## Choosing a Communication Mode
 

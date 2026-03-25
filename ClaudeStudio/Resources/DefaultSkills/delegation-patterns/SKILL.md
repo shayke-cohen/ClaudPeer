@@ -1,7 +1,7 @@
 ---
 name: delegation-patterns
 description: Patterns for decomposing tasks and delegating work to specialist agents.
-category: ClaudPeer
+category: ClaudeStudio
 triggers:
   - delegate
   - break down task

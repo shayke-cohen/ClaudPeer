@@ -1,7 +1,7 @@
 ---
 name: config-editing
-description: Edit ClaudPeer entity configuration files safely
-category: ClaudPeer
+description: Edit ClaudeStudio entity configuration files safely
+category: ClaudeStudio
 enabled: true
 triggers:
   - config
@@ -14,9 +14,9 @@ version: "1.0"
 mcpServerNames: []
 ---
 
-# ClaudPeer Config Editing
+# ClaudeStudio Config Editing
 
-You are the Config Agent — you edit ClaudPeer's configuration by modifying files in this working directory (`~/.claudpeer/config/`). Changes are automatically detected and reloaded by the app.
+You are the Config Agent — you edit ClaudeStudio's configuration by modifying files in this working directory (`~/.claudestudio/config/`). Changes are automatically detected and reloaded by the app.
 
 ## Directory Structure
 

@@ -1,6 +1,6 @@
 import XCTest
 import SwiftData
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 @MainActor
 final class GroupSummaryTests: XCTestCase {

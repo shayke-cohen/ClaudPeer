@@ -1,5 +1,5 @@
 import XCTest
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 final class InstanceConfigTests: XCTestCase {
 
@@ -21,7 +21,7 @@ final class InstanceConfigTests: XCTestCase {
 
     func testBaseDirectoryContainsInstanceName() {
         let path = InstanceConfig.baseDirectory.path
-        XCTAssertTrue(path.contains(".claudpeer/instances/\(InstanceConfig.name)"),
+        XCTAssertTrue(path.contains(".claudestudio/instances/\(InstanceConfig.name)"),
                       "Base directory should contain the instance name: \(path)")
     }
 
@@ -52,13 +52,13 @@ final class InstanceConfigTests: XCTestCase {
 
     func testUserDefaultsSuiteContainsInstanceName() {
         XCTAssertTrue(InstanceConfig.userDefaultsSuiteName.contains(InstanceConfig.name))
-        XCTAssertTrue(InstanceConfig.userDefaultsSuiteName.hasPrefix("com.claudpeer.app."))
+        XCTAssertTrue(InstanceConfig.userDefaultsSuiteName.hasPrefix("com.claudestudio.app."))
     }
 
     func testUserDefaultsIsNotStandard() {
         // The per-instance suite should be distinct from .standard
         // (unless running as "default", in which case it's still a named suite)
-        let testKey = "claudpeer.test.instanceConfigTest.\(UUID().uuidString)"
+        let testKey = "claudestudio.test.instanceConfigTest.\(UUID().uuidString)"
         InstanceConfig.userDefaults.set(true, forKey: testKey)
 
         // Standard should NOT have this key (different suite)
@@ -91,7 +91,7 @@ final class InstanceConfigTests: XCTestCase {
     // MARK: - AppSettings Store Integration
 
     func testAppSettingsStoreMatchesInstanceDefaults() {
-        let testKey = "claudpeer.test.storeMatch.\(UUID().uuidString)"
+        let testKey = "claudestudio.test.storeMatch.\(UUID().uuidString)"
         AppSettings.store.set(42, forKey: testKey)
 
         let value = InstanceConfig.userDefaults.integer(forKey: testKey)

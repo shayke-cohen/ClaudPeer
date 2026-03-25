@@ -1,0 +1,50 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodebuild -scheme ClaudeStudio -destination platform=macOS build)",
+      "Bash(pkill -9 -f ClaudeStudio)",
+      "Read(//Library/Logs/DiagnosticReports/**)",
+      "Bash(brew list:*)",
+      "Bash(xcodebuild -scheme ClaudeStudio -destination platform=macOS -showBuildSettings)",
+      "Bash(find /Users/shayco/ClaudeStudio/ClaudeStudio -name *Theme* -o -name *Palette* -o -name *Color*)",
+      "Bash(find /Users/shayco/ClaudeStudio/sidecar/node_modules/@anthropic-ai/claude-agent-sdk -name *.d.ts)",
+      "Bash(find /Users/shayco/ClaudeStudio/sidecar/node_modules/@anthropic-ai/claude-agent-sdk -name *.d.ts -maxdepth 2)",
+      "Bash(xcodebuild -scheme ClaudeStudio -configuration Debug build -destination 'platform=macOS')",
+      "Bash(xcodebuild -scheme ClaudeStudio -configuration Debug clean build -destination 'platform=macOS')",
+      "Bash(xcodebuild -scheme ClaudeStudio -configuration Debug build -destination platform=macOS)",
+      "Bash(pkill -f ClaudeStudio.app)",
+      "Bash(xcodebuild -project /Users/shayco/ClaudeStudio/ClaudeStudio.xcodeproj -scheme ClaudeStudio -configuration Debug build)",
+      "Bash(kill 47345 42754 45640)",
+      "Bash(kill 57174)",
+      "Bash(echo $ANTHROPIC_API_KEY)",
+      "Bash(/opt/homebrew/bin/bun -e ':*)",
+      "Bash(/opt/homebrew/bin/bun --version)",
+      "Bash(/opt/homebrew/bin/bun update:*)",
+      "Bash(xcodebuild -project ClaudeStudio.xcodeproj -scheme ClaudeStudio -destination 'platform=macOS' -derivedDataPath .derivedData build)",
+      "Bash(CLAUDESTUDIO_WS_PORT=9899 CLAUDESTUDIO_HTTP_PORT=9900 bun run src/index.ts)",
+      "Bash(pkill -f bun.*index.ts)",
+      "Bash(lsof -ti:9849)",
+      "Bash(lsof -ti:9850)",
+      "Bash(find ~/.claudestudio/logs -name *.log -newer /tmp -type f)",
+      "Bash(xargs ls:*)",
+      "Bash(find ~/.claudestudio -name *.log -type f)",
+      "Bash(find ~/.claudestudio/instances -name *.log -type f)",
+      "Read(//opt/homebrew/Cellar/bun/1.3.11/bin/**)",
+      "Bash(pkill -9 -f ClaudeStudio.app)",
+      "Bash(curl -s -X POST http://127.0.0.1:9850/api/v1/sessions -H 'Content-Type: application/json' -d '{:*)",
+      "Bash(grep -o \"\"type\"\":\"\"sdk\"\"[^}]* /Users/shayco/ClaudeStudio/sidecar/node_modules/@anthropic-ai/claude-agent-sdk/cli.js)",
+      "Bash(find ~/.claudestudio -name *.log)",
+      "Bash(xcodebuild -project ClaudeStudio.xcodeproj -scheme ClaudeStudio -configuration Debug -derivedDataPath .derived-run build)",
+      "Bash(xcodebuild build:*)",
+      "Bash(open /Users/shayco/ClaudeStudio/ClaudeStudio.xcodeproj)",
+      "Bash(open /Users/shayco/ClaudeStudio/.derived-run/Build/Products/Debug/ClaudeStudio.app)",
+      "Bash(git mv:*)",
+      "Bash(xcodebuild -project ClaudPeer.xcodeproj -scheme ClaudPeer -configuration Debug -derivedDataPath .derived-run build)",
+      "Bash(ls /Users/shayco/ClaudPeer/*.xcodeproj)",
+      "Bash(ls /Users/shayco/ClaudPeer/*.xcworkspace)"
+    ],
+    "additionalDirectories": [
+      "/Users/shayco/.claudestudio/instances/default/data"
+    ]
+  }
+}

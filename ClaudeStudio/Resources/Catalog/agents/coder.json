@@ -15,7 +15,7 @@
     "refactoring",
     "debugging",
     "tdd",
-    "claudpeer-accessibility"
+    "claudestudio-accessibility"
   ],
   "extraMCPs": [],
   "systemPromptTemplate": "specialist",

@@ -2,41 +2,41 @@ import SwiftUI
 
 enum AppSettings {
     // MARK: - General
-    static let appearanceKey = "claudpeer.appearance"
-    static let defaultModelKey = "claudpeer.defaultModel"
-    static let defaultMaxTurnsKey = "claudpeer.defaultMaxTurns"
-    static let defaultMaxBudgetKey = "claudpeer.defaultMaxBudget"
-    static let autoConnectSidecarKey = "claudpeer.autoConnectSidecar"
+    static let appearanceKey = "claudestudio.appearance"
+    static let defaultModelKey = "claudestudio.defaultModel"
+    static let defaultMaxTurnsKey = "claudestudio.defaultMaxTurns"
+    static let defaultMaxBudgetKey = "claudestudio.defaultMaxBudget"
+    static let autoConnectSidecarKey = "claudestudio.autoConnectSidecar"
 
     // MARK: - Connection
-    static let wsPortKey = "claudpeer.wsPort"
-    static let httpPortKey = "claudpeer.httpPort"
-    static let bunPathOverrideKey = "claudpeer.bunPathOverride"
-    static let sidecarPathKey = "claudpeer.projectPath"
+    static let wsPortKey = "claudestudio.wsPort"
+    static let httpPortKey = "claudestudio.httpPort"
+    static let bunPathOverrideKey = "claudestudio.bunPathOverride"
+    static let sidecarPathKey = "claudestudio.projectPath"
 
     // MARK: - Instance
-    static let instanceWorkingDirectoryKey = "claudpeer.instanceWorkingDirectory"
+    static let instanceWorkingDirectoryKey = "claudestudio.instanceWorkingDirectory"
 
     // MARK: - Layout
-    static let inspectorWidthKey = "claudpeer.inspectorWidth"
+    static let inspectorWidthKey = "claudestudio.inspectorWidth"
 
     // MARK: - Notifications
-    static let notificationsEnabledKey = "claudpeer.notifications.enabled"
-    static let notificationSoundEnabledKey = "claudpeer.notifications.sound"
+    static let notificationsEnabledKey = "claudestudio.notifications.enabled"
+    static let notificationSoundEnabledKey = "claudestudio.notifications.sound"
 
     // MARK: - Chat Display
-    static let renderMermaidKey = "claudpeer.chat.renderMermaid"
-    static let renderHTMLKey = "claudpeer.chat.renderHTML"
-    static let renderDiffsKey = "claudpeer.chat.renderDiffs"
-    static let renderTerminalKey = "claudpeer.chat.renderTerminal"
-    static let renderAdmonitionsKey = "claudpeer.chat.renderAdmonitions"
-    static let renderPDFKey = "claudpeer.chat.renderPDF"
-    static let showSessionSummaryKey = "claudpeer.chat.showSessionSummary"
-    static let showSuggestionChipsKey = "claudpeer.chat.showSuggestionChips"
+    static let renderMermaidKey = "claudestudio.chat.renderMermaid"
+    static let renderHTMLKey = "claudestudio.chat.renderHTML"
+    static let renderDiffsKey = "claudestudio.chat.renderDiffs"
+    static let renderTerminalKey = "claudestudio.chat.renderTerminal"
+    static let renderAdmonitionsKey = "claudestudio.chat.renderAdmonitions"
+    static let renderPDFKey = "claudestudio.chat.renderPDF"
+    static let showSessionSummaryKey = "claudestudio.chat.showSessionSummary"
+    static let showSuggestionChipsKey = "claudestudio.chat.showSuggestionChips"
 
     // MARK: - Advanced
-    static let dataDirectoryKey = "claudpeer.dataDirectory"
-    static let logLevelKey = "claudpeer.logLevel"
+    static let dataDirectoryKey = "claudestudio.dataDirectory"
+    static let logLevelKey = "claudestudio.logLevel"
 
     // MARK: - Defaults
     static let defaultWsPort = 9849
@@ -44,7 +44,7 @@ enum AppSettings {
     static let defaultMaxTurns = 30
     static let defaultMaxBudget = 0.0
     static let defaultModel = "claude-sonnet-4-6"
-    static let defaultDataDirectory = "~/.claudpeer"
+    static let defaultDataDirectory = "~/.claudestudio"
     static let defaultLogLevel = "info"
 
     /// Per-instance UserDefaults store for use with `@AppStorage(_:store:)`.

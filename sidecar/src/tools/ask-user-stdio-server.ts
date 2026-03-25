@@ -2,14 +2,14 @@
 /**
  * Standalone MCP server exposing the ask_user tool to Claude agent sessions.
  * Communicates via JSON-RPC over stdio (MCP protocol).
- * Connects to the sidecar HTTP API at CLAUDPEER_HTTP_PORT (default 9850).
+ * Connects to the sidecar HTTP API at CLAUDESTUDIO_HTTP_PORT (default 9850).
  *
  * Each interactive session spawns one instance of this server.
- * The sidecar passes the session ID via CLAUDPEER_SESSION_ID env var.
+ * The sidecar passes the session ID via CLAUDESTUDIO_SESSION_ID env var.
  */
 
-const HTTP_PORT = parseInt(process.env.CLAUDPEER_HTTP_PORT ?? "9850", 10);
-const SESSION_ID = process.env.CLAUDPEER_SESSION_ID ?? "unknown";
+const HTTP_PORT = parseInt(process.env.CLAUDESTUDIO_HTTP_PORT ?? "9850", 10);
+const SESSION_ID = process.env.CLAUDESTUDIO_SESSION_ID ?? "unknown";
 const BASE_URL = `http://127.0.0.1:${HTTP_PORT}`;
 
 // --- MCP stdio transport ---

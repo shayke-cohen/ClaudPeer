@@ -1,5 +1,5 @@
 import XCTest
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 @MainActor
 final class FileNodeTests: XCTestCase {
@@ -8,7 +8,7 @@ final class FileNodeTests: XCTestCase {
 
     override func setUp() {
         tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ClaudPeerNodeTests-\(UUID().uuidString)")
+            .appendingPathComponent("ClaudeStudioNodeTests-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
     }
 

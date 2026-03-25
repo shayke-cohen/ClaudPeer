@@ -118,7 +118,7 @@ final class AgentProvisioner {
             }
             return defaultDir
         }
-        let sandboxPath = "\(NSHomeDirectory())/.claudpeer/sandboxes/\(UUID().uuidString)"
+        let sandboxPath = "\(NSHomeDirectory())/.claudestudio/sandboxes/\(UUID().uuidString)"
         try? FileManager.default.createDirectory(
             atPath: sandboxPath, withIntermediateDirectories: true, attributes: nil
         )

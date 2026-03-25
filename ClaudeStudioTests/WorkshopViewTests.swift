@@ -1,5 +1,5 @@
 import XCTest
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 final class WorkshopViewTests: XCTestCase {
 

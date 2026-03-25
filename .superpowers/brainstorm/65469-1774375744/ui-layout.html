@@ -1,0 +1,263 @@
+<h2>Agent Groups — UI Layout</h2>
+<p class="subtitle">Proposed layout across sidebar, group library, and group editor. Click to flag any issues.</p>
+
+<style>
+.split { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.mockup { flex: 1; min-width: 220px; }
+.mockup-header {
+  background: #2a2a2c; border-radius: 8px 8px 0 0;
+  padding: 8px 12px; font-size: 11px; color: #888;
+  border: 1px solid #3a3a3c; border-bottom: none;
+  font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+}
+.mockup-body {
+  border: 1px solid #3a3a3c; border-radius: 0 0 8px 8px;
+  background: #1c1c1e; overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px 4px;
+  font-size: 10.5px; font-weight: 700; color: #555;
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.sidebar-section-header .add-btn {
+  width: 16px; height: 16px; border-radius: 4px;
+  background: #333; color: #888; font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.sidebar-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; cursor: pointer; font-size: 13px;
+  transition: background 0.1s;
+}
+.sidebar-row:hover { background: rgba(255,255,255,0.04); }
+.sidebar-row.active { background: rgba(10,132,255,0.15); }
+.sidebar-row .row-icon { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.sidebar-row .row-name { flex: 1; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-row .row-meta { font-size: 10.5px; color: #555; flex-shrink: 0; }
+.sidebar-divider { height: 1px; background: #2a2a2c; margin: 4px 0; }
+
+/* Group Library */
+.lib-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border-bottom: 1px solid #2a2a2c;
+}
+.lib-search {
+  flex: 1; background: #2a2a2c; border: none; border-radius: 6px;
+  padding: 5px 10px; font-size: 12px; color: #ccc;
+}
+.lib-btn {
+  background: #0a84ff; color: #fff; border: none;
+  border-radius: 6px; padding: 5px 10px; font-size: 11px;
+  font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.lib-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 8px; padding: 10px;
+}
+.lib-card {
+  border: 1px solid #333; border-radius: 8px;
+  padding: 10px; cursor: pointer;
+  transition: border-color 0.1s;
+}
+.lib-card:hover { border-color: #555; }
+.lib-card .card-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.lib-card .card-icon { font-size: 16px; }
+.lib-card .card-name { font-size: 12px; font-weight: 600; color: #ddd; }
+.lib-card .card-agents { font-size: 10px; color: #666; margin-bottom: 6px; }
+.lib-card .card-actions { display: flex; gap: 4px; }
+.lib-card .card-action { font-size: 10px; color: #0a84ff; cursor: pointer; }
+.builtin-badge { font-size: 9px; padding: 1px 5px; background: rgba(255,159,10,0.15); color: #ff9f0a; border-radius: 4px; margin-left: auto; }
+
+/* Group Editor */
+.editor-form { padding: 12px; }
+.form-row { margin-bottom: 12px; }
+.form-label { font-size: 10.5px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.form-input {
+  width: 100%; background: #2a2a2c; border: 1px solid #3a3a3c;
+  border-radius: 6px; padding: 6px 8px; font-size: 12px; color: #ddd;
+  box-sizing: border-box;
+}
+.form-textarea {
+  width: 100%; background: #2a2a2c; border: 1px solid #3a3a3c;
+  border-radius: 6px; padding: 6px 8px; font-size: 11px; color: #999;
+  box-sizing: border-box; resize: none; height: 70px; line-height: 1.5;
+  font-style: italic;
+}
+.form-row-inline { display: flex; gap: 8px; }
+.color-swatch { width: 22px; height: 22px; border-radius: 6px; cursor: pointer; flex-shrink: 0; }
+.agent-picker { display: flex; flex-wrap: wrap; gap: 4px; }
+.agent-pick-tag {
+  font-size: 10.5px; padding: 3px 8px; border-radius: 20px;
+  cursor: pointer; border: 1px solid transparent;
+}
+.agent-pick-tag.selected { border-color: #0a84ff; background: rgba(10,132,255,0.1); color: #0a84ff; }
+.agent-pick-tag.unselected { border-color: #333; color: #666; }
+.editor-footer {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 10px 12px; border-top: 1px solid #2a2a2c;
+}
+.btn-cancel { background: #2a2a2c; color: #888; border: none; border-radius: 6px; padding: 6px 12px; font-size: 11px; cursor: pointer; }
+.btn-save { background: #0a84ff; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer; }
+.history-row { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 6px; background: rgba(255,255,255,0.03); margin-top: 4px; }
+.history-dot { width: 6px; height: 6px; border-radius: 50%; background: #34c759; flex-shrink: 0; }
+.history-text { font-size: 10.5px; color: #777; }
+</style>
+
+<div class="split">
+
+  <!-- Sidebar -->
+  <div class="mockup" style="max-width: 200px;">
+    <div class="mockup-header">Sidebar — Groups Section</div>
+    <div class="mockup-body">
+      <div class="sidebar-section-header">
+        Groups
+        <div class="add-btn">+</div>
+      </div>
+      <div class="sidebar-row active">
+        <div class="row-icon" style="background:rgba(255,159,10,0.15)">⚡</div>
+        <div class="row-name">Dev Squad</div>
+        <div class="row-meta">3 agents</div>
+      </div>
+      <div class="sidebar-row">
+        <div class="row-icon" style="background:rgba(10,132,255,0.15)">📋</div>
+        <div class="row-name">Product Crew</div>
+        <div class="row-meta">3 agents</div>
+      </div>
+      <div class="sidebar-row">
+        <div class="row-icon" style="background:rgba(52,199,89,0.15)">🏗</div>
+        <div class="row-name">Full Stack</div>
+        <div class="row-meta">4 agents</div>
+      </div>
+      <div class="sidebar-row">
+        <div class="row-icon" style="background:rgba(175,82,222,0.15)">🎯</div>
+        <div class="row-name">Plan &amp; Build</div>
+        <div class="row-meta">3 agents</div>
+      </div>
+      <div class="sidebar-row" style="opacity:0.5">
+        <div class="row-icon" style="background:#2a2a2c">···</div>
+        <div class="row-name" style="color:#555">8 more groups</div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-header">
+        Agents
+        <div class="add-btn">+</div>
+      </div>
+      <div class="sidebar-row">
+        <div class="row-icon" style="background:rgba(255,159,10,0.15)">🎯</div>
+        <div class="row-name">Orchestrator</div>
+      </div>
+      <div class="sidebar-row">
+        <div class="row-icon" style="background:rgba(52,199,89,0.15)">💻</div>
+        <div class="row-name">Coder</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Group Library -->
+  <div class="mockup" style="max-width: 260px;">
+    <div class="mockup-header">Group Library Sheet</div>
+    <div class="mockup-body">
+      <div class="lib-toolbar">
+        <input class="lib-search" placeholder="Search groups…" />
+        <button class="lib-btn">+ New Group</button>
+      </div>
+      <div class="lib-grid">
+        <div class="lib-card">
+          <div class="card-header">
+            <span class="card-icon">⚡</span>
+            <span class="card-name">Dev Squad</span>
+            <span class="builtin-badge">built-in</span>
+          </div>
+          <div class="card-agents">Coder · Reviewer · Tester</div>
+          <div class="card-actions">
+            <span class="card-action">Start Chat</span>
+            <span class="card-action">Edit</span>
+            <span class="card-action">Share</span>
+          </div>
+        </div>
+        <div class="lib-card">
+          <div class="card-header">
+            <span class="card-icon">📋</span>
+            <span class="card-name">Product Crew</span>
+            <span class="builtin-badge">built-in</span>
+          </div>
+          <div class="card-agents">PM · Researcher · Analyst</div>
+          <div class="card-actions">
+            <span class="card-action">Start Chat</span>
+            <span class="card-action">Edit</span>
+            <span class="card-action">Share</span>
+          </div>
+        </div>
+        <div class="lib-card" style="border-color:#34c759;opacity:0.7">
+          <div class="card-header">
+            <span class="card-icon">🧑‍🚀</span>
+            <span class="card-name">My Team</span>
+          </div>
+          <div class="card-agents">Coder · Reviewer · DevOps</div>
+          <div class="card-actions">
+            <span class="card-action">Start Chat</span>
+            <span class="card-action">Edit</span>
+            <span class="card-action">Delete</span>
+          </div>
+        </div>
+        <div class="lib-card" style="background:rgba(255,255,255,0.02); border-style:dashed; display:flex; align-items:center; justify-content:center; min-height:70px; color:#555; font-size:12px;">
+          + Create New
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Group Editor -->
+  <div class="mockup" style="max-width: 280px;">
+    <div class="mockup-header">Group Editor Sheet</div>
+    <div class="mockup-body">
+      <div class="editor-form">
+        <div class="form-row form-row-inline" style="align-items:flex-end">
+          <div style="flex:1">
+            <div class="form-label">Name</div>
+            <input class="form-input" value="Dev Squad" />
+          </div>
+          <div style="display:flex;gap:4px;padding-bottom:1px">
+            <div class="color-swatch" style="background:#ff9f0a"></div>
+            <div class="color-swatch" style="background:#34c759"></div>
+            <div class="color-swatch" style="background:#0a84ff"></div>
+            <div class="color-swatch" style="background:#af52de"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-label">Group Instruction</div>
+          <textarea class="form-textarea">This group is a software development team. Coder writes implementation, Reviewer ensures quality, Tester validates correctness. Collaborate, cite each other's work, and flag blockers to the team.</textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-label">Default Mission (optional)</div>
+          <input class="form-input" placeholder="e.g. Review and fix the auth bug in…" style="color:#555" />
+        </div>
+        <div class="form-row">
+          <div class="form-label">Agents</div>
+          <div class="agent-picker">
+            <span class="agent-pick-tag selected">💻 Coder</span>
+            <span class="agent-pick-tag selected">🔍 Reviewer</span>
+            <span class="agent-pick-tag selected">🧪 Tester</span>
+            <span class="agent-pick-tag unselected">🚀 DevOps</span>
+            <span class="agent-pick-tag unselected">🎯 Orchestrator</span>
+            <span class="agent-pick-tag unselected">✍️ Writer</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-label">Past Chats</div>
+          <div class="history-row"><div class="history-dot"></div><div class="history-text">Fix login redirect — 2h ago</div></div>
+          <div class="history-row" style="opacity:0.6"><div class="history-dot" style="background:#555"></div><div class="history-text">Auth refactor — yesterday</div></div>
+        </div>
+      </div>
+      <div class="editor-footer">
+        <button class="btn-cancel">Cancel</button>
+        <button class="btn-save">Save Group</button>
+      </div>
+    </div>
+  </div>
+
+</div>

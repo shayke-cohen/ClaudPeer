@@ -353,7 +353,7 @@ struct InspectorView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .help("Open ~/.claudpeer/sandboxes in Finder")
+                    .help("Open ~/.claudestudio/sandboxes in Finder")
                     .xrayId("inspector.openSandboxesFinderButton")
                 }
             }
@@ -764,9 +764,9 @@ struct InspectorView: View {
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
     }
 
-    /// Opens `~/.claudpeer/sandboxes` (conversation sandboxes and other ephemeral dirs live here).
+    /// Opens `~/.claudestudio/sandboxes` (conversation sandboxes and other ephemeral dirs live here).
     private func revealSandboxesRootInFinder() {
-        let path = "\(NSHomeDirectory())/.claudpeer/sandboxes"
+        let path = "\(NSHomeDirectory())/.claudestudio/sandboxes"
         try? FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
     }

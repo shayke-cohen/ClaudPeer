@@ -46,7 +46,7 @@ export class HttpServer {
         headers: {
           ...headers,
           "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, X-ClaudPeer-Client",
+          "Access-Control-Allow-Headers": "Content-Type, X-ClaudeStudio-Client",
         },
       });
     }

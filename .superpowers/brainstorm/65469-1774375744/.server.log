@@ -1,0 +1,11 @@
+{"type":"server-started","port":65314,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:65314","screen_dir":"/Users/shayco/ClaudPeer/.superpowers/brainstorm/65469-1774375744"}
+{"type":"screen-added","file":"/Users/shayco/ClaudPeer/.superpowers/brainstorm/65469-1774375744/builtin-groups.html"}
+{"source":"user-event","type":"click","text":"⚡Dev Squad\n    Core software development team — write, review, and test. Ideal for feature work and bug fixes.\n    \n      Coder\n      Reviewer\n      Tester","choice":"1","id":null,"timestamp":1774376099890}
+{"source":"user-event","type":"click","text":"🏗Full Stack Team\n    Complete product lifecycle — code, review, test, and deploy. For shipping to production.\n    \n      Coder\n      Reviewer\n      Tester\n      DevOps","choice":"2","id":null,"timestamp":1774376100988}
+{"source":"user-event","type":"click","text":"⚡Dev Squad\n    Core software development team — write, review, and test. Ideal for feature work and bug fixes.\n    \n      Coder\n      Reviewer\n      Tester","choice":"1","id":null,"timestamp":1774376101440}
+{"source":"user-event","type":"click","text":"🏗Full Stack Team\n    Complete product lifecycle — code, review, test, and deploy. For shipping to production.\n    \n      Coder\n      Reviewer\n      Tester\n      DevOps","choice":"2","id":null,"timestamp":1774376101973}
+{"type":"screen-added","file":"/Users/shayco/ClaudPeer/.superpowers/brainstorm/65469-1774375744/new-agents.html"}
+{"type":"screen-added","file":"/Users/shayco/ClaudPeer/.superpowers/brainstorm/65469-1774375744/all-groups.html"}
+{"type":"screen-added","file":"/Users/shayco/ClaudPeer/.superpowers/brainstorm/65469-1774375744/ui-layout.html"}
+{"type":"screen-added","file":"/Users/shayco/ClaudPeer/.superpowers/brainstorm/65469-1774375744/waiting.html"}
+{"type":"server-stopped","reason":"owner process exited"}

@@ -1,9 +1,9 @@
 import Foundation
 import Network
 
-/// Minimal TCP HTTP responder for `GET /claudpeer/v1/agents` on the LAN (Bonjour-advertised).
+/// Minimal TCP HTTP responder for `GET /claudestudio/v1/agents` on the LAN (Bonjour-advertised).
 final class PeerCatalogServer: @unchecked Sendable {
-    private let queue = DispatchQueue(label: "com.claudpeer.peer.catalog.server")
+    private let queue = DispatchQueue(label: "com.claudestudio.peer.catalog.server")
     private var listener: NWListener?
     private let lock = NSLock()
     private var cachedBody: Data
@@ -65,7 +65,7 @@ final class PeerCatalogServer: @unchecked Sendable {
         listener = nil
     }
 
-    private static let serviceType = "_claudpeer._tcp"
+    private static let serviceType = "_claudestudio._tcp"
 
     private static func bonjourName() -> String {
         let host = ProcessInfo.processInfo.hostName.split(separator: ".").first.map(String.init) ?? "Mac"
@@ -120,7 +120,7 @@ final class PeerCatalogServer: @unchecked Sendable {
             return
         }
         let path = String(parts[1])
-        if path == "/claudpeer/v1/agents" || path.hasPrefix("/claudpeer/v1/agents?") {
+        if path == "/claudestudio/v1/agents" || path.hasPrefix("/claudestudio/v1/agents?") {
             let body = snapshotBody()
             sendJSON(connection, body: body)
         } else {

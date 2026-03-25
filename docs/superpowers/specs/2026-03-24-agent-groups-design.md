@@ -7,7 +7,7 @@
 
 ## Context
 
-ClaudPeer supports multi-agent conversations today — users select multiple agents in NewSessionSheet and a group chat begins. But there's no concept of a saved group: no way to name a team, give it a shared instruction, re-use it, or share it with peers. Every group must be reconstituted from scratch each time.
+ClaudeStudio supports multi-agent conversations today — users select multiple agents in NewSessionSheet and a group chat begins. But there's no concept of a saved group: no way to name a team, give it a shared instruction, re-use it, or share it with peers. Every group must be reconstituted from scratch each time.
 
 This spec adds Agent Groups as first-class entities: named, reusable team templates with a shared instruction, per-group icon/color, a default mission, conversation history, and peer sharing.
 
@@ -31,7 +31,7 @@ This spec adds Agent Groups as first-class entities: named, reusable team templa
 
 ### New: `AgentGroup` SwiftData model
 
-**File:** `ClaudPeer/Models/AgentGroup.swift`
+**File:** `ClaudeStudio/Models/AgentGroup.swift`
 
 ```swift
 @Model final class AgentGroup {
@@ -55,13 +55,13 @@ This spec adds Agent Groups as first-class entities: named, reusable team templa
 
 ### Modified: `Conversation`
 
-**File:** `ClaudPeer/Models/Conversation.swift`
+**File:** `ClaudeStudio/Models/Conversation.swift`
 
 Add `var sourceGroupId: UUID?` — links a conversation back to the group that spawned it. Optional, nil for all existing conversations (lightweight migration safe).
 
 ### Model Container
 
-**File:** `ClaudPeer/App/ClaudPeerApp.swift`
+**File:** `ClaudeStudio/App/ClaudeStudioApp.swift`
 
 Add `AgentGroup.self` to the `ModelContainer(for:...)` list.
 
@@ -69,7 +69,7 @@ Add `AgentGroup.self` to the `ModelContainer(for:...)` list.
 
 ## New Default Agents (3)
 
-New JSON files in `ClaudPeer/Resources/DefaultAgents/`:
+New JSON files in `ClaudeStudio/Resources/DefaultAgents/`:
 
 | File | Name | Icon | Color | Role |
 |---|---|---|---|---|
@@ -83,7 +83,7 @@ New JSON files in `ClaudPeer/Resources/DefaultAgents/`:
 
 ## 12 Built-in Groups
 
-Seeded by a new `DefaultsSeeder.seedGroupsIfNeeded(container:)` method (separate UserDefaults key: `claudpeer.groupsSeeded` so existing users get groups seeded on next launch even if agents were already seeded).
+Seeded by a new `DefaultsSeeder.seedGroupsIfNeeded(container:)` method (separate UserDefaults key: `claudestudio.groupsSeeded` so existing users get groups seeded on next launch even if agents were already seeded).
 
 | # | Name | Agents | Category |
 |---|---|---|---|
@@ -104,7 +104,7 @@ Seeded by a new `DefaultsSeeder.seedGroupsIfNeeded(container:)` method (separate
 
 ## Group Instruction Injection
 
-**File:** `ClaudPeer/Services/GroupPromptBuilder.swift`
+**File:** `ClaudeStudio/Services/GroupPromptBuilder.swift`
 
 Add `groupInstruction: String? = nil` parameter to `buildMessageText(...)`. When present, prepend:
 
@@ -116,7 +116,7 @@ Add `groupInstruction: String? = nil` parameter to `buildMessageText(...)`. When
 
 before the delta transcript block.
 
-**File:** `ClaudPeer/Views/MainWindow/ChatView.swift`
+**File:** `ClaudeStudio/Views/MainWindow/ChatView.swift`
 
 Before calling `buildMessageText`, fetch `groupInstruction` from `Conversation.sourceGroupId`:
 
@@ -132,7 +132,7 @@ let groupInstruction: String? = {
 
 ## AppState Changes
 
-**File:** `ClaudPeer/App/AppState.swift`
+**File:** `ClaudeStudio/App/AppState.swift`
 
 - Add `@Published var showGroupLibrary = false`
 - Add `func startGroupChat(group: AgentGroup, modelContext: ModelContext)`:
@@ -148,7 +148,7 @@ let groupInstruction: String? = {
 
 ## New Views
 
-**Directory:** `ClaudPeer/Views/GroupLibrary/`
+**Directory:** `ClaudeStudio/Views/GroupLibrary/`
 
 | File | Description |
 |---|---|
@@ -161,7 +161,7 @@ let groupInstruction: String? = {
 
 ## SidebarView Changes
 
-**File:** `ClaudPeer/Views/MainWindow/SidebarView.swift`
+**File:** `ClaudeStudio/Views/MainWindow/SidebarView.swift`
 
 Add "Groups" section above the Agents section:
 - `@Query(sort: \AgentGroup.sortOrder) var groups: [AgentGroup]`
@@ -174,7 +174,7 @@ Add "Groups" section above the Agents section:
 
 ## MainWindowView Changes
 
-**File:** `ClaudPeer/Views/MainWindow/MainWindowView.swift`
+**File:** `ClaudeStudio/Views/MainWindow/MainWindowView.swift`
 
 Add `.sheet(isPresented: $appState.showGroupLibrary) { GroupLibraryView() }` alongside existing `showAgentLibrary` sheet.
 
@@ -182,14 +182,14 @@ Add `.sheet(isPresented: $appState.showGroupLibrary) { GroupLibraryView() }` alo
 
 ## Peer Sharing
 
-**File:** `ClaudPeer/Services/PeerCatalogServer.swift`
+**File:** `ClaudeStudio/Services/PeerCatalogServer.swift`
 
 Extend the catalog HTTP response to include groups:
 - Fetch `AgentGroup` entities with `originKind != "peer"`
 - Serialize to JSON (id, name, description, icon, color, groupInstruction, defaultMission, agentIds mapped to agent names)
 - Add to catalog payload under `"groups"` key
 
-**File:** `ClaudPeer/Views/P2P/PeerNetworkView.swift` (or `PeerAgentImporter.swift`)
+**File:** `ClaudeStudio/Views/P2P/PeerNetworkView.swift` (or `PeerAgentImporter.swift`)
 
 Add "Import Groups" alongside existing agent import:
 - Decode groups from peer catalog
@@ -221,14 +221,14 @@ Add "Import Groups" alongside existing agent import:
 
 ## project.yml
 
-Add all new Swift source files to the `ClaudPeer` target sources in `project.yml`. After changes, run `xcodegen generate`.
+Add all new Swift source files to the `ClaudeStudio` target sources in `project.yml`. After changes, run `xcodegen generate`.
 
 New source paths to add:
-- `ClaudPeer/Models/AgentGroup.swift`
-- `ClaudPeer/Views/GroupLibrary/GroupCardView.swift`
-- `ClaudPeer/Views/GroupLibrary/GroupLibraryView.swift`
-- `ClaudPeer/Views/GroupLibrary/GroupEditorView.swift`
-- `ClaudPeer/Views/GroupLibrary/GroupSidebarRowView.swift`
+- `ClaudeStudio/Models/AgentGroup.swift`
+- `ClaudeStudio/Views/GroupLibrary/GroupCardView.swift`
+- `ClaudeStudio/Views/GroupLibrary/GroupLibraryView.swift`
+- `ClaudeStudio/Views/GroupLibrary/GroupEditorView.swift`
+- `ClaudeStudio/Views/GroupLibrary/GroupSidebarRowView.swift`
 
 ---
 

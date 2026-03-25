@@ -1,8 +1,8 @@
 import Foundation
 
-/// Provides per-instance namespacing so multiple ClaudPeer processes can run simultaneously.
+/// Provides per-instance namespacing so multiple ClaudeStudio processes can run simultaneously.
 ///
-/// Usage:  `open -n ClaudPeer.app --args --instance my-project`
+/// Usage:  `open -n ClaudeStudio.app --args --instance my-project`
 ///
 /// When no `--instance` flag is passed, defaults to `"default"`.
 /// All file paths, ports, and UserDefaults are namespaced under the instance name.
@@ -22,7 +22,7 @@ enum InstanceConfig {
 
     static let baseDirectory: URL = {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        return home.appendingPathComponent(".claudpeer/instances/\(name)", isDirectory: true)
+        return home.appendingPathComponent(".claudestudio/instances/\(name)", isDirectory: true)
     }()
 
     static let dataDirectory: URL = baseDirectory.appendingPathComponent("data", isDirectory: true)
@@ -41,7 +41,7 @@ enum InstanceConfig {
 
     // MARK: - UserDefaults
 
-    static let userDefaultsSuiteName: String = "com.claudpeer.app.\(name)"
+    static let userDefaultsSuiteName: String = "com.claudestudio.app.\(name)"
 
     nonisolated(unsafe) static let userDefaults: UserDefaults = {
         UserDefaults(suiteName: userDefaultsSuiteName) ?? .standard

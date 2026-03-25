@@ -2,7 +2,7 @@
   "catalogId": "delegation-patterns",
   "name": "Delegation Patterns",
   "description": "Split work across specialists with crisp inputs and outputs",
-  "category": "ClaudPeer Collaboration",
+  "category": "ClaudeStudio Collaboration",
   "icon": "arrow.turn.down.right",
   "requiredMCPs": [],
   "triggers": [
@@ -13,6 +13,6 @@
   "tags": [
     "workflow",
     "agents",
-    "claudpeer"
+    "claudestudio"
   ]
 }

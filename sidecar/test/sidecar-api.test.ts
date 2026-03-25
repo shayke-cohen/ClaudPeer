@@ -1,17 +1,17 @@
 /**
- * ClaudPeer Sidecar API Tests
+ * ClaudeStudio Sidecar API Tests
  *
  * Tests all WebSocket and HTTP APIs:
  * - session.create / session.message / session.resume / session.fork / session.pause
  * - Blackboard HTTP API (write, read, query, keys)
  * - Streaming events (stream.token, stream.toolCall, stream.toolResult, session.result, session.error)
  *
- * Usage: CLAUDPEER_WS_PORT=9849 CLAUDPEER_HTTP_PORT=9850 bun test/sidecar-api.test.ts
+ * Usage: CLAUDESTUDIO_WS_PORT=9849 CLAUDESTUDIO_HTTP_PORT=9850 bun test/sidecar-api.test.ts
  * Requires: sidecar listening on the same ports (defaults 9849 WS / 9850 HTTP).
  */
 
-const WS_PORT = Number(process.env.CLAUDPEER_WS_PORT ?? "9849");
-const HTTP_PORT = Number(process.env.CLAUDPEER_HTTP_PORT ?? "9850");
+const WS_PORT = Number(process.env.CLAUDESTUDIO_WS_PORT ?? "9849");
+const HTTP_PORT = Number(process.env.CLAUDESTUDIO_HTTP_PORT ?? "9850");
 const HTTP_BASE = `http://127.0.0.1:${HTTP_PORT}`;
 
 interface TestResult {
@@ -324,7 +324,7 @@ async function testBlackboardWriteValidation() {
 // --- Runner ---
 
 async function main() {
-  console.log("\nClaudPeer Sidecar API Tests\n");
+  console.log("\nClaudeStudio Sidecar API Tests\n");
   console.log("═══════════════════════════\n");
 
   // Health

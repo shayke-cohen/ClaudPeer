@@ -33,7 +33,7 @@ function corsHeaders(): Record<string, string> {
 }
 
 function clientIdentity(req: Request): string {
-  return req.headers.get("X-ClaudPeer-Client") ?? "rest-api";
+  return req.headers.get("X-ClaudeStudio-Client") ?? "rest-api";
 }
 
 async function parseBody<T>(req: Request): Promise<T> {
@@ -91,7 +91,7 @@ export async function handleApiRequest(
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, X-ClaudPeer-Client",
+        "Access-Control-Allow-Headers": "Content-Type, X-ClaudeStudio-Client",
       },
     });
   }

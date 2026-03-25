@@ -1,5 +1,5 @@
 import XCTest
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 final class GitServiceTests: XCTestCase {
 
@@ -7,7 +7,7 @@ final class GitServiceTests: XCTestCase {
 
     override func setUp() {
         tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ClaudPeerGitTests-\(UUID().uuidString)")
+            .appendingPathComponent("ClaudeStudioGitTests-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
     }
 

@@ -1,5 +1,5 @@
 import XCTest
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 final class RichChatComponentTests: XCTestCase {
 
@@ -284,14 +284,14 @@ final class RichChatComponentTests: XCTestCase {
     // MARK: - Settings Keys
 
     func testChatDisplaySettingsKeysExist() {
-        XCTAssertEqual(AppSettings.renderMermaidKey, "claudpeer.chat.renderMermaid")
-        XCTAssertEqual(AppSettings.renderHTMLKey, "claudpeer.chat.renderHTML")
-        XCTAssertEqual(AppSettings.renderDiffsKey, "claudpeer.chat.renderDiffs")
-        XCTAssertEqual(AppSettings.renderTerminalKey, "claudpeer.chat.renderTerminal")
-        XCTAssertEqual(AppSettings.renderAdmonitionsKey, "claudpeer.chat.renderAdmonitions")
-        XCTAssertEqual(AppSettings.renderPDFKey, "claudpeer.chat.renderPDF")
-        XCTAssertEqual(AppSettings.showSessionSummaryKey, "claudpeer.chat.showSessionSummary")
-        XCTAssertEqual(AppSettings.showSuggestionChipsKey, "claudpeer.chat.showSuggestionChips")
+        XCTAssertEqual(AppSettings.renderMermaidKey, "claudestudio.chat.renderMermaid")
+        XCTAssertEqual(AppSettings.renderHTMLKey, "claudestudio.chat.renderHTML")
+        XCTAssertEqual(AppSettings.renderDiffsKey, "claudestudio.chat.renderDiffs")
+        XCTAssertEqual(AppSettings.renderTerminalKey, "claudestudio.chat.renderTerminal")
+        XCTAssertEqual(AppSettings.renderAdmonitionsKey, "claudestudio.chat.renderAdmonitions")
+        XCTAssertEqual(AppSettings.renderPDFKey, "claudestudio.chat.renderPDF")
+        XCTAssertEqual(AppSettings.showSessionSummaryKey, "claudestudio.chat.showSessionSummary")
+        XCTAssertEqual(AppSettings.showSuggestionChipsKey, "claudestudio.chat.showSuggestionChips")
     }
 
     func testChatDisplayKeysInAllKeys() {

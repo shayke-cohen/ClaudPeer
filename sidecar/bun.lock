@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "claudpeer-sidecar",
+      "name": "claudestudio-sidecar",
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "^0.2.71",
         "@anthropic-ai/sdk": "^0.78.0",

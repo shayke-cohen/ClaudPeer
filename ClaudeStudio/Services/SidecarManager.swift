@@ -93,13 +93,13 @@ final class SidecarManager: ObservableObject, Sendable {
         process.executableURL = URL(fileURLWithPath: bunPath)
         process.arguments = ["run", sidecarPath]
         process.environment = ProcessInfo.processInfo.environment
-        process.environment?["CLAUDPEER_WS_PORT"] = "\(config.wsPort)"
-        process.environment?["CLAUDPEER_HTTP_PORT"] = "\(config.httpPort)"
+        process.environment?["CLAUDESTUDIO_WS_PORT"] = "\(config.wsPort)"
+        process.environment?["CLAUDESTUDIO_HTTP_PORT"] = "\(config.httpPort)"
         if let dataDir = config.dataDirectory {
-            process.environment?["CLAUDPEER_DATA_DIR"] = dataDir
+            process.environment?["CLAUDESTUDIO_DATA_DIR"] = dataDir
         }
 
-        let logDir = config.logDirectory ?? "\(NSHomeDirectory())/.claudpeer/instances/default/logs"
+        let logDir = config.logDirectory ?? "\(NSHomeDirectory())/.claudestudio/instances/default/logs"
         try? FileManager.default.createDirectory(atPath: logDir, withIntermediateDirectories: true)
         let logFile = "\(logDir)/sidecar.log"
         FileManager.default.createFile(atPath: logFile, contents: nil)
@@ -245,7 +245,7 @@ final class SidecarManager: ObservableObject, Sendable {
         let devPath = "\(fm.currentDirectoryPath)/sidecar/src/index.ts"
         if fm.fileExists(atPath: devPath) { return devPath }
 
-        let wellKnown = "\(NSHomeDirectory())/ClaudPeer/sidecar/src/index.ts"
+        let wellKnown = "\(NSHomeDirectory())/ClaudeStudio/sidecar/src/index.ts"
         if fm.fileExists(atPath: wellKnown) { return wellKnown }
 
         return wellKnown

@@ -1,6 +1,6 @@
-# ClaudPeer — Sanity Test Plan
+# ClaudeStudio — Sanity Test Plan
 
-Rerunnable sanity test plan for the ClaudPeer sidecar. Covers unit, integration, API, protocol, and E2E layers.
+Rerunnable sanity test plan for the ClaudeStudio sidecar. Covers unit, integration, API, protocol, and E2E layers.
 
 ---
 
@@ -9,7 +9,7 @@ Rerunnable sanity test plan for the ClaudPeer sidecar. Covers unit, integration,
 - **Bun** installed and on `$PATH`
 - **Sidecar** source at `sidecar/`
 - Claude subscription active (no API key needed — `ANTHROPIC_API_KEY` is set via subscription)
-- `CLAUDPEER_E2E_LIVE=1` to enable live Claude SDK tests (tests marked `[LIVE]` are skipped otherwise)
+- `CLAUDESTUDIO_E2E_LIVE=1` to enable live Claude SDK tests (tests marked `[LIVE]` are skipped otherwise)
 
 ## Running All Tests
 
@@ -17,7 +17,7 @@ Rerunnable sanity test plan for the ClaudPeer sidecar. Covers unit, integration,
 cd sidecar
 
 # Full suite including live Claude SDK calls
-CLAUDPEER_E2E_LIVE=1 bun test
+CLAUDESTUDIO_E2E_LIVE=1 bun test
 
 # Offline only (skips live tests)
 bun test
@@ -42,7 +42,7 @@ bun test test/api/ws-protocol.test.ts
 bun test test/e2e/full-flow.test.ts
 
 # E2E: all scenario groups
-CLAUDPEER_E2E_LIVE=1 bun test test/e2e/scenarios.test.ts
+CLAUDESTUDIO_E2E_LIVE=1 bun test test/e2e/scenarios.test.ts
 
 # E2E: specific scenario group
 bun test test/e2e/scenarios.test.ts -t "BB: Blackboard"
@@ -255,12 +255,12 @@ AppXray provides inside-out testing of a running DEBUG build. It connects via We
 ### Architecture
 
 ```
-ClaudPeer (DEBUG) ──WebSocket──> MCP Relay (127.0.0.1:19400) <──stdio── AppXray MCP Server <── AI Agent (Cursor)
+ClaudeStudio (DEBUG) ──WebSocket──> MCP Relay (127.0.0.1:19400) <──stdio── AppXray MCP Server <── AI Agent (Cursor)
 ```
 
 ### Prerequisites
 
-- ClaudPeer built in **DEBUG** configuration (AppXray SDK is `#if DEBUG` only in `ClaudPeerApp.swift`)
+- ClaudeStudio built in **DEBUG** configuration (AppXray SDK is `#if DEBUG` only in `ClaudeStudioApp.swift`)
 - AppXray MCP server configured in Cursor (runs via `npx -y @anthropic-ai/appxray-mcp-server`)
 - The relay starts automatically on `127.0.0.1:19400` when the MCP server launches
 
@@ -270,8 +270,8 @@ ClaudPeer (DEBUG) ──WebSocket──> MCP Relay (127.0.0.1:19400) <──stdi
 // 1. Discover running AppXray-enabled apps
 session({ action: "discover" })
 
-// 2. Connect to ClaudPeer
-session({ action: "connect", appId: "com.claudpeer.app" })
+// 2. Connect to ClaudeStudio
+session({ action: "connect", appId: "com.claudestudio.app" })
 
 // 3. Full snapshot (tree + screenshot + state + network + logs)
 inspect({ target: "tree" })
@@ -340,15 +340,15 @@ interact({ action: "tap", selector: '@testId("settings.tab.developer")' })
 
 ## Parallel App Instances
 
-ClaudPeer supports running multiple isolated instances simultaneously via the `--instance` flag. Each instance gets its own data, ports, and sidecar process.
+ClaudeStudio supports running multiple isolated instances simultaneously via the `--instance` flag. Each instance gets its own data, ports, and sidecar process.
 
 ### Launching Instances
 
 ```bash
 # Launch three isolated instances for parallel testing
-open -n /path/to/ClaudPeer.app --args --instance test-sidebar
-open -n /path/to/ClaudPeer.app --args --instance test-chat
-open -n /path/to/ClaudPeer.app --args --instance test-agents
+open -n /path/to/ClaudeStudio.app --args --instance test-sidebar
+open -n /path/to/ClaudeStudio.app --args --instance test-chat
+open -n /path/to/ClaudeStudio.app --args --instance test-agents
 ```
 
 ### Isolation Per Instance
@@ -357,11 +357,11 @@ Each named instance (via `InstanceConfig.swift`) gets:
 
 | Resource | Path / Value |
 |----------|-------------|
-| UserDefaults suite | `com.claudpeer.app.<name>` |
-| SwiftData store | `~/.claudpeer/instances/<name>/data/ClaudPeer.store` |
-| Blackboard data | `~/.claudpeer/instances/<name>/blackboard/` |
-| Log directory | `~/.claudpeer/instances/<name>/logs/` |
-| Sidecar log | `~/.claudpeer/instances/<name>/logs/sidecar.log` |
+| UserDefaults suite | `com.claudestudio.app.<name>` |
+| SwiftData store | `~/.claudestudio/instances/<name>/data/ClaudeStudio.store` |
+| Blackboard data | `~/.claudestudio/instances/<name>/blackboard/` |
+| Log directory | `~/.claudestudio/instances/<name>/logs/` |
+| Sidecar log | `~/.claudestudio/instances/<name>/logs/sidecar.log` |
 | WS + HTTP ports | Auto-assigned free ports (non-default instances) |
 | Sidecar process | Separate subprocess per instance |
 
@@ -388,7 +388,7 @@ Instance "test-agents"   --> AppXray session 3 --> agent library + editor tests
 
 Do **not** run two instances both as "default" (no `--instance` flag). They would share:
 - Ports 9849/9850 and the same sidecar process
-- The same SwiftData store at `~/.claudpeer/instances/default/data/`
+- The same SwiftData store at `~/.claudestudio/instances/default/data/`
 - The same UserDefaults suite
 
 This causes broadcast cross-talk between sessions and potential data corruption.
@@ -400,7 +400,7 @@ This causes broadcast cross-talk between sessions and potential data corruption.
 ### Sidecar Won't Connect
 
 1. **Check the status pill** in the toolbar (`mainWindow.sidecarStatusPill`) — shows disconnected, connecting, connected, or error
-2. **Check the sidecar log:** `~/.claudpeer/instances/<instance>/logs/sidecar.log`
+2. **Check the sidecar log:** `~/.claudestudio/instances/<instance>/logs/sidecar.log`
 3. **Hit the health endpoint:** `curl -s http://127.0.0.1:9850/health | jq .`
 4. **Verify Bun is installed** — the app searches these paths in order:
    - `/opt/homebrew/bin/bun`
@@ -431,8 +431,8 @@ This causes broadcast cross-talk between sessions and potential data corruption.
 
 | Log | Location |
 |-----|----------|
-| Sidecar output | `~/.claudpeer/instances/<instance>/logs/sidecar.log` |
-| Sidecar prefixes | `[claudpeer-sidecar]`, `[ws]`, `[http]` |
+| Sidecar output | `~/.claudestudio/instances/<instance>/logs/sidecar.log` |
+| Sidecar prefixes | `[claudestudio-sidecar]`, `[ws]`, `[http]` |
 | Swift app | `[SidecarManager]`, `[AppState]` in Xcode console or `Console.app` |
 
 ### Quick Health Check
@@ -445,10 +445,10 @@ curl -s http://127.0.0.1:9850/health | jq .
 lsof -i :9849 -i :9850
 
 # Tail sidecar log (default instance)
-tail -50 ~/.claudpeer/instances/default/logs/sidecar.log
+tail -50 ~/.claudestudio/instances/default/logs/sidecar.log
 
 # Tail a named instance log
-tail -50 ~/.claudpeer/instances/test-chat/logs/sidecar.log
+tail -50 ~/.claudestudio/instances/test-chat/logs/sidecar.log
 ```
 
 ---
@@ -512,7 +512,7 @@ Use AppXray to find gaps:
 
 ```javascript
 // Connect to the running DEBUG app
-session({ action: "connect", appId: "com.claudpeer.app" })
+session({ action: "connect", appId: "com.claudestudio.app" })
 
 // Inspect the full accessibility tree
 inspect({ target: "accessibility" })
@@ -533,5 +533,5 @@ Compare the returned tree against the tables in `TESTING.md` Section 5. Any inte
 
 **Date:** 2026-03-22
 **Result:** 139/139 pass (excluding 2 legacy failures in `sidecar-api.test.ts`)
-**Live tests:** All 6 live tests pass with `CLAUDPEER_E2E_LIVE=1`
+**Live tests:** All 6 live tests pass with `CLAUDESTUDIO_E2E_LIVE=1`
 **ACCEPT-1 time:** ~135s (Orchestrator delegated to Researcher + Coder, produced meditation app)

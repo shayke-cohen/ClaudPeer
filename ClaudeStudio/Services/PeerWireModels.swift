@@ -1,6 +1,6 @@
 import Foundation
 
-/// JSON payload exchanged between ClaudPeer instances on the LAN (P2P v1).
+/// JSON payload exchanged between ClaudeStudio instances on the LAN (P2P v1).
 struct WireAgentExport: Codable, Identifiable, Sendable {
     var id: UUID
     var name: String

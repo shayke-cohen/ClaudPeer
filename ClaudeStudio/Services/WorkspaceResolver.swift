@@ -17,7 +17,7 @@ enum WorkspaceResolver {
         return trimmed
     }
 
-    /// Stable directory name under `~/.claudpeer/repos/` (matches historical `AgentProvisioner` behavior).
+    /// Stable directory name under `~/.claudestudio/repos/` (matches historical `AgentProvisioner` behavior).
     static func repositoryDirectoryName(repoInput: String) -> String {
         let trimmed = repoInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "unknown" }
@@ -42,16 +42,16 @@ enum WorkspaceResolver {
 
     static func cloneDestinationPath(repoInput: String) -> String {
         let name = repositoryDirectoryName(repoInput: repoInput)
-        return "\(NSHomeDirectory())/.claudpeer/repos/\(name)"
+        return "\(NSHomeDirectory())/.claudestudio/repos/\(name)"
     }
 
-    /// Path for a git worktree: `~/.claudpeer/worktrees/{repo-name}/{sanitized-branch}`
+    /// Path for a git worktree: `~/.claudestudio/worktrees/{repo-name}/{sanitized-branch}`
     static func worktreeDestinationPath(repoInput: String, branch: String) -> String {
         let repoName = repositoryDirectoryName(repoInput: repoInput)
         let safeBranch = branch
             .replacingOccurrences(of: "refs/heads/", with: "")
             .replacingOccurrences(of: "/", with: "-")
-        return "\(NSHomeDirectory())/.claudpeer/worktrees/\(repoName)/\(safeBranch)"
+        return "\(NSHomeDirectory())/.claudestudio/worktrees/\(repoName)/\(safeBranch)"
     }
 
     /// Whether `session` should use automatic GitHub clone for `agent` (no unrelated explicit directory override).

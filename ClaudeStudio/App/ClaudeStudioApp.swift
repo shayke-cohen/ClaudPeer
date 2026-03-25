@@ -5,7 +5,7 @@ import AppXray
 #endif
 
 @main
-struct ClaudPeerApp: App {
+struct ClaudeStudioApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var p2pNetworkManager = P2PNetworkManager()
     @State private var configSyncService = ConfigSyncService()
@@ -13,16 +13,17 @@ struct ClaudPeerApp: App {
     @AppStorage(AppSettings.autoConnectSidecarKey, store: AppSettings.store) private var autoConnectSidecar = true
 
     let modelContainer: ModelContainer
+    private let launchIntent: LaunchIntent?
 
     init() {
         #if DEBUG
-        AppXray.shared.start(appName: "ClaudPeer")
+        AppXray.shared.start(appName: "ClaudeStudio")
         #endif
 
         InstanceConfig.ensureDirectories()
 
         do {
-            let storeURL = InstanceConfig.dataDirectory.appendingPathComponent("ClaudPeer.store")
+            let storeURL = InstanceConfig.dataDirectory.appendingPathComponent("ClaudeStudio.store")
             let config = ModelConfiguration(url: storeURL)
             let schema = Schema([
                 Agent.self,
@@ -47,8 +48,10 @@ struct ClaudPeerApp: App {
         }
 
         // Config sync replaces DefaultsSeeder — copies factory defaults on first launch,
-        // then watches ~/.claudpeer/config/ for file changes and syncs to SwiftData.
+        // then watches ~/.claudestudio/config/ for file changes and syncs to SwiftData.
         // Actual start() is called in .onAppear since it needs @MainActor.
+
+        launchIntent = LaunchIntent.fromCommandLine()
     }
 
     private var resolvedColorScheme: ColorScheme? {
@@ -56,7 +59,7 @@ struct ClaudPeerApp: App {
     }
 
     private var windowTitle: String {
-        InstanceConfig.isDefault ? "ClaudPeer" : "ClaudPeer — \(InstanceConfig.name)"
+        InstanceConfig.isDefault ? "ClaudeStudio" : "ClaudeStudio — \(InstanceConfig.name)"
     }
 
     var body: some Scene {
@@ -102,9 +105,19 @@ struct ClaudPeerApp: App {
                     let active = worktreeSessions.filter { $0.status == .active || $0.status == .paused }
                     await WorktreeCleanup.pruneOrphaned(activeSessions: active)
                 }
+                // Execute launch intent (CLI args: --chat, --agent, --group, etc.)
+                if let intent = launchIntent {
+                    appState.executeLaunchIntent(intent, modelContext: modelContainer.mainContext)
+                }
+
                 #if DEBUG
                 AppXray.shared.registerObservableObject(appState, name: "appState")
                 #endif
+            }
+            .onOpenURL { url in
+                if let intent = LaunchIntent.fromURL(url) {
+                    appState.executeLaunchIntent(intent, modelContext: modelContainer.mainContext)
+                }
             }
         }
         .modelContainer(modelContainer)

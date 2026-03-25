@@ -1,6 +1,6 @@
-# ClaudPeer — Testing Guide
+# ClaudeStudio — Testing Guide
 
-This document covers how to test ClaudPeer across all three testing layers, provides a complete inventory of every screen and interactive control with its accessibility identifier, and explains how to target elements in AppXray and Argus automation.
+This document covers how to test ClaudeStudio across all three testing layers, provides a complete inventory of every screen and interactive control with its accessibility identifier, and explains how to target elements in AppXray and Argus automation.
 
 ---
 
@@ -21,7 +21,7 @@ This document covers how to test ClaudPeer across all three testing layers, prov
 
 ## 1. Testing Overview
 
-ClaudPeer uses three complementary testing layers:
+ClaudeStudio uses three complementary testing layers:
 
 | Layer | Tool | Scope | When to Use |
 |-------|------|-------|-------------|
@@ -39,7 +39,7 @@ ClaudPeer uses three complementary testing layers:
 
 ### Existing Test Files
 
-All tests live in `ClaudPeerTests/`:
+All tests live in `ClaudeStudioTests/`:
 
 | File | What It Tests |
 |------|---------------|
@@ -64,8 +64,8 @@ Product > Test (Cmd+U)
 From the command line:
 ```bash
 xcodebuild test \
-  -project ClaudPeer.xcodeproj \
-  -scheme ClaudPeer \
+  -project ClaudeStudio.xcodeproj \
+  -scheme ClaudeStudio \
   -destination 'platform=macOS'
 ```
 
@@ -93,7 +93,7 @@ Test files in `sidecar/test/`:
 ### Architecture
 
 ```
-ClaudPeer (DEBUG) ──WebSocket──> MCP Relay (127.0.0.1:19400) <──stdio── AppXray MCP Server <── AI Agent (Cursor)
+ClaudeStudio (DEBUG) ──WebSocket──> MCP Relay (127.0.0.1:19400) <──stdio── AppXray MCP Server <── AI Agent (Cursor)
 ```
 
 ### Prerequisites
@@ -108,8 +108,8 @@ ClaudPeer (DEBUG) ──WebSocket──> MCP Relay (127.0.0.1:19400) <──stdi
 // 1. Discover running AppXray-enabled apps
 session({ action: "discover" })
 
-// 2. Connect to ClaudPeer
-session({ action: "connect", appId: "com.claudpeer.app" })
+// 2. Connect to ClaudeStudio
+session({ action: "connect", appId: "com.claudestudio.app" })
 ```
 
 ### Available AppXray Tools
@@ -855,12 +855,12 @@ Set via AppKit `setAccessibilityIdentifier`. The SwiftUI wrapper gets its own id
 
 ## 7. Argus macOS Testing (Outside-In E2E)
 
-Argus can drive ClaudPeer as a macOS app without the AppXray SDK.
+Argus can drive ClaudeStudio as a macOS app without the AppXray SDK.
 
 ### Starting a Session
 
 ```javascript
-inspect({ platform: "macos", appName: "ClaudPeer" })
+inspect({ platform: "macos", appName: "ClaudeStudio" })
 ```
 
 This captures a screenshot and the accessibility element tree.
@@ -920,7 +920,7 @@ Argus supports YAML test files for repeatable regression testing:
 ```yaml
 name: Create and send message
 platform: macos
-appName: ClaudPeer
+appName: ClaudeStudio
 steps:
   - inspect: {}
   - act:
@@ -956,14 +956,14 @@ steps:
 
 Run with:
 ```javascript
-test({ action: "run", path: "tests/create-session.yaml", platform: "macos", appName: "ClaudPeer" })
+test({ action: "run", path: "tests/create-session.yaml", platform: "macos", appName: "ClaudeStudio" })
 ```
 
 ### Example: Full Session Flow
 
 ```javascript
 // 1. Launch and inspect
-inspect({ platform: "macos", appName: "ClaudPeer" })
+inspect({ platform: "macos", appName: "ClaudeStudio" })
 
 // 2. Check sidecar is connected
 assert({ type: "ai", prompt: "The sidecar status pill shows Connected" })

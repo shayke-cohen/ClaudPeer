@@ -3,7 +3,11 @@ build/
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 DerivedData/
+.derivedData/
+.derived-run/
+.build-run/
 *.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+*.profraw
 
 # macOS
 .DS_Store
@@ -19,4 +23,4 @@ sidecar/bun.lockb
 Dependencies/
 
 # Runtime data
-.claudpeer/
+.claudestudio/

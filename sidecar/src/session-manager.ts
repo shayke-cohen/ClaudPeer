@@ -10,7 +10,7 @@ import type { ToolContext } from "./tools/tool-context.js";
 import { createPeerBusServer } from "./tools/peerbus-server.js";
 import { pendingQuestions, questionsBySession } from "./tools/ask-user-tool.js";
 
-const DEBUG_LOG = join(homedir(), ".claudpeer", "debug-ask-user.log");
+const DEBUG_LOG = join(homedir(), ".claudestudio", "debug-ask-user.log");
 function debugLog(msg: string) {
   const line = `[${new Date().toISOString()}] ${msg}\n`;
   try { appendFileSync(DEBUG_LOG, line); } catch {}
@@ -302,11 +302,12 @@ export class SessionManager {
       env,
     };
 
-    if (config.systemPrompt) {
+    const appendText = this.buildSystemPromptAppend(config);
+    if (appendText) {
       options.systemPrompt = {
         type: "preset" as const,
         preset: "claude_code" as const,
-        append: this.buildSystemPromptAppend(config),
+        append: appendText,
       };
     } else {
       options.systemPrompt = { type: "preset" as const, preset: "claude_code" as const };
@@ -362,7 +363,7 @@ export class SessionManager {
       return text;
     }
 
-    const tmpDir = join(homedir(), ".claudpeer", "tmp-attachments");
+    const tmpDir = join(homedir(), ".claudestudio", "tmp-attachments");
     mkdirSync(tmpDir, { recursive: true });
 
     const inlineTexts: string[] = [];
@@ -431,17 +432,35 @@ Parameters:
 - \`options\` (optional): Array of {label, description} for structured choices
 - \`multi_select\` (optional): Allow multiple selections (default: false)
 - \`private\` (optional): Hide from other agents in group chat (default: true)
+- \`input_type\` (optional): UI style — "options" (default buttons), "text" (free text only), "rating" (star rating), "slider" (numeric range), "toggle" (yes/no), "dropdown" (compact picker), "form" (multi-field form)
+- \`input_config\` (optional): Config for the input type:
+  - rating: {max_rating, rating_labels}
+  - slider: {min, max, step, unit}
+  - form: {fields: [{name, label, type: "text"|"number"|"toggle", placeholder, required}]}
 
-IMPORTANT: Never write questions as plain text output. Always use the ask_user tool so the user gets an interactive prompt.
+Examples:
+- Toggle: \`ask_user({question: "Proceed?", input_type: "toggle"})\` → shows Yes/No buttons
+- Rating: \`ask_user({question: "Rate quality", input_type: "rating", input_config: {max_rating: 5, rating_labels: ["Poor","Fair","Good","Great","Excellent"]}})\`
+- Slider: \`ask_user({question: "Priority?", input_type: "slider", input_config: {min: 1, max: 10, step: 1}})\`
+- Form: \`ask_user({question: "Your info", input_type: "form", input_config: {fields: [{name: "name", label: "Name", type: "text", required: true}]}})\`
 
-## Rich Output
+IMPORTANT: Never write questions as plain text output. Always use the ask_user tool so the user gets an interactive prompt. Choose the input_type that best matches what you're asking — toggle for yes/no, rating for quality judgments, slider for ranges, form for multiple fields.
 
-Your chat supports rich rendering. You have these additional tools:
+## Rich Display
 
-- \`render_content\`: Display rich HTML, mermaid diagrams, or styled markdown inline in chat. Use for charts, reports, visualizations.
+Your chat supports rich inline rendering. Use these tools instead of writing files and asking the user to open them:
+
+- \`render_content\`: **ALWAYS use this** to display HTML, mermaid diagrams, or styled markdown directly in chat. When the user asks to see something visually — a comparison, a chart, a preview, a styled page — render it inline with this tool. Never create HTML files and tell the user to open them in a browser; use render_content instead.
 - \`confirm_action\`: Request user approval before destructive operations (git push, rm, etc.). Blocks until user responds.
 - \`show_progress\`: Display/update a step-by-step progress tracker. Call multiple times with same id to update.
-- \`suggest_actions\`: Show clickable follow-up chips after completing a task.
+- \`suggest_actions\`: Show clickable follow-up chips after completing a task. Great for guiding the user to natural next steps.
+
+When to use render_content:
+- User asks for a visual comparison → render side-by-side HTML
+- User asks for a chart or graph → render HTML with inline SVG or CSS
+- User asks for a diagram → use format="mermaid"
+- User asks to preview something → render it inline
+- You want to show styled output → use format="html" with CSS
 
 You can also use these markdown features that render as rich cards:
 - \`> [!info]\`, \`> [!success]\`, \`> [!warning]\`, \`> [!error]\` — callout cards

@@ -23,7 +23,7 @@ struct MainWindowView: View {
                             .frame(minWidth: 220, idealWidth: 380, maxWidth: 720, maxHeight: .infinity)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(SplitViewConfigurator(autosaveName: "claudpeer.chatInspectorSplit"))
+                    .background(SplitViewConfigurator(autosaveName: "claudestudio.chatInspectorSplit"))
                     .xrayId("mainWindow.chatInspectorSplit")
                 } else {
                     mainDetailPane
@@ -125,6 +125,18 @@ struct MainWindowView: View {
         .onAppear {
             appState.connectSidecar()
         }
+        .alert("Launch Error", isPresented: launchErrorBinding) {
+            Button("OK") { appState.launchError = nil }
+        } message: {
+            Text(appState.launchError ?? "")
+        }
+    }
+
+    private var launchErrorBinding: Binding<Bool> {
+        Binding(
+            get: { appState.launchError != nil },
+            set: { if !$0 { appState.launchError = nil } }
+        )
     }
 
     // MARK: - Detail panes
@@ -371,7 +383,7 @@ private struct WindowTitleSetter: NSViewRepresentable {
 
         private func applyTitle() {
             guard !InstanceConfig.isDefault else { return }
-            let title = "ClaudPeer — \(InstanceConfig.name)"
+            let title = "ClaudeStudio — \(InstanceConfig.name)"
             window?.title = title
         }
     }

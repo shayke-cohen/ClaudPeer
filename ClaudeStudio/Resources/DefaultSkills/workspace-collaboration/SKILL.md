@@ -1,7 +1,7 @@
 ---
 name: workspace-collaboration
 description: Conventions for multiple agents sharing a workspace directory without conflicts.
-category: ClaudPeer
+category: ClaudeStudio
 triggers:
   - shared workspace
   - multiple agents same directory
@@ -17,10 +17,10 @@ When multiple agents share a workspace directory, follow these conventions to av
 
 ```
 workspace_create(name: "sorting-collab")
-→ { workspace_id: "ws-1", path: "~/.claudpeer/workspaces/ws-1/" }
+→ { workspace_id: "ws-1", path: "~/.claudestudio/workspaces/ws-1/" }
 
 workspace_join(workspace_id: "ws-1")
-→ { path: "~/.claudpeer/workspaces/ws-1/", participants: ["Researcher", "Coder"] }
+→ { path: "~/.claudestudio/workspaces/ws-1/", participants: ["Researcher", "Coder"] }
 ```
 
 ## Directory Structure

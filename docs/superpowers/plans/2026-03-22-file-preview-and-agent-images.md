@@ -22,24 +22,24 @@
 
 | File | Responsibility | Status |
 |---|---|---|
-| `ClaudPeer/Services/FileSystemService.swift` | File type classification helpers | Modify |
-| `ClaudPeer/Views/MainWindow/FileContentView.swift` | Preview dispatch, `fileData`, diff highlighting | Modify |
-| `ClaudPeer/Views/MainWindow/HTMLPreviewView.swift` | WKWebView wrapper (JS disabled) | Create |
-| `ClaudPeer/Views/MainWindow/JSONTreeView.swift` | Collapsible JSON tree | Create |
-| `ClaudPeer/Views/MainWindow/PDFPreviewView.swift` | PDFKit wrapper | Create |
-| `ClaudPeer/Views/MainWindow/ImagePreviewView.swift` | Inline image + info overlay | Create |
-| `ClaudPeer/Models/MessageAttachment.swift` | Add `localFilePath` field | Modify |
-| `ClaudPeer/Services/SidecarProtocol.swift` | `streamImage` + `streamFileCard` events | Modify |
-| `ClaudPeer/App/AppState.swift` | Image/fileCard accumulators + event handlers | Modify |
-| `ClaudPeer/Views/MainWindow/ChatView.swift` | Finalize images/fileCards into attachments | Modify |
-| `ClaudPeer/Views/Components/AttachmentThumbnail.swift` | File card rendering for HTML/PDF | Modify |
+| `ClaudeStudio/Services/FileSystemService.swift` | File type classification helpers | Modify |
+| `ClaudeStudio/Views/MainWindow/FileContentView.swift` | Preview dispatch, `fileData`, diff highlighting | Modify |
+| `ClaudeStudio/Views/MainWindow/HTMLPreviewView.swift` | WKWebView wrapper (JS disabled) | Create |
+| `ClaudeStudio/Views/MainWindow/JSONTreeView.swift` | Collapsible JSON tree | Create |
+| `ClaudeStudio/Views/MainWindow/PDFPreviewView.swift` | PDFKit wrapper | Create |
+| `ClaudeStudio/Views/MainWindow/ImagePreviewView.swift` | Inline image + info overlay | Create |
+| `ClaudeStudio/Models/MessageAttachment.swift` | Add `localFilePath` field | Modify |
+| `ClaudeStudio/Services/SidecarProtocol.swift` | `streamImage` + `streamFileCard` events | Modify |
+| `ClaudeStudio/App/AppState.swift` | Image/fileCard accumulators + event handlers | Modify |
+| `ClaudeStudio/Views/MainWindow/ChatView.swift` | Finalize images/fileCards into attachments | Modify |
+| `ClaudeStudio/Views/Components/AttachmentThumbnail.swift` | File card rendering for HTML/PDF | Modify |
 | `sidecar/src/types.ts` | New event types | Modify |
 | `sidecar/src/session-manager.ts` | Handle image blocks + tool file path scanning | Modify |
-| `ClaudPeerTests/FileClassificationTests.swift` | File type helper tests | Create |
-| `ClaudPeerTests/JSONTreeParsingTests.swift` | JSON parsing + truncation tests | Create |
-| `ClaudPeerTests/DiffLineStyleTests.swift` | Diff line classification tests | Create |
-| `ClaudPeerTests/AppStateEventTests.swift` | Extend with image/fileCard event tests | Modify |
-| `ClaudPeerTests/SidecarProtocolTests.swift` | Extend with new event encoding/decoding | Modify |
+| `ClaudeStudioTests/FileClassificationTests.swift` | File type helper tests | Create |
+| `ClaudeStudioTests/JSONTreeParsingTests.swift` | JSON parsing + truncation tests | Create |
+| `ClaudeStudioTests/DiffLineStyleTests.swift` | Diff line classification tests | Create |
+| `ClaudeStudioTests/AppStateEventTests.swift` | Extend with image/fileCard event tests | Modify |
+| `ClaudeStudioTests/SidecarProtocolTests.swift` | Extend with new event encoding/decoding | Modify |
 | `sidecar/test/file-path-extraction.test.ts` | File path regex tests | Create |
 
 ---
@@ -47,15 +47,15 @@
 ### Task 1: File Type Classification Helpers
 
 **Files:**
-- Modify: `ClaudPeer/Services/FileSystemService.swift:11` (after `markdownExtensions`)
-- Create: `ClaudPeerTests/FileClassificationTests.swift`
+- Modify: `ClaudeStudio/Services/FileSystemService.swift:11` (after `markdownExtensions`)
+- Create: `ClaudeStudioTests/FileClassificationTests.swift`
 
 - [ ] **Step 1: Write failing tests**
 
 ```swift
-// ClaudPeerTests/FileClassificationTests.swift
+// ClaudeStudioTests/FileClassificationTests.swift
 import XCTest
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 final class FileClassificationTests: XCTestCase {
     func testHTMLDetection() {
@@ -112,7 +112,7 @@ final class FileClassificationTests: XCTestCase {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `xcodebuild test -scheme ClaudPeer -destination 'platform=macOS' -only-testing ClaudPeerTests/FileClassificationTests 2>&1 | tail -20`
+Run: `xcodebuild test -scheme ClaudeStudio -destination 'platform=macOS' -only-testing ClaudeStudioTests/FileClassificationTests 2>&1 | tail -20`
 Expected: FAIL — methods don't exist yet
 
 - [ ] **Step 3: Implement file classification helpers**
@@ -158,13 +158,13 @@ static func isBinaryPreviewable(_ ext: String) -> Bool {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `xcodebuild test -scheme ClaudPeer -destination 'platform=macOS' -only-testing ClaudPeerTests/FileClassificationTests 2>&1 | tail -20`
+Run: `xcodebuild test -scheme ClaudeStudio -destination 'platform=macOS' -only-testing ClaudeStudioTests/FileClassificationTests 2>&1 | tail -20`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ClaudPeer/Services/FileSystemService.swift ClaudPeerTests/FileClassificationTests.swift
+git add ClaudeStudio/Services/FileSystemService.swift ClaudeStudioTests/FileClassificationTests.swift
 git commit -m "feat: add file type classification helpers for preview support"
 ```
 
@@ -173,12 +173,12 @@ git commit -m "feat: add file type classification helpers for preview support"
 ### Task 2: Image Preview View
 
 **Files:**
-- Create: `ClaudPeer/Views/MainWindow/ImagePreviewView.swift`
+- Create: `ClaudeStudio/Views/MainWindow/ImagePreviewView.swift`
 
 - [ ] **Step 1: Create ImagePreviewView**
 
 ```swift
-// ClaudPeer/Views/MainWindow/ImagePreviewView.swift
+// ClaudeStudio/Views/MainWindow/ImagePreviewView.swift
 import SwiftUI
 import AppKit
 
@@ -249,13 +249,13 @@ struct ImagePreviewView: View {
 
 - [ ] **Step 2: Build to verify it compiles**
 
-Run: `xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 Expected: BUILD SUCCEEDED
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudPeer/Views/MainWindow/ImagePreviewView.swift
+git add ClaudeStudio/Views/MainWindow/ImagePreviewView.swift
 git commit -m "feat: add ImagePreviewView for inline image display with info overlay"
 ```
 
@@ -264,12 +264,12 @@ git commit -m "feat: add ImagePreviewView for inline image display with info ove
 ### Task 3: HTML Preview View
 
 **Files:**
-- Create: `ClaudPeer/Views/MainWindow/HTMLPreviewView.swift`
+- Create: `ClaudeStudio/Views/MainWindow/HTMLPreviewView.swift`
 
 - [ ] **Step 1: Create HTMLPreviewView**
 
 ```swift
-// ClaudPeer/Views/MainWindow/HTMLPreviewView.swift
+// ClaudeStudio/Views/MainWindow/HTMLPreviewView.swift
 import SwiftUI
 import WebKit
 
@@ -314,13 +314,13 @@ struct HTMLPreviewView: NSViewRepresentable {
 
 - [ ] **Step 2: Build to verify it compiles**
 
-Run: `xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 Expected: BUILD SUCCEEDED
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudPeer/Views/MainWindow/HTMLPreviewView.swift
+git add ClaudeStudio/Views/MainWindow/HTMLPreviewView.swift
 git commit -m "feat: add HTMLPreviewView with WKWebView, JS disabled, navigation blocked"
 ```
 
@@ -329,12 +329,12 @@ git commit -m "feat: add HTMLPreviewView with WKWebView, JS disabled, navigation
 ### Task 4: PDF Preview View
 
 **Files:**
-- Create: `ClaudPeer/Views/MainWindow/PDFPreviewView.swift`
+- Create: `ClaudeStudio/Views/MainWindow/PDFPreviewView.swift`
 
 - [ ] **Step 1: Create PDFPreviewView**
 
 ```swift
-// ClaudPeer/Views/MainWindow/PDFPreviewView.swift
+// ClaudeStudio/Views/MainWindow/PDFPreviewView.swift
 import SwiftUI
 import PDFKit
 
@@ -367,13 +367,13 @@ struct PDFPreviewView: NSViewRepresentable {
 
 - [ ] **Step 2: Build to verify it compiles**
 
-Run: `xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 Expected: BUILD SUCCEEDED
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudPeer/Views/MainWindow/PDFPreviewView.swift
+git add ClaudeStudio/Views/MainWindow/PDFPreviewView.swift
 git commit -m "feat: add PDFPreviewView using PDFKit with URL-based loading"
 ```
 
@@ -382,15 +382,15 @@ git commit -m "feat: add PDFPreviewView using PDFKit with URL-based loading"
 ### Task 5: JSON Tree View
 
 **Files:**
-- Create: `ClaudPeer/Views/MainWindow/JSONTreeView.swift`
-- Create: `ClaudPeerTests/JSONTreeParsingTests.swift`
+- Create: `ClaudeStudio/Views/MainWindow/JSONTreeView.swift`
+- Create: `ClaudeStudioTests/JSONTreeParsingTests.swift`
 
 - [ ] **Step 1: Write failing tests**
 
 ```swift
-// ClaudPeerTests/JSONTreeParsingTests.swift
+// ClaudeStudioTests/JSONTreeParsingTests.swift
 import XCTest
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 final class JSONTreeParsingTests: XCTestCase {
     func testSimpleObject() {
@@ -437,12 +437,12 @@ final class JSONTreeParsingTests: XCTestCase {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `xcodebuild test -scheme ClaudPeer -destination 'platform=macOS' -only-testing ClaudPeerTests/JSONTreeParsingTests 2>&1 | tail -20`
+Run: `xcodebuild test -scheme ClaudeStudio -destination 'platform=macOS' -only-testing ClaudeStudioTests/JSONTreeParsingTests 2>&1 | tail -20`
 Expected: FAIL — `JSONTreeParser` doesn't exist
 
 - [ ] **Step 3: Implement JSONTreeView and JSONTreeParser**
 
-Create `ClaudPeer/Views/MainWindow/JSONTreeView.swift` with both the parser and the view. The parser is a testable standalone enum. The view uses recursive `DisclosureGroup`. See spec Section A "JSONTreeView" for full details.
+Create `ClaudeStudio/Views/MainWindow/JSONTreeView.swift` with both the parser and the view. The parser is a testable standalone enum. The view uses recursive `DisclosureGroup`. See spec Section A "JSONTreeView" for full details.
 
 Key points:
 - `JSONTreeParser.parse(_ text: String) -> [JSONNode]` — returns parsed tree
@@ -453,13 +453,13 @@ Key points:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `xcodebuild test -scheme ClaudPeer -destination 'platform=macOS' -only-testing ClaudPeerTests/JSONTreeParsingTests 2>&1 | tail -20`
+Run: `xcodebuild test -scheme ClaudeStudio -destination 'platform=macOS' -only-testing ClaudeStudioTests/JSONTreeParsingTests 2>&1 | tail -20`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ClaudPeer/Views/MainWindow/JSONTreeView.swift ClaudPeerTests/JSONTreeParsingTests.swift
+git add ClaudeStudio/Views/MainWindow/JSONTreeView.swift ClaudeStudioTests/JSONTreeParsingTests.swift
 git commit -m "feat: add JSONTreeView with collapsible tree and 1000 node limit"
 ```
 
@@ -468,7 +468,7 @@ git commit -m "feat: add JSONTreeView with collapsible tree and 1000 node limit"
 ### Task 6: Wire FileContentView to New Preview Views
 
 **Files:**
-- Modify: `ClaudPeer/Views/MainWindow/FileContentView.swift`
+- Modify: `ClaudeStudio/Views/MainWindow/FileContentView.swift`
 
 This task connects Tasks 1-5 to the existing `FileContentView`. Changes:
 1. Replace `isMarkdown` gate with `isPreviewable`
@@ -560,13 +560,13 @@ private var previewView: some View {
 
 - [ ] **Step 4: Build and run to verify previews work**
 
-Run: `xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 Then launch the app and test with HTML, JSON, PDF, and image files.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ClaudPeer/Views/MainWindow/FileContentView.swift
+git add ClaudeStudio/Views/MainWindow/FileContentView.swift
 git commit -m "feat: wire file preview dispatch for HTML, JSON, PDF, Image, SVG"
 ```
 
@@ -575,15 +575,15 @@ git commit -m "feat: wire file preview dispatch for HTML, JSON, PDF, Image, SVG"
 ### Task 7: Diff Syntax Highlighting
 
 **Files:**
-- Modify: `ClaudPeer/Views/MainWindow/FileContentView.swift` (replace `DiffTextView` at line 339-403)
-- Create: `ClaudPeerTests/DiffLineStyleTests.swift`
+- Modify: `ClaudeStudio/Views/MainWindow/FileContentView.swift` (replace `DiffTextView` at line 339-403)
+- Create: `ClaudeStudioTests/DiffLineStyleTests.swift`
 
 - [ ] **Step 1: Write failing tests for diff line classification**
 
 ```swift
-// ClaudPeerTests/DiffLineStyleTests.swift
+// ClaudeStudioTests/DiffLineStyleTests.swift
 import XCTest
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 final class DiffLineStyleTests: XCTestCase {
     func testAddedLine() {
@@ -644,7 +644,7 @@ Open a modified file in the inspector, switch to Diff tab. Code should be syntax
 - [ ] **Step 6: Commit**
 
 ```bash
-git add ClaudPeer/Views/MainWindow/FileContentView.swift ClaudPeerTests/DiffLineStyleTests.swift
+git add ClaudeStudio/Views/MainWindow/FileContentView.swift ClaudeStudioTests/DiffLineStyleTests.swift
 git commit -m "feat: add syntax highlighting to diff view with Highlightr"
 ```
 
@@ -654,8 +654,8 @@ git commit -m "feat: add syntax highlighting to diff view with Highlightr"
 
 **Files:**
 - Modify: `sidecar/src/types.ts:52-63`
-- Modify: `ClaudPeer/Services/SidecarProtocol.swift:134-207`
-- Modify: `ClaudPeerTests/SidecarProtocolTests.swift`
+- Modify: `ClaudeStudio/Services/SidecarProtocol.swift:134-207`
+- Modify: `ClaudeStudioTests/SidecarProtocolTests.swift`
 
 - [ ] **Step 1: Add event types to `types.ts` (after line 62)**
 
@@ -698,13 +698,13 @@ Extend `SidecarProtocolTests.swift` with tests for the new event types. Test tha
 
 - [ ] **Step 6: Build and run tests**
 
-Run: `xcodebuild test -scheme ClaudPeer -destination 'platform=macOS' -only-testing ClaudPeerTests/SidecarProtocolTests 2>&1 | tail -20`
+Run: `xcodebuild test -scheme ClaudeStudio -destination 'platform=macOS' -only-testing ClaudeStudioTests/SidecarProtocolTests 2>&1 | tail -20`
 Expected: PASS
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add sidecar/src/types.ts ClaudPeer/Services/SidecarProtocol.swift ClaudPeerTests/SidecarProtocolTests.swift
+git add sidecar/src/types.ts ClaudeStudio/Services/SidecarProtocol.swift ClaudeStudioTests/SidecarProtocolTests.swift
 git commit -m "feat: add stream.image and stream.fileCard wire protocol events"
 ```
 
@@ -859,8 +859,8 @@ git commit -m "feat: handle SDK image blocks and scan tool results for file path
 ### Task 10: AppState — Image and FileCard Accumulators
 
 **Files:**
-- Modify: `ClaudPeer/App/AppState.swift:23-24` (add properties) and `186-258` (handleEvent)
-- Modify: `ClaudPeerTests/AppStateEventTests.swift`
+- Modify: `ClaudeStudio/App/AppState.swift:23-24` (add properties) and `186-258` (handleEvent)
+- Modify: `ClaudeStudioTests/AppStateEventTests.swift`
 
 - [ ] **Step 1: Write failing tests**
 
@@ -925,7 +925,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ClaudPeer/App/AppState.swift ClaudPeerTests/AppStateEventTests.swift
+git add ClaudeStudio/App/AppState.swift ClaudeStudioTests/AppStateEventTests.swift
 git commit -m "feat: add streaming image and fileCard accumulators to AppState"
 ```
 
@@ -934,7 +934,7 @@ git commit -m "feat: add streaming image and fileCard accumulators to AppState"
 ### Task 11: MessageAttachment — Add `localFilePath` Field
 
 **Files:**
-- Modify: `ClaudPeer/Models/MessageAttachment.swift`
+- Modify: `ClaudeStudio/Models/MessageAttachment.swift`
 
 - [ ] **Step 1: Add `localFilePath` property**
 
@@ -946,7 +946,7 @@ var localFilePath: String?
 
 - [ ] **Step 2: Build to verify schema change compiles**
 
-Run: `xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 Expected: BUILD SUCCEEDED
 
 Note: SwiftData handles schema migration automatically for additive changes (new optional field).
@@ -954,7 +954,7 @@ Note: SwiftData handles schema migration automatically for additive changes (new
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudPeer/Models/MessageAttachment.swift
+git add ClaudeStudio/Models/MessageAttachment.swift
 git commit -m "feat: add localFilePath to MessageAttachment for tool-generated files"
 ```
 
@@ -963,7 +963,7 @@ git commit -m "feat: add localFilePath to MessageAttachment for tool-generated f
 ### Task 12: Message Finalization — Convert Images and FileCards to Attachments
 
 **Files:**
-- Modify: `ClaudPeer/Views/MainWindow/ChatView.swift:1389` (after `convo.messages.append(response)`)
+- Modify: `ClaudeStudio/Views/MainWindow/ChatView.swift:1389` (after `convo.messages.append(response)`)
 
 - [ ] **Step 1: Add image finalization after line 1391**
 
@@ -1004,13 +1004,13 @@ if let cards = appState.streamingFileCards[sidecarKey] {
 
 - [ ] **Step 2: Build and verify**
 
-Run: `xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 Expected: BUILD SUCCEEDED
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudPeer/Views/MainWindow/ChatView.swift
+git add ClaudeStudio/Views/MainWindow/ChatView.swift
 git commit -m "feat: finalize streaming images and file cards into MessageAttachment records"
 ```
 
@@ -1019,7 +1019,7 @@ git commit -m "feat: finalize streaming images and file cards into MessageAttach
 ### Task 13: AttachmentThumbnail — File Card Rendering
 
 **Files:**
-- Modify: `ClaudPeer/Views/Components/AttachmentThumbnail.swift`
+- Modify: `ClaudeStudio/Views/Components/AttachmentThumbnail.swift`
 
 - [ ] **Step 1: Add file card variant for HTML/PDF with `localFilePath`**
 
@@ -1074,13 +1074,13 @@ private var fileCardThumbnail: some View {
 
 - [ ] **Step 2: Build and verify**
 
-Run: `xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 Expected: BUILD SUCCEEDED
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudPeer/Views/Components/AttachmentThumbnail.swift
+git add ClaudeStudio/Views/Components/AttachmentThumbnail.swift
 git commit -m "feat: add file card rendering for HTML/PDF tool-generated attachments"
 ```
 
@@ -1117,11 +1117,11 @@ git commit -m "docs: update CLAUDE.md and TESTING.md with new events and test co
 
 - [ ] **Step 1: Build the full project**
 
-Run: `xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 
 - [ ] **Step 2: Run all tests**
 
-Run: `xcodebuild test -scheme ClaudPeer -destination 'platform=macOS' 2>&1 | grep -E 'Test Suite|Tests|PASS|FAIL' | tail -20`
+Run: `xcodebuild test -scheme ClaudeStudio -destination 'platform=macOS' 2>&1 | grep -E 'Test Suite|Tests|PASS|FAIL' | tail -20`
 
 - [ ] **Step 3: Manual verification checklist**
 

@@ -2,7 +2,7 @@
   "catalogId": "peer-collaboration",
   "name": "Peer Collaboration",
   "description": "Patterns for multi-agent coordination and shared context",
-  "category": "ClaudPeer Collaboration",
+  "category": "ClaudeStudio Collaboration",
   "icon": "person.3.fill",
   "requiredMCPs": [],
   "triggers": [

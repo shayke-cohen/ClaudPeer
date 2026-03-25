@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 struct AttachmentStore {
     static let baseDirectory: URL = {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        return home.appendingPathComponent(".claudpeer/attachments", isDirectory: true)
+        return home.appendingPathComponent(".claudestudio/attachments", isDirectory: true)
     }()
 
     static func ensureDirectory() {

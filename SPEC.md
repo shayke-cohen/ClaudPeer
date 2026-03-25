@@ -1,4 +1,4 @@
-# ClaudPeer — Functional Specification
+# ClaudeStudio — Functional Specification
 
 Living specification tracking implemented features, user flows, and requirements.
 
@@ -9,7 +9,7 @@ Living specification tracking implemented features, user flows, and requirements
 
 ## 1. Product Summary
 
-ClaudPeer is a native macOS developer tool for managing multiple Claude AI agent sessions. Users define reusable agent templates with skills, MCP servers, and permissions, then launch interactive sessions that stream AI responses in real-time through a chat interface.
+ClaudeStudio is a native macOS developer tool for managing multiple Claude AI agent sessions. Users define reusable agent templates with skills, MCP servers, and permissions, then launch interactive sessions that stream AI responses in real-time through a chat interface.
 
 ### Target Users
 - Developers using Claude for coding tasks who want persistent, configurable agent sessions
@@ -39,9 +39,9 @@ The app manages a TypeScript sidecar process that hosts Claude Agent SDK session
 | FR-1.3: Auto-reconnect on WebSocket disconnect | Done |
 | FR-1.4: Relaunch sidecar if process terminates | Done |
 | FR-1.5: Try connecting to existing sidecar before launching new one | Done |
-| FR-1.6: Log sidecar output to ~/.claudpeer/logs/sidecar.log | Done |
+| FR-1.6: Log sidecar output to ~/.claudestudio/logs/sidecar.log | Done |
 | FR-1.7: Find Bun at standard paths (Homebrew, ~/.bun/bin) | Done |
-| FR-1.8: Find sidecar at bundle, cwd, ~/ClaudPeer, or UserDefaults path | Done |
+| FR-1.8: Find sidecar at bundle, cwd, ~/ClaudeStudio, or UserDefaults path | Done |
 | FR-1.9: Graceful shutdown on app exit | Done |
 | FR-1.10: Connection status reflected in UI (AppState.sidecarStatus) | Done |
 
@@ -168,7 +168,7 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 - **Fork:** **Fork conversation** (header menu) clones the thread and primary session mapping, then sends `session.fork` with parent and child primary session ids. **Fork from here** (message context menu) clones through the selected message inclusive; SDK continuity follows sidecar `forkSession` behavior.
 - **Composer:** **Return** inserts a newline; **⌘↩** or the Send button sends.
 
-**Tests:** `ClaudPeerTests/GroupPromptBuilderTests.swift` (transcript, peer prompt, mentions, fan-out context). Sidecar live E2E `GC-1` / `GC-2` in `sidecar/test/e2e/scenarios.test.ts` (group-style and peer-notify prompts).
+**Tests:** `ClaudeStudioTests/GroupPromptBuilderTests.swift` (transcript, peer prompt, mentions, fan-out context). Sidecar live E2E `GC-1` / `GC-2` in `sidecar/test/e2e/scenarios.test.ts` (group-style and peer-notify prompts).
 
 ### FR-6: Main Window Layout
 
@@ -206,7 +206,7 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 | Requirement | Status |
 |---|---|
 | FR-7.1: In-memory key-value store | Done |
-| FR-7.2: Persist to JSON on disk (~/.claudpeer/blackboard/) | Done |
+| FR-7.2: Persist to JSON on disk (~/.claudestudio/blackboard/) | Done |
 | FR-7.3: HTTP POST /blackboard/write | Done |
 | FR-7.4: HTTP GET /blackboard/read | Done |
 | FR-7.5: HTTP GET /blackboard/query (glob pattern) | Done |
@@ -271,14 +271,14 @@ Each app instance runs with fully isolated data, sidecar, and settings. Instance
 | Requirement | Status |
 |---|---|
 | FR-10.1: Parse `--instance <name>` from launch arguments (default: "default") | Done |
-| FR-10.2: Namespace SwiftData store per instance (~/.claudpeer/instances/<name>/data/) | Done |
-| FR-10.3: Namespace blackboard per instance (~/.claudpeer/instances/<name>/blackboard/) | Done |
-| FR-10.4: Namespace sidecar logs per instance (~/.claudpeer/instances/<name>/logs/) | Done |
-| FR-10.5: Per-instance UserDefaults suite (com.claudpeer.app.<name>) | Done |
+| FR-10.2: Namespace SwiftData store per instance (~/.claudestudio/instances/<name>/data/) | Done |
+| FR-10.3: Namespace blackboard per instance (~/.claudestudio/instances/<name>/blackboard/) | Done |
+| FR-10.4: Namespace sidecar logs per instance (~/.claudestudio/instances/<name>/logs/) | Done |
+| FR-10.5: Per-instance UserDefaults suite (com.claudestudio.app.<name>) | Done |
 | FR-10.6: Dynamic port allocation for non-default instances (avoids port collisions) | Done |
 | FR-10.7: Default instance uses preferred ports from settings for backward compat | Done |
-| FR-10.8: Pass CLAUDPEER_DATA_DIR env var to sidecar process | Done |
-| FR-10.9: Sidecar blackboard reads CLAUDPEER_DATA_DIR for storage path | Done |
+| FR-10.8: Pass CLAUDESTUDIO_DATA_DIR env var to sidecar process | Done |
+| FR-10.9: Sidecar blackboard reads CLAUDESTUDIO_DATA_DIR for storage path | Done |
 | FR-10.10: Window title shows instance name when not "default" | Done |
 | FR-10.11: @AppStorage uses per-instance UserDefaults store across all views | Done |
 | FR-10.12: DefaultsSeeder uses per-instance UserDefaults | Done |
@@ -306,7 +306,7 @@ Users can attach images and documents (txt, md, pdf) to chat messages via the at
 | FR-11.12: Text/markdown files inlined directly in the prompt | Done |
 | FR-11.13: PDF files sent to Claude via temp files + Read tool instruction | Done |
 | FR-11.14: Attachment indicator in sidebar preview (photo/doc.text/paperclip icon) | Done |
-| FR-11.15: Attachments stored on disk (~/.claudpeer/attachments/) | Done |
+| FR-11.15: Attachments stored on disk (~/.claudestudio/attachments/) | Done |
 | FR-11.16: File size validation (5MB images, 10MB documents) | Done |
 | FR-11.17: Wire protocol supports attachments with mediaType and fileName | Done |
 
@@ -357,7 +357,7 @@ XCTest-based unit test target for verifying catalog system integrity, service lo
 
 | Requirement | Status |
 |---|---|
-| FR-13.1: ClaudPeerTests target in Xcode project with scheme integration | Done |
+| FR-13.1: ClaudeStudioTests target in Xcode project with scheme integration | Done |
 | FR-13.2: CatalogModelTests — JSON decoding for CatalogMCP, CatalogSkill, CatalogAgent | Done |
 | FR-13.3: CatalogModelTests — CatalogItem enum case construction and extraction | Done |
 | FR-13.4: CatalogServiceTests — catalog loading, counts, and emptiness checks | Done |
@@ -399,7 +399,7 @@ Full suite of PeerBus tools injected as in-process MCP server into every Agent S
 | FR-14.14: peer_chat_listen — block until incoming chat request | Done |
 | FR-14.15: peer_chat_close — close channel, unblock all waiters | Done |
 | FR-14.16: peer_chat_invite — add participant to existing channel | Done |
-| FR-14.17: workspace_create — create shared directory under ~/.claudpeer/workspaces/ | Done |
+| FR-14.17: workspace_create — create shared directory under ~/.claudestudio/workspaces/ | Done |
 | FR-14.18: workspace_join — join existing workspace, get path | Done |
 | FR-14.19: workspace_list — list all workspaces with participant counts | Done |
 | FR-14.20: ChatChannelStore with deadlock detection (circular wait prevention) | Done |
@@ -436,7 +436,7 @@ First-launch seeding of default agents, skills, MCP servers, permission presets,
 |---|---|
 | FR-16.1: DefaultsSeeder seeds 5 permission presets from DefaultPermissionPresets.json | Done |
 | FR-16.2: DefaultsSeeder seeds 4 MCP servers from DefaultMCPs.json (Argus, AppXray, GitHub, Sentry) | Done |
-| FR-16.3: DefaultsSeeder seeds 5 ClaudPeer skills from DefaultSkills/*/SKILL.md with frontmatter parsing | Done |
+| FR-16.3: DefaultsSeeder seeds 5 ClaudeStudio skills from DefaultSkills/*/SKILL.md with frontmatter parsing | Done |
 | FR-16.4: DefaultsSeeder seeds 7 built-in agents from DefaultAgents/*.json | Done |
 | FR-16.5: Agent seeding resolves skill references by name → UUID linking | Done |
 | FR-16.6: Agent seeding resolves MCP server references by name → UUID linking | Done |
@@ -509,7 +509,7 @@ Backend services supporting the file explorer.
 
 | Requirement | Status |
 |---|---|
-| FR-19.1: `WorkspaceResolver` — clone URL normalization, stable `~/.claudpeer/repos/` directory names | Done |
+| FR-19.1: `WorkspaceResolver` — clone URL normalization, stable `~/.claudestudio/repos/` directory names | Done |
 | FR-19.2: `GitHubIntegration` — `git clone` / `fetch` + `checkout` for configured branch | Done |
 | FR-19.3: `GitWorkspacePreparer` — before first sidecar turn, ensure clone when session is GitHub-backed and cwd is not an explicit user override | Done |
 | FR-19.4: New Session sheet — segmented picker (Default / Custom folder / GitHub clone) when exactly one selected agent has `githubRepo` | Done |
@@ -523,8 +523,8 @@ Backend services supporting the file explorer.
 
 | Requirement | Status |
 |---|---|
-| FR-20.1: `P2PNetworkManager` — Bonjour browse/advertise `_claudpeer._tcp`, NWListener-backed catalog server | Done |
-| FR-20.2: `PeerCatalogServer` — `GET /claudpeer/v1/agents` returns JSON list of export DTOs | Done |
+| FR-20.1: `P2PNetworkManager` — Bonjour browse/advertise `_claudestudio._tcp`, NWListener-backed catalog server | Done |
+| FR-20.2: `PeerCatalogServer` — `GET /claudestudio/v1/agents` returns JSON list of export DTOs | Done |
 | FR-20.3: `WireAgentExport` / `WireAgentExportList` — stable export payload (names for skills/MCPs/permissions) | Done |
 | FR-20.4: `PeerAgentImporter` — import agent into SwiftData; resolve dependencies by name; `origin: .peer` | Done |
 | FR-20.5: `PeerNetworkView` — split list/detail, browse remote agents, per-row Import | Done |
@@ -619,7 +619,7 @@ Backend services supporting the file explorer.
 - [x] Quick Chat shortcut (Cmd+Shift+N) for freeform sessions
 
 ### US-8: Configure Application Preferences
-**As a** developer, **I want to** customize the app appearance, default model, and sidecar connection settings, **so that** I can tailor ClaudPeer to my environment and preferences.
+**As a** developer, **I want to** customize the app appearance, default model, and sidecar connection settings, **so that** I can tailor ClaudeStudio to my environment and preferences.
 
 **Acceptance criteria:**
 - [x] Can switch between System, Light, and Dark appearance
@@ -646,10 +646,10 @@ Backend services supporting the file explorer.
 - [x] Sidebar shows appropriate icon (photo/doc.text/paperclip) when the last message has attachments
 
 ### US-10: Run Multiple Isolated Instances
-**As a** developer, **I want to** run multiple ClaudPeer instances simultaneously with separate data, **so that** I can have isolated agent workspaces per project.
+**As a** developer, **I want to** run multiple ClaudeStudio instances simultaneously with separate data, **so that** I can have isolated agent workspaces per project.
 
 **Acceptance criteria:**
-- [x] Can launch a named instance via `open -n ClaudPeer.app --args --instance my-project`
+- [x] Can launch a named instance via `open -n ClaudeStudio.app --args --instance my-project`
 - [x] Each instance has its own SwiftData store, blackboard, logs, and UserDefaults
 - [x] Non-default instances allocate dynamic ports to avoid collisions
 - [x] Window title shows instance name for disambiguation
@@ -700,7 +700,7 @@ Backend services supporting the file explorer.
 - [x] Type-specific icons distinguish user+agent, agent-to-agent, delegation, and group conversations
 
 ### US-15: Ready-to-Use Agent Team on First Launch
-**As a** developer, **I want** ClaudPeer to come with a pre-configured team of agents (Orchestrator, Coder, Reviewer, Researcher, Tester, DevOps, Writer) with PeerBus skills and permission presets already wired, **so that** I can start multi-agent workflows immediately without manual setup.
+**As a** developer, **I want** ClaudeStudio to come with a pre-configured team of agents (Orchestrator, Coder, Reviewer, Researcher, Tester, DevOps, Writer) with PeerBus skills and permission presets already wired, **so that** I can start multi-agent workflows immediately without manual setup.
 
 **Acceptance criteria:**
 - [x] First launch seeds 7 agents, 5 skills, 4 MCP servers, 5 permission presets
@@ -711,7 +711,7 @@ Backend services supporting the file explorer.
 - [x] All 30 catalog agents include PeerBus system skills for install-time linking
 
 ### US-16: Browse Agent Working Directory Files
-**As a** developer, **I want to** browse the files in my agent's working directory, view source code with syntax highlighting, preview markdown files, and see git diffs, **so that** I can understand what the agent is working on without leaving ClaudPeer.
+**As a** developer, **I want to** browse the files in my agent's working directory, view source code with syntax highlighting, preview markdown files, and see git diffs, **so that** I can understand what the agent is working on without leaving ClaudeStudio.
 
 **Acceptance criteria:**
 - [x] Inspector pane has Info / Files tabs when session has a working directory
@@ -740,7 +740,7 @@ Backend services supporting the file explorer.
 - [x] Instance policies respected (singleton reused, pool capped, spawn default)
 
 ### US-18: Clone GitHub Repo Before Agent Runs Tools
-**As a** developer, **I want** ClaudPeer to clone or update my agent’s GitHub repo automatically, **so that** the session working directory exists before the sidecar runs file tools.
+**As a** developer, **I want** ClaudeStudio to clone or update my agent’s GitHub repo automatically, **so that** the session working directory exists before the sidecar runs file tools.
 
 **Acceptance criteria:**
 - [x] First user message triggers `GitWorkspacePreparer` when the session is GitHub-backed (no conflicting explicit cwd override)
@@ -749,11 +749,11 @@ Backend services supporting the file explorer.
 - [x] Errors from `git` are user-visible (chat event or inline in sheet/editor)
 
 ### US-19: Import Agents from a LAN Peer
-**As a** developer, **I want to** browse agents advertised by another ClaudPeer on my network and import one, **so that** I can reuse templates without manual copy/paste.
+**As a** developer, **I want to** browse agents advertised by another ClaudeStudio on my network and import one, **so that** I can reuse templates without manual copy/paste.
 
 **Acceptance criteria:**
-- [x] Peer Network sheet lists Bonjour-discovered `_claudpeer._tcp` services (excluding self by service name)
-- [x] “Browse agents” fetches `/claudpeer/v1/agents` over TCP
+- [x] Peer Network sheet lists Bonjour-discovered `_claudestudio._tcp` services (excluding self by service name)
+- [x] “Browse agents” fetches `/claudestudio/v1/agents` over TCP
 - [x] Import creates a new `Agent` with skills/MCPs/permission matched by name where present
 - [x] Imported agents use `origin: .peer` with a stable source UUID per selected peer session
 
@@ -882,14 +882,14 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Launch(["open -n ClaudPeer.app\n--args --instance project-a"]) --> Parse["InstanceConfig parses\n--instance 'project-a'"]
-    Parse --> Dirs["Ensure directories:\n~/.claudpeer/instances/project-a/\ndata/ blackboard/ logs/"]
-    Dirs --> Store["ModelContainer uses\nproject-a/data/ClaudPeer.store"]
-    Store --> Defaults["UserDefaults suite:\ncom.claudpeer.app.project-a"]
+    Launch(["open -n ClaudeStudio.app\n--args --instance project-a"]) --> Parse["InstanceConfig parses\n--instance 'project-a'"]
+    Parse --> Dirs["Ensure directories:\n~/.claudestudio/instances/project-a/\ndata/ blackboard/ logs/"]
+    Dirs --> Store["ModelContainer uses\nproject-a/data/ClaudeStudio.store"]
+    Store --> Defaults["UserDefaults suite:\ncom.claudestudio.app.project-a"]
     Defaults --> Seed["DefaultsSeeder checks\nper-instance seeded flag"]
     Seed --> Ports["Allocate free ports\n(dynamic, not 9849/9850)"]
-    Ports --> Sidecar["Launch sidecar with:\nCLAUDPEER_WS_PORT=<dynamic>\nCLAUDPEER_HTTP_PORT=<dynamic>\nCLAUDPEER_DATA_DIR=...project-a"]
-    Sidecar --> Title["Window title:\n'ClaudPeer — project-a'"]
+    Ports --> Sidecar["Launch sidecar with:\nCLAUDESTUDIO_WS_PORT=<dynamic>\nCLAUDESTUDIO_HTTP_PORT=<dynamic>\nCLAUDESTUDIO_DATA_DIR=...project-a"]
+    Sidecar --> Title["Window title:\n'ClaudeStudio — project-a'"]
     Title --> Ready([Fully isolated instance])
 ```
 
@@ -909,7 +909,7 @@ flowchart TD
     Preview -->|Document| DocThumb["File icon + name"]
     ImgThumb --> Send["User clicks Send"]
     DocThumb --> Send
-    Send --> Save["Attachment saved to disk\n~/.claudpeer/attachments/"]
+    Send --> Save["Attachment saved to disk\n~/.claudestudio/attachments/"]
     Save --> Wire["WireAttachment sent to sidecar\n(base64 + mediaType + fileName)"]
     Wire --> Route{"Sidecar routes\nby mediaType?"}
     Route -->|text/plain, text/markdown| Inline["Content decoded to UTF-8\nInlined directly in prompt"]
@@ -1057,7 +1057,7 @@ flowchart TD
 flowchart TD
     open[Peer Network sheet] --> browse[Bonjour browse]
     browse --> pick[Select peer row]
-    pick --> fetch[GET /claudpeer/v1/agents]
+    pick --> fetch[GET /claudestudio/v1/agents]
     fetch --> row[User taps Import on agent]
     row --> swift[PeerAgentImporter inserts Agent in SwiftData]
 ```
@@ -1089,12 +1089,12 @@ flowchart TD
 | 2026-03-21 | Rich markdown chat: MarkdownUI rendering for agent messages, code blocks with copy button, live streaming text, hover copy/timestamp, clickable links. Settings screen: three-tab preferences (General/Connection/Advanced) with dark mode, port/path overrides, reset. SidecarManager accepts configurable settings. | FR-5.18-5.25, FR-9, US-8, US-9, Flow 4, Flow 5 |
 | 2026-03-21 | UX improvements: smart naming, conversation management (rename/pin/close/delete/duplicate), New Session sheet, sidebar polish (timestamps, previews, pinned section, empty state, agent icons, swipe actions), chat header enhancements (rename, close/resume, clear, model pill, cost), inspector actions (pause/resume/stop, editable topic, open in editor), agent card Start button | FR-5, FR-6, US-6, US-7, Flow 1, Flow 3 |
 | 2026-03-21 | File attachments: added txt/md/pdf support alongside images. Text/markdown files inlined in prompt, images/PDFs via temp files. Generalized wire protocol from WireImageAttachment to WireAttachment. Document thumbnails with icon+name+size. Sidebar shows context-aware attachment icons. | FR-5.9, FR-10, US-9, Flow 7 |
-| 2026-03-21 | Multi-instance support: InstanceConfig parses `--instance <name>`, namespaces SwiftData/blackboard/logs/UserDefaults per instance, dynamic port allocation for non-default instances, CLAUDPEER_DATA_DIR env var for sidecar, window title with instance name. | FR-10, US-10, Flow 7, NFR |
+| 2026-03-21 | Multi-instance support: InstanceConfig parses `--instance <name>`, namespaces SwiftData/blackboard/logs/UserDefaults per instance, dynamic port allocation for non-default instances, CLAUDESTUDIO_DATA_DIR env var for sidecar, window title with instance name. | FR-10, US-10, Flow 7, NFR |
 | 2026-03-21 | Catalog system: directory-based catalog with 30 agents, 101 skills, 100 MCPs. CatalogService with loading, find, install/uninstall, cascading dependency resolution. CatalogBrowserView with tabs, search, category filter. CatalogDetailView with full item information, collapsible system prompt, FlowLayout triggers, install/uninstall actions. Per-agent .md system prompts. Agent → Skill → MCP hierarchy. | FR-2.15-2.18, FR-12, US-11, Flow 9, Flow 10 |
-| 2026-03-21 | Test infrastructure: ClaudPeerTests XCTest target with 61 tests covering catalog model decoding, service operations (install/uninstall/cascading/idempotent/dependency resolution), data integrity (unique IDs, valid cross-references), InstanceConfig (directories, UserDefaults, ports). Fixed catalog skill ID case mismatches across 20 agent files. Added InstanceConfig.swift to project, fixed Swift 6 concurrency warning in AppSettings. | FR-13, NFR |
+| 2026-03-21 | Test infrastructure: ClaudeStudioTests XCTest target with 61 tests covering catalog model decoding, service operations (install/uninstall/cascading/idempotent/dependency resolution), data integrity (unique IDs, valid cross-references), InstanceConfig (directories, UserDefaults, ports). Fixed catalog skill ID case mismatches across 20 agent files. Added InstanceConfig.swift to project, fixed Swift 6 concurrency warning in AppSettings. | FR-13, NFR |
 | 2026-03-21 | Initial spec created from implemented codebase | All sections |
 | 2026-03-21 | Phase 4: Inter-Agent Communication. Full PeerBus tool suite (17 tools) implemented as in-process MCP server injected into every Agent SDK session. Tools: blackboard_read/write/query/subscribe, peer_send_message/broadcast/receive_messages/list_agents/delegate_task, peer_chat_start/reply/listen/close/invite, workspace_create/join/list. New stores: MessageStore, ChatChannelStore (with deadlock detection), WorkspaceStore. Refactored sidecar: shared ToolContext, SessionManager accepts injected registry and context, WsServer accepts injected dependencies, agent.register command. Swift: AppState handles all peer/blackboard events, persists to SwiftData, registers agent definitions on connect. New AgentCommsView with filter tabs. Sidebar enhanced with parent-child conversation nesting and type-specific icons. Removed stale ChatHandler references from FR-3 and Flow 6. | FR-3.15-3.18, FR-4.8, FR-7.9-7.11, FR-14, FR-15, US-12, US-13, Flow 6 |
-| 2026-03-22 | Phase 4.5: Built-in Ecosystem. Full first-launch seeding: DefaultsSeeder expanded from permissions-only to 5 categories (permissions, MCPs, skills, agents, templates). Created 3 system prompt templates (specialist.md, worker.md, coordinator.md) with variable resolution. Agent seeding resolves cross-entity references by name (skills, MCPs, permissions). All 30 catalog agents updated with PeerBus system skills (peer-collaboration, blackboard-patterns, agent-identity) in requiredSkills — every agent in ClaudPeer knows how to collaborate via PeerBus. 131 Swift tests + 96 sidecar tests passing. | FR-16, US-15 |
+| 2026-03-22 | Phase 4.5: Built-in Ecosystem. Full first-launch seeding: DefaultsSeeder expanded from permissions-only to 5 categories (permissions, MCPs, skills, agents, templates). Created 3 system prompt templates (specialist.md, worker.md, coordinator.md) with variable resolution. Agent seeding resolves cross-entity references by name (skills, MCPs, permissions). All 30 catalog agents updated with PeerBus system skills (peer-collaboration, blackboard-patterns, agent-identity) in requiredSkills — every agent in ClaudeStudio knows how to collaborate via PeerBus. 131 Swift tests + 96 sidecar tests passing. | FR-16, US-15 |
 | 2026-03-22 | Phase 6: UX Redesign + Inspector Toggle. Comprehensive UX overhaul: Settings reorganized into General/Connection (with live sidecar status and action buttons)/Developer tabs. Sidebar toolbar replaced with bottom bar (Catalog, Agents, + buttons). Main toolbar simplified to New Session + Quick Chat + status pill + inspector toggle. Chat header: tappable agent icon opens library, mission preview, Fork/Rename moved to overflow menu. Inspector transformed into monitoring dashboard with usage section (tokens, cost, turns progress bar), workspace section with Open in Terminal, and removed duplicate controls. New Session sheet: recent agents row, collapsible options DisclosureGroup, "Inherit from Agent" model default, mode tooltips. Agent Editor consolidated from 5 steps to 3 (Identity, Capabilities with Skills/MCPs/Permissions DisclosureGroups, System Prompt). Inspector toggle: toolbar button (sidebar.trailing, ⌘⌥0) shows/hides right inspector pane; chat expands to fill freed space via 2-column NavigationSplitView + HStack layout. Fixed macOS state restoration crash (WorkingDirectoryPicker environment object). Fixed FileNode Swift 6 concurrency (nonisolated init, @unchecked Sendable). | FR-6.14-6.21, FR-9.1, US-7, US-8, Flow 4 |
 | 2026-03-22 | Phase 5: Inspector File Explorer. Tabbed Inspector (Info/Files) with file tree browser for agent working directories. FileSystemService, GitService, FileNode model. FileTreeView with DisclosureGroup, git badges, changes-only filter. FileContentView with three modes: Markdown preview, syntax-highlighted source (Highlightr), git diff (NSTextView). Async I/O, auto-refresh on tool calls, HighlightedCodeView for chat code blocks, dynamic git path, full a11y identifiers. | FR-17, FR-18, US-16, Flow 11 |
 | 2026-03-22 | Phase 7: Agent Communication Wiring + Delegation UI. Wired AgentCommsView into MainWindowView (toolbar button with antenna icon + event badge, ⌘⇧A shortcut, sheet presentation). Added user-initiated delegation from chat: delegate menu button in input bar, agent picker menu, DelegateSheet (task editor, context field, wait-for-result toggle). New delegate.task sidecar command with full wire protocol (SidecarProtocol → ws-server.ts). Instance policy enforcement in both peer_delegate_task and delegate.task handler: singleton reuses existing session, pool caps at max then routes to least-busy, spawn always creates new. Added findByAgentName to SessionRegistry. Fixed pool serialization to pool:N format in AppState. Added peer_chat_listen to AgentProvisioner allowedTools. | FR-3.14, FR-3.19, FR-5.26-5.29, FR-14.23-14.24, FR-15.8-15.9, US-12, US-13, US-17, Flow 12, Flow 13 |

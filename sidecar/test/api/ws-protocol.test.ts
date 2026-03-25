@@ -4,7 +4,7 @@
  * Boots a real WsServer and tests connect, ready event, command dispatch,
  * and event broadcasting. Uses mock SessionManager to avoid real Claude SDK calls.
  *
- * Usage: CLAUDPEER_DATA_DIR=/tmp/claudpeer-test-$(date +%s) bun test test/api/ws-protocol.test.ts
+ * Usage: CLAUDESTUDIO_DATA_DIR=/tmp/claudestudio-test-$(date +%s) bun test test/api/ws-protocol.test.ts
  */
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { WsServer } from "../../src/ws-server.js";

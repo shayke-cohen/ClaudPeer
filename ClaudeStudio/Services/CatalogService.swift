@@ -137,7 +137,7 @@ final class CatalogService {
 
     private func catalogSearchPaths() -> [String] {
         [
-            "\(NSHomeDirectory())/ClaudPeer/ClaudPeer/Resources/Catalog",
+            "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/Catalog",
             Bundle.main.bundlePath + "/Contents/Resources/Catalog"
         ]
     }

@@ -346,7 +346,7 @@ private struct DeveloperSettingsTab: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Data Directory")
                     HStack {
-                        TextField("~/.claudpeer", text: $dataDirectory)
+                        TextField("~/.claudestudio", text: $dataDirectory)
                             .textFieldStyle(.roundedBorder)
                             .xrayId("settings.developer.dataDirectoryField")
                         Button("Browse...") {
@@ -418,7 +418,7 @@ private struct DeveloperSettingsTab: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.message = "Select the ClaudPeer project directory"
+        panel.message = "Select the ClaudeStudio project directory"
         panel.directoryURL = URL(fileURLWithPath: NSHomeDirectory())
         if panel.runModal() == .OK, let url = panel.url {
             sidecarPath = url.path

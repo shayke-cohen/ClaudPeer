@@ -1,8 +1,8 @@
 {
-  "catalogId": "claudpeer-accessibility",
-  "name": "ClaudPeer Accessibility",
-  "description": "Accessibility identifier conventions for ClaudPeer UI — enables AppXray and UI automation",
-  "category": "ClaudPeer",
+  "catalogId": "claudestudio-accessibility",
+  "name": "ClaudeStudio Accessibility",
+  "description": "Accessibility identifier conventions for ClaudeStudio UI — enables AppXray and UI automation",
+  "category": "ClaudeStudio",
   "icon": "accessibility",
   "requiredMCPs": [],
   "triggers": [
@@ -17,6 +17,6 @@
     "accessibility",
     "appxray",
     "ui-testing",
-    "claudpeer"
+    "claudestudio"
   ]
 }

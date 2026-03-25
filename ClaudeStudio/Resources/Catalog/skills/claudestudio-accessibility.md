@@ -1,8 +1,8 @@
-# ClaudPeer Accessibility Identifiers
+# ClaudeStudio Accessibility Identifiers
 
 ## When to Activate
 
-Use whenever you add or edit SwiftUI in ClaudPeer that users, AppXray, or UI automation interact with. Required for buttons, fields, lists, dynamic rows, and meaningful containers (per project `CLAUDE.md`).
+Use whenever you add or edit SwiftUI in ClaudeStudio that users, AppXray, or UI automation interact with. Required for buttons, fields, lists, dynamic rows, and meaningful containers (per project `CLAUDE.md`).
 
 ## Process
 

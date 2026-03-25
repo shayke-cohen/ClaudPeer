@@ -3,7 +3,7 @@ import SwiftData
 
 enum DefaultsSeeder {
 
-    static let seededKey = "claudpeer.defaultsSeeded"
+    static let seededKey = "claudestudio.defaultsSeeded"
 
     static func seedIfNeeded(container: ModelContainer) {
         guard !InstanceConfig.userDefaults.bool(forKey: seededKey) else { return }
@@ -31,7 +31,7 @@ enum DefaultsSeeder {
 
     // MARK: - Group Seeding
 
-    static let groupsSeededKey = "claudpeer.groupsSeeded"
+    static let groupsSeededKey = "claudestudio.groupsSeeded"
 
     static func seedGroupsIfNeeded(container: ModelContainer) {
         guard !InstanceConfig.userDefaults.bool(forKey: groupsSeededKey) else { return }
@@ -421,7 +421,7 @@ enum DefaultsSeeder {
             let skill = Skill(
                 name: metadata.name ?? skillName,
                 skillDescription: metadata.description ?? "",
-                category: metadata.category ?? "ClaudPeer",
+                category: metadata.category ?? "ClaudeStudio",
                 content: content
             )
             skill.triggers = metadata.triggers
@@ -568,8 +568,8 @@ enum DefaultsSeeder {
             return try? Data(contentsOf: url)
         }
         let fallbackPaths = [
-            "\(NSHomeDirectory())/ClaudPeer/ClaudPeer/Resources/\(name).\(ext)",
-            "\(FileManager.default.currentDirectoryPath)/ClaudPeer/Resources/\(name).\(ext)"
+            "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/\(name).\(ext)",
+            "\(FileManager.default.currentDirectoryPath)/ClaudeStudio/Resources/\(name).\(ext)"
         ]
         for path in fallbackPaths {
             if FileManager.default.fileExists(atPath: path) {
@@ -584,8 +584,8 @@ enum DefaultsSeeder {
             return try? String(contentsOf: url, encoding: .utf8)
         }
         let fallbackPaths = [
-            "\(NSHomeDirectory())/ClaudPeer/ClaudPeer/Resources/DefaultSkills/\(name)/SKILL.md",
-            "\(FileManager.default.currentDirectoryPath)/ClaudPeer/Resources/DefaultSkills/\(name)/SKILL.md"
+            "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/DefaultSkills/\(name)/SKILL.md",
+            "\(FileManager.default.currentDirectoryPath)/ClaudeStudio/Resources/DefaultSkills/\(name)/SKILL.md"
         ]
         for path in fallbackPaths {
             if FileManager.default.fileExists(atPath: path) {
@@ -600,8 +600,8 @@ enum DefaultsSeeder {
             return try? Data(contentsOf: url)
         }
         let fallbackPaths = [
-            "\(NSHomeDirectory())/ClaudPeer/ClaudPeer/Resources/DefaultAgents/\(name).json",
-            "\(FileManager.default.currentDirectoryPath)/ClaudPeer/Resources/DefaultAgents/\(name).json"
+            "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/DefaultAgents/\(name).json",
+            "\(FileManager.default.currentDirectoryPath)/ClaudeStudio/Resources/DefaultAgents/\(name).json"
         ]
         for path in fallbackPaths {
             if FileManager.default.fileExists(atPath: path) {
@@ -616,8 +616,8 @@ enum DefaultsSeeder {
             return try? String(contentsOf: url, encoding: .utf8)
         }
         let fallbackPaths = [
-            "\(NSHomeDirectory())/ClaudPeer/ClaudPeer/Resources/SystemPromptTemplates/\(name).md",
-            "\(FileManager.default.currentDirectoryPath)/ClaudPeer/Resources/SystemPromptTemplates/\(name).md"
+            "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/SystemPromptTemplates/\(name).md",
+            "\(FileManager.default.currentDirectoryPath)/ClaudeStudio/Resources/SystemPromptTemplates/\(name).md"
         ]
         for path in fallbackPaths {
             if FileManager.default.fileExists(atPath: path) {

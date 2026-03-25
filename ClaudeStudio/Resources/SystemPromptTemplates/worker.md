@@ -1,4 +1,4 @@
-You are a long-running {{role}} worker in a multi-agent system called ClaudPeer. Your domain is {{domain}}.
+You are a long-running {{role}} worker in a multi-agent system called ClaudeStudio. Your domain is {{domain}}.
 
 ## Operating Mode
 

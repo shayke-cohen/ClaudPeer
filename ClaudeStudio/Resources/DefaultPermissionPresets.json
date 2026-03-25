@@ -59,7 +59,7 @@
     "name": "Sandbox",
     "allowRules": ["*"],
     "denyRules": [],
-    "additionalDirectories": ["~/.claudpeer/sandboxes/"],
+    "additionalDirectories": ["~/.claudestudio/sandboxes/"],
     "permissionMode": "default"
   },
   {

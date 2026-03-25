@@ -1,0 +1,155 @@
+<h2>10 Proposed Built-in Groups</h2>
+<p class="subtitle">Do these feel right? Click any to highlight, or share feedback in the terminal.</p>
+
+<style>
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+.group-card {
+  border: 1.5px solid var(--border, #333);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  background: var(--card-bg, #1c1c1e);
+}
+.group-card:hover { border-color: #555; background: #242426; }
+.group-card.selected { border-color: #0a84ff; background: rgba(10,132,255,0.08); }
+.group-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.group-icon { font-size: 22px; }
+.group-name { font-weight: 600; font-size: 15px; color: var(--text, #fff); }
+.group-desc { font-size: 12.5px; color: #888; margin-bottom: 10px; line-height: 1.4; }
+.group-agents { display: flex; flex-wrap: wrap; gap: 5px; }
+.agent-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+.tag-orchestrator { background: rgba(255,159,10,0.15); color: #ff9f0a; }
+.tag-coder       { background: rgba(52,199,89,0.15);  color: #34c759; }
+.tag-reviewer    { background: rgba(10,132,255,0.15); color: #0a84ff; }
+.tag-tester      { background: rgba(175,82,222,0.15); color: #af52de; }
+.tag-devops      { background: rgba(255,69,58,0.15);  color: #ff453a; }
+.tag-researcher  { background: rgba(100,210,255,0.15);color: #64d2ff; }
+.tag-writer      { background: rgba(255,214,10,0.15); color: #ffd60a; }
+</style>
+
+<div class="groups-grid" id="groups">
+
+  <div class="group-card" data-choice="1" onclick="toggleCard(this)">
+    <div class="group-header"><span class="group-icon">⚡</span><span class="group-name">Dev Squad</span></div>
+    <div class="group-desc">Core software development team — write, review, and test. Ideal for feature work and bug fixes.</div>
+    <div class="group-agents">
+      <span class="agent-tag tag-coder">Coder</span>
+      <span class="agent-tag tag-reviewer">Reviewer</span>
+      <span class="agent-tag tag-tester">Tester</span>
+    </div>
+  </div>
+
+  <div class="group-card" data-choice="2" onclick="toggleCard(this)">
+    <div class="group-header"><span class="group-icon">🏗</span><span class="group-name">Full Stack Team</span></div>
+    <div class="group-desc">Complete product lifecycle — code, review, test, and deploy. For shipping to production.</div>
+    <div class="group-agents">
+      <span class="agent-tag tag-coder">Coder</span>
+      <span class="agent-tag tag-reviewer">Reviewer</span>
+      <span class="agent-tag tag-tester">Tester</span>
+      <span class="agent-tag tag-devops">DevOps</span>
+    </div>
+  </div>
+
+  <div class="group-card" data-choice="3" onclick="toggleCard(this)">
+    <div class="group-header"><span class="group-icon">🎯</span><span class="group-name">Plan &amp; Build</span></div>
+    <div class="group-desc">Orchestrator-led delivery — plan the work, build it, validate it. Best for complex features.</div>
+    <div class="group-agents">
+      <span class="agent-tag tag-orchestrator">Orchestrator</span>
+      <span class="agent-tag tag-coder">Coder</span>
+      <span class="agent-tag tag-tester">Tester</span>
+    </div>
+  </div>
+
+  <div class="group-card" data-choice="4" onclick="toggleCard(this)">
+    <div class="group-header"><span class="group-icon">🔍</span><span class="group-name">Code Review Pair</span></div>
+    <div class="group-desc">Tight write-and-review loop. Coder implements, Reviewer critiques every decision in real time.</div>
+    <div class="group-agents">
+      <span class="agent-tag tag-coder">Coder</span>
+      <span class="agent-tag tag-reviewer">Reviewer</span>
+    </div>
+  </div>
+
+  <div class="group-card" data-choice="5" onclick="toggleCard(this)">
+    <div class="group-header"><span class="group-icon">🚀</span><span class="group-name">DevOps Pipeline</span></div>
+    <div class="group-desc">Build, test, and ship. Focused on CI/CD, infra, and release automation workflows.</div>
+    <div class="group-agents">
+      <span class="agent-tag tag-coder">Coder</span>
+      <span class="agent-tag tag-tester">Tester</span>
+      <span class="agent-tag tag-devops">DevOps</span>
+    </div>
+  </div>
+
+  <div class="group-card" data-choice="6" onclick="toggleCard(this)">
+    <div class="group-header"><span class="group-icon">📚</span><span class="group-name">Research &amp; Write</span></div>
+    <div class="group-desc">Gather information, synthesize, and document. Great for deep-dives and technical writing.</div>
+    <div class="group-agents">
+      <span class="agent-tag tag-researcher">Researcher</span>
+      <span class="agent-tag tag-writer">Writer</span>
+    </div>
+  </div>
+
+  <div class="group-card" data-choice="7" onclick="toggleCard(this)">
+    <div class="group-header"><span class="group-icon">✍️</span><span class="group-name">Content Studio</span></div>
+    <div class="group-desc">Research, write, and polish. For blog posts, docs, READMEs, and technical content at scale.</div>
+    <div class="group-agents">
+      <span class="agent-tag tag-researcher">Researcher</span>
+      <span class="agent-tag tag-writer">Writer</span>
+      <span class="agent-tag tag-reviewer">Reviewer</span>
+    </div>
+  </div>
+
+  <div class="group-card" data-choice="8" onclick="toggleCard(this)">
+    <div class="group-header"><span class="group-icon">🔐</span><span class="group-name">Security Audit</span></div>
+    <div class="group-desc">Security-focused team. Coder fixes, Reviewer hunts vulnerabilities, Tester validates hardening.</div>
+    <div class="group-agents">
+      <span class="agent-tag tag-coder">Coder</span>
+      <span class="agent-tag tag-reviewer">Reviewer</span>
+      <span class="agent-tag tag-tester">Tester</span>
+    </div>
+  </div>
+
+  <div class="group-card" data-choice="9" onclick="toggleCard(this)">
+    <div class="group-header"><span class="group-icon">📖</span><span class="group-name">Docs Team</span></div>
+    <div class="group-desc">From research to publication. Best for wikis, API docs, onboarding guides, and changelogs.</div>
+    <div class="group-agents">
+      <span class="agent-tag tag-researcher">Researcher</span>
+      <span class="agent-tag tag-writer">Writer</span>
+      <span class="agent-tag tag-reviewer">Reviewer</span>
+    </div>
+  </div>
+
+  <div class="group-card" data-choice="10" onclick="toggleCard(this)">
+    <div class="group-header"><span class="group-icon">🤖</span><span class="group-name">Full Ensemble</span></div>
+    <div class="group-desc">All 7 agents. Orchestrator coordinates the full team for ambitious, end-to-end projects.</div>
+    <div class="group-agents">
+      <span class="agent-tag tag-orchestrator">Orchestrator</span>
+      <span class="agent-tag tag-coder">Coder</span>
+      <span class="agent-tag tag-reviewer">Reviewer</span>
+      <span class="agent-tag tag-tester">Tester</span>
+      <span class="agent-tag tag-devops">DevOps</span>
+      <span class="agent-tag tag-researcher">Researcher</span>
+      <span class="agent-tag tag-writer">Writer</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggleCard(el) {
+  el.classList.toggle('selected');
+  const choice = el.dataset.choice;
+  const name = el.querySelector('.group-name').textContent;
+  window.__companion?.recordEvent({ type: 'click', choice, text: name });
+}
+</script>

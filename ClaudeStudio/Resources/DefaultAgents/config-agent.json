@@ -1,7 +1,7 @@
 {
   "name": "Config Agent",
   "enabled": true,
-  "agentDescription": "Edits ClaudPeer configuration — agents, groups, skills, MCPs, and permissions. Changes auto-reload in the app.",
+  "agentDescription": "Edits ClaudeStudio configuration — agents, groups, skills, MCPs, and permissions. Changes auto-reload in the app.",
   "model": "sonnet",
   "icon": "gearshape.2",
   "color": "gray",
@@ -12,5 +12,5 @@
   "systemPromptVariables": null,
   "maxTurns": 30,
   "maxBudget": 2.00,
-  "defaultWorkingDirectory": "~/.claudpeer/config/"
+  "defaultWorkingDirectory": "~/.claudestudio/config/"
 }

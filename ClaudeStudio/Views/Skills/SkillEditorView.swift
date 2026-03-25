@@ -29,7 +29,7 @@ struct SkillEditorView: View {
         "Data",
         "Project & Process",
         "Documentation",
-        "ClaudPeer Collaboration",
+        "ClaudeStudio Collaboration",
         "Specialized",
     ]
 

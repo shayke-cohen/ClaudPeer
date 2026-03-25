@@ -1,13 +1,13 @@
 import Foundation
 
 /// Manages a global list of recently-used working directories, persisted to
-/// `~/.claudpeer/recent-directories.json` so all instances share the same history.
+/// `~/.claudestudio/recent-directories.json` so all instances share the same history.
 enum RecentDirectories {
     private static let maxCount = 10
 
     private static var fileURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claudpeer/recent-directories.json")
+            .appendingPathComponent(".claudestudio/recent-directories.json")
     }
 
     static func load() -> [String] {

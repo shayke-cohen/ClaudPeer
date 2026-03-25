@@ -1,5 +1,5 @@
 /**
- * Comprehensive E2E scenario tests for ClaudPeer sidecar.
+ * Comprehensive E2E scenario tests for ClaudeStudio sidecar.
  *
  * Covers all communication patterns:
  *   S  = Session lifecycle
@@ -14,9 +14,9 @@
  *   ACCEPT = Full orchestration acceptance test
  *
  * Boots a real sidecar subprocess. Tests that require live Claude SDK calls
- * are skipped unless CLAUDPEER_E2E_LIVE=1 is set.
+ * are skipped unless CLAUDESTUDIO_E2E_LIVE=1 is set.
  *
- * Usage: CLAUDPEER_E2E_LIVE=1 bun test test/e2e/scenarios.test.ts
+ * Usage: CLAUDESTUDIO_E2E_LIVE=1 bun test test/e2e/scenarios.test.ts
  */
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { spawn, type Subprocess } from "bun";
@@ -28,8 +28,8 @@ import { BufferedWs, wsConnect, waitForHealth, makeAgentConfig } from "../helper
 
 const WS_PORT = 39849 + Math.floor(Math.random() * 500);
 const HTTP_PORT = 39850 + Math.floor(Math.random() * 500);
-const DATA_DIR = mkdtempSync(join(tmpdir(), "claudpeer-scenarios-"));
-const isLive = process.env.CLAUDPEER_E2E_LIVE === "1";
+const DATA_DIR = mkdtempSync(join(tmpdir(), "claudestudio-scenarios-"));
+const isLive = process.env.CLAUDESTUDIO_E2E_LIVE === "1";
 const liveTest = isLive ? test : test.skip;
 
 let proc: Subprocess;
@@ -40,9 +40,9 @@ beforeAll(async () => {
     cmd: ["bun", "run", sidecarPath],
     env: {
       ...process.env,
-      CLAUDPEER_WS_PORT: String(WS_PORT),
-      CLAUDPEER_HTTP_PORT: String(HTTP_PORT),
-      CLAUDPEER_DATA_DIR: DATA_DIR,
+      CLAUDESTUDIO_WS_PORT: String(WS_PORT),
+      CLAUDESTUDIO_HTTP_PORT: String(HTTP_PORT),
+      CLAUDESTUDIO_DATA_DIR: DATA_DIR,
     },
     stdout: "pipe",
     stderr: "pipe",
@@ -424,7 +424,7 @@ describe("CHAT: Agent Chat", () => {
     try {
       await ws.waitFor((m) => m.type === "sidecar.ready");
       const sid = `chat1-${Date.now()}`;
-      const sandboxDir = join(tmpdir(), `claudpeer-chat-test-${randomUUID()}`);
+      const sandboxDir = join(tmpdir(), `claudestudio-chat-test-${randomUUID()}`);
 
       ws.send({
         type: "session.create",
@@ -468,7 +468,7 @@ describe("CHAT: Agent Chat", () => {
     try {
       await ws.waitFor((m) => m.type === "sidecar.ready");
       const sid = `chat2-${Date.now()}`;
-      const deepDir = join(tmpdir(), `claudpeer-nocwd-${randomUUID()}`, "nested", "sandbox");
+      const deepDir = join(tmpdir(), `claudestudio-nocwd-${randomUUID()}`, "nested", "sandbox");
 
       expect(existsSync(deepDir)).toBe(false);
 

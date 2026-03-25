@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a dedicated "Workshop" view — a single place to browse, inspect, and AI-edit all ClaudPeer entities (agents, groups, skills, MCPs, permissions) with an embedded Config Agent chat pane.
+**Goal:** Add a dedicated "Workshop" view — a single place to browse, inspect, and AI-edit all ClaudeStudio entities (agents, groups, skills, MCPs, permissions) with an embedded Config Agent chat pane.
 
 **Architecture:** The Workshop is a new detail-pane destination (not a sheet) — it lives in the main `NavigationSplitView` detail area alongside ChatView, GroupDetailView, and WelcomeView. Left side shows a tabbed entity browser with cards/rows for each entity type. Right side docks a persistent Config Agent chat session. Clicking an entity in the browser injects context into the chat. The existing `ConfigSyncService` file watcher handles live reload — no new sync code needed.
 
@@ -14,14 +14,14 @@
 
 | Action | File | Responsibility |
 |--------|------|---------------|
-| Create | `ClaudPeer/Views/Workshop/WorkshopView.swift` | Root Workshop view: HSplitView with entity browser (left) + config chat (right) |
-| Create | `ClaudPeer/Views/Workshop/WorkshopEntityBrowser.swift` | Tabbed entity browser: Agents / Groups / Skills / MCPs / Permissions tabs, each with search + grid/list |
-| Create | `ClaudPeer/Views/Workshop/WorkshopEntityRow.swift` | Compact row component for entities — icon, name, enabled badge, key stats, click-to-select |
-| Create | `ClaudPeer/Views/Workshop/WorkshopDetailPanel.swift` | Read-only detail panel for the selected entity — shows all fields in a structured layout |
-| Modify | `ClaudPeer/App/AppState.swift:51-56` | Add `showWorkshop` published property |
-| Modify | `ClaudPeer/Views/MainWindow/MainWindowView.swift:101-121` | Add `.sheet(isPresented: $appState.showWorkshop)` for Workshop |
-| Modify | `ClaudPeer/Views/MainWindow/SidebarView.swift:96-154` | Add Workshop button to sidebar bottom bar |
-| Test | `ClaudPeerTests/WorkshopViewTests.swift` | Unit tests for entity browser filtering + context injection logic |
+| Create | `ClaudeStudio/Views/Workshop/WorkshopView.swift` | Root Workshop view: HSplitView with entity browser (left) + config chat (right) |
+| Create | `ClaudeStudio/Views/Workshop/WorkshopEntityBrowser.swift` | Tabbed entity browser: Agents / Groups / Skills / MCPs / Permissions tabs, each with search + grid/list |
+| Create | `ClaudeStudio/Views/Workshop/WorkshopEntityRow.swift` | Compact row component for entities — icon, name, enabled badge, key stats, click-to-select |
+| Create | `ClaudeStudio/Views/Workshop/WorkshopDetailPanel.swift` | Read-only detail panel for the selected entity — shows all fields in a structured layout |
+| Modify | `ClaudeStudio/App/AppState.swift:51-56` | Add `showWorkshop` published property |
+| Modify | `ClaudeStudio/Views/MainWindow/MainWindowView.swift:101-121` | Add `.sheet(isPresented: $appState.showWorkshop)` for Workshop |
+| Modify | `ClaudeStudio/Views/MainWindow/SidebarView.swift:96-154` | Add Workshop button to sidebar bottom bar |
+| Test | `ClaudeStudioTests/WorkshopViewTests.swift` | Unit tests for entity browser filtering + context injection logic |
 
 ---
 
@@ -30,9 +30,9 @@
 Wire up the Workshop as a new sheet destination, accessible from sidebar.
 
 **Files:**
-- Modify: `ClaudPeer/App/AppState.swift:51-56`
-- Modify: `ClaudPeer/Views/MainWindow/MainWindowView.swift:101-121`
-- Modify: `ClaudPeer/Views/MainWindow/SidebarView.swift:96-154`
+- Modify: `ClaudeStudio/App/AppState.swift:51-56`
+- Modify: `ClaudeStudio/Views/MainWindow/MainWindowView.swift:101-121`
+- Modify: `ClaudeStudio/Views/MainWindow/SidebarView.swift:96-154`
 
 - [ ] **Step 1: Add `showWorkshop` to AppState**
 
@@ -77,9 +77,9 @@ Divider()
 
 - [ ] **Step 4: Create Workshop directory and placeholder WorkshopView**
 
-First create the directory: `mkdir -p ClaudPeer/Views/Workshop/`
+First create the directory: `mkdir -p ClaudeStudio/Views/Workshop/`
 
-Then create `ClaudPeer/Views/Workshop/WorkshopView.swift` with a minimal placeholder so the app compiles:
+Then create `ClaudeStudio/Views/Workshop/WorkshopView.swift` with a minimal placeholder so the app compiles:
 
 ```swift
 import SwiftUI
@@ -100,14 +100,14 @@ struct WorkshopView: View {
 
 - [ ] **Step 5: Build and verify**
 
-Run: `xcodegen generate && xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodegen generate && xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 
 Expected: BUILD SUCCEEDED. Sidebar shows Workshop button. Clicking it opens placeholder sheet.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add ClaudPeer/App/AppState.swift ClaudPeer/Views/MainWindow/MainWindowView.swift ClaudPeer/Views/MainWindow/SidebarView.swift ClaudPeer/Views/Workshop/WorkshopView.swift
+git add ClaudeStudio/App/AppState.swift ClaudeStudio/Views/MainWindow/MainWindowView.swift ClaudeStudio/Views/MainWindow/SidebarView.swift ClaudeStudio/Views/Workshop/WorkshopView.swift
 git commit -m "feat(workshop): add navigation hook and placeholder view"
 ```
 
@@ -118,7 +118,7 @@ git commit -m "feat(workshop): add navigation hook and placeholder view"
 Build the left pane of the Workshop: a tab picker across entity types with search.
 
 **Files:**
-- Create: `ClaudPeer/Views/Workshop/WorkshopEntityBrowser.swift`
+- Create: `ClaudeStudio/Views/Workshop/WorkshopEntityBrowser.swift`
 
 - [ ] **Step 1: Create WorkshopEntityBrowser**
 
@@ -356,14 +356,14 @@ struct WorkshopEntityBrowser: View {
 
 - [ ] **Step 2: Build and verify**
 
-Run: `xcodegen generate && xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodegen generate && xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 
 Expected: BUILD SUCCEEDED (not yet wired into WorkshopView).
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudPeer/Views/Workshop/WorkshopEntityBrowser.swift
+git add ClaudeStudio/Views/Workshop/WorkshopEntityBrowser.swift
 git commit -m "feat(workshop): add tabbed entity browser with search and context injection"
 ```
 
@@ -374,7 +374,7 @@ git commit -m "feat(workshop): add tabbed entity browser with search and context
 A compact, reusable row for displaying any entity type in the browser list.
 
 **Files:**
-- Create: `ClaudPeer/Views/Workshop/WorkshopEntityRow.swift`
+- Create: `ClaudeStudio/Views/Workshop/WorkshopEntityRow.swift`
 
 - [ ] **Step 1: Create WorkshopEntityRow**
 
@@ -452,14 +452,14 @@ struct WorkshopEntityRow: View {
 
 - [ ] **Step 2: Build and verify**
 
-Run: `xcodegen generate && xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodegen generate && xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 
 Expected: BUILD SUCCEEDED.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudPeer/Views/Workshop/WorkshopEntityRow.swift
+git add ClaudeStudio/Views/Workshop/WorkshopEntityRow.swift
 git commit -m "feat(workshop): add compact entity row component"
 ```
 
@@ -470,7 +470,7 @@ git commit -m "feat(workshop): add compact entity row component"
 When an entity is selected in the browser, show its full details in a read-only panel below (or inline). This gives visual feedback before asking the Config Agent to edit.
 
 **Files:**
-- Create: `ClaudPeer/Views/Workshop/WorkshopDetailPanel.swift`
+- Create: `ClaudeStudio/Views/Workshop/WorkshopDetailPanel.swift`
 
 - [ ] **Step 1: Create WorkshopDetailPanel**
 
@@ -576,14 +576,14 @@ struct WorkshopDetailPanel: View {
 
 - [ ] **Step 2: Build and verify**
 
-Run: `xcodegen generate && xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodegen generate && xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 
 Expected: BUILD SUCCEEDED.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudPeer/Views/Workshop/WorkshopDetailPanel.swift
+git add ClaudeStudio/Views/Workshop/WorkshopDetailPanel.swift
 git commit -m "feat(workshop): add read-only entity detail panel"
 ```
 
@@ -594,7 +594,7 @@ git commit -m "feat(workshop): add read-only entity detail panel"
 Assemble the Workshop: entity browser (left) + detail/chat (right). The chat pane embeds a real ChatView connected to a Config Agent session.
 
 **Files:**
-- Modify: `ClaudPeer/Views/Workshop/WorkshopView.swift` (replace placeholder)
+- Modify: `ClaudeStudio/Views/Workshop/WorkshopView.swift` (replace placeholder)
 
 - [ ] **Step 1: Implement full WorkshopView**
 
@@ -766,14 +766,14 @@ struct WorkshopView: View {
 
 - [ ] **Step 2: Build and verify**
 
-Run: `xcodegen generate && xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodegen generate && xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 
 Expected: BUILD SUCCEEDED. Workshop opens with browser on left, chat on right.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudPeer/Views/Workshop/WorkshopView.swift
+git add ClaudeStudio/Views/Workshop/WorkshopView.swift
 git commit -m "feat(workshop): wire full layout with entity browser and embedded config agent chat"
 ```
 
@@ -784,7 +784,7 @@ git commit -m "feat(workshop): wire full layout with entity browser and embedded
 When the user clicks an entity in the browser, inject a context message into the Config Agent chat so the agent knows what the user is looking at.
 
 **Files:**
-- Modify: `ClaudPeer/Views/Workshop/WorkshopView.swift`
+- Modify: `ClaudeStudio/Views/Workshop/WorkshopView.swift`
 
 - [ ] **Step 1: Add context injection method**
 
@@ -824,14 +824,14 @@ Update the `onChange(of: selectedEntityContext)` handler:
 
 - [ ] **Step 3: Build and verify**
 
-Run: `xcodegen generate && xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodegen generate && xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 
 Expected: BUILD SUCCEEDED. Clicking an entity in the browser adds a context message to the chat.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add ClaudPeer/Views/Workshop/WorkshopView.swift
+git add ClaudeStudio/Views/Workshop/WorkshopView.swift
 git commit -m "feat(workshop): inject entity context into config agent chat on selection"
 ```
 
@@ -842,7 +842,7 @@ git commit -m "feat(workshop): inject entity context into config agent chat on s
 The most common operation (toggling enabled/disabled) should be one click, not a chat message.
 
 **Files:**
-- Modify: `ClaudPeer/Views/Workshop/WorkshopEntityRow.swift`
+- Modify: `ClaudeStudio/Views/Workshop/WorkshopEntityRow.swift`
 
 - [ ] **Step 1: Add toggle to entity row**
 
@@ -894,14 +894,14 @@ Repeat the pattern for groups, skills, MCPs, permissions — each using the appr
 
 - [ ] **Step 3: Build and verify**
 
-Run: `xcodegen generate && xcodebuild -scheme ClaudPeer -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodegen generate && xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
 
 Expected: BUILD SUCCEEDED. Clicking the toggle circle enables/disables entities inline.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add ClaudPeer/Views/Workshop/WorkshopEntityRow.swift ClaudPeer/Views/Workshop/WorkshopEntityBrowser.swift
+git add ClaudeStudio/Views/Workshop/WorkshopEntityRow.swift ClaudeStudio/Views/Workshop/WorkshopEntityBrowser.swift
 git commit -m "feat(workshop): add inline enable/disable toggle on entity rows"
 ```
 
@@ -912,7 +912,7 @@ git commit -m "feat(workshop): add inline enable/disable toggle on entity rows"
 Show the count of entities per tab so users see at a glance how many agents, groups, etc. they have.
 
 **Files:**
-- Modify: `ClaudPeer/Views/Workshop/WorkshopEntityBrowser.swift`
+- Modify: `ClaudeStudio/Views/Workshop/WorkshopEntityBrowser.swift`
 
 - [ ] **Step 1: Replace segmented picker with custom tab bar showing counts**
 
@@ -972,7 +972,7 @@ Expected: Tab bar shows counts like "Agents 11", "Groups 12", etc.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudPeer/Views/Workshop/WorkshopEntityBrowser.swift
+git add ClaudeStudio/Views/Workshop/WorkshopEntityBrowser.swift
 git commit -m "feat(workshop): add entity counts to tab badges"
 ```
 
@@ -983,7 +983,7 @@ git commit -m "feat(workshop): add entity counts to tab badges"
 Add a "Restore Default" action in the entity row context menu, using the existing `ConfigSyncService.restoreFactoryDefault()`.
 
 **Files:**
-- Modify: `ClaudPeer/Views/Workshop/WorkshopEntityBrowser.swift`
+- Modify: `ClaudeStudio/Views/Workshop/WorkshopEntityBrowser.swift`
 
 - [ ] **Step 1: Add context menu to entity rows**
 
@@ -1013,7 +1013,7 @@ Expected: Right-clicking an entity row shows "Restore Factory Default" option.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudPeer/Views/Workshop/WorkshopEntityBrowser.swift
+git add ClaudeStudio/Views/Workshop/WorkshopEntityBrowser.swift
 git commit -m "feat(workshop): add factory reset context menu action"
 ```
 
@@ -1022,13 +1022,13 @@ git commit -m "feat(workshop): add factory reset context menu action"
 ## Task 10: Tests
 
 **Files:**
-- Create: `ClaudPeerTests/WorkshopViewTests.swift`
+- Create: `ClaudeStudioTests/WorkshopViewTests.swift`
 
 - [ ] **Step 1: Write tests for context string generation and entity filtering**
 
 ```swift
 import XCTest
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 final class WorkshopViewTests: XCTestCase {
 
@@ -1056,14 +1056,14 @@ final class WorkshopViewTests: XCTestCase {
 
 - [ ] **Step 2: Run tests**
 
-Run: `xcodebuild test -scheme ClaudPeer -destination 'platform=macOS' -only-testing:ClaudPeerTests/WorkshopViewTests 2>&1 | tail -10`
+Run: `xcodebuild test -scheme ClaudeStudio -destination 'platform=macOS' -only-testing:ClaudeStudioTests/WorkshopViewTests 2>&1 | tail -10`
 
 Expected: All tests pass.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudPeerTests/WorkshopViewTests.swift
+git add ClaudeStudioTests/WorkshopViewTests.swift
 git commit -m "test(workshop): add WorkshopTab unit tests"
 ```
 

@@ -1,6 +1,6 @@
 import XCTest
 import SwiftData
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 /// Tests for sidebar section partitioning logic:
 /// - Active: first 10 non-pinned, non-archived root conversations

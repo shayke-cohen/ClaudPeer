@@ -248,8 +248,8 @@ struct SkillFrontmatterDTO {
 enum ConfigFileManager {
 
     static var configDirectory: URL {
-        let dataDir = ProcessInfo.processInfo.environment["CLAUDPEER_DATA_DIR"]
-            ?? "\(NSHomeDirectory())/.claudpeer"
+        let dataDir = ProcessInfo.processInfo.environment["CLAUDESTUDIO_DATA_DIR"]
+            ?? "\(NSHomeDirectory())/.claudestudio"
         return URL(fileURLWithPath: dataDir).appendingPathComponent("config")
     }
 
@@ -353,7 +353,7 @@ enum ConfigFileManager {
 
     // MARK: - Factory Defaults
 
-    /// Copy factory defaults from the app bundle to both ~/.claudpeer/config/ and .factory/
+    /// Copy factory defaults from the app bundle to both ~/.claudestudio/config/ and .factory/
     static func copyFactoryDefaults() throws {
         try createDirectoryStructure()
         try copyBundleAgents()
@@ -802,8 +802,8 @@ enum ConfigFileManager {
         }
         // Fallback for development
         let basePaths = [
-            "\(NSHomeDirectory())/ClaudPeer/ClaudPeer/Resources",
-            "\(FileManager.default.currentDirectoryPath)/ClaudPeer/Resources"
+            "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources",
+            "\(FileManager.default.currentDirectoryPath)/ClaudeStudio/Resources"
         ]
         for base in basePaths {
             let path = subdirectory != nil ? "\(base)/\(subdirectory!)/\(name).\(ext)" : "\(base)/\(name).\(ext)"
@@ -819,8 +819,8 @@ enum ConfigFileManager {
             return try? String(contentsOf: url, encoding: .utf8)
         }
         let basePaths = [
-            "\(NSHomeDirectory())/ClaudPeer/ClaudPeer/Resources/DefaultSkills/\(name)/SKILL.md",
-            "\(FileManager.default.currentDirectoryPath)/ClaudPeer/Resources/DefaultSkills/\(name)/SKILL.md"
+            "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/DefaultSkills/\(name)/SKILL.md",
+            "\(FileManager.default.currentDirectoryPath)/ClaudeStudio/Resources/DefaultSkills/\(name)/SKILL.md"
         ]
         for path in basePaths {
             if let content = try? String(contentsOf: URL(fileURLWithPath: path), encoding: .utf8) {
@@ -835,8 +835,8 @@ enum ConfigFileManager {
             return try? String(contentsOf: url, encoding: .utf8)
         }
         let basePaths = [
-            "\(NSHomeDirectory())/ClaudPeer/ClaudPeer/Resources/SystemPromptTemplates/\(name).md",
-            "\(FileManager.default.currentDirectoryPath)/ClaudPeer/Resources/SystemPromptTemplates/\(name).md"
+            "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/SystemPromptTemplates/\(name).md",
+            "\(FileManager.default.currentDirectoryPath)/ClaudeStudio/Resources/SystemPromptTemplates/\(name).md"
         ]
         for path in basePaths {
             if let content = try? String(contentsOf: URL(fileURLWithPath: path), encoding: .utf8) {

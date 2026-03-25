@@ -15,7 +15,7 @@
     "unit-testing",
     "e2e-testing",
     "exploratory-testing",
-    "claudpeer-accessibility"
+    "claudestudio-accessibility"
   ],
   "extraMCPs": [
     "argus",

@@ -64,7 +64,7 @@ struct WelcomeView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(.tint)
                 .xrayId("welcome.heroIcon")
-            Text("Welcome to ClaudPeer")
+            Text("Welcome to ClaudeStudio")
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .xrayId("welcome.heading")

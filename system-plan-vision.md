@@ -1,4 +1,4 @@
-# ClaudPeer -- System Plan & Vision
+# ClaudeStudio -- System Plan & Vision
 
 > A peer-to-peer network of AI agents, orchestrated through a native macOS app.
 > Each agent is a Claude Code session with its own skills, tools, permissions, and personality.
@@ -26,7 +26,7 @@
 
 ## 1. Architecture Overview
 
-ClaudPeer is a two-process macOS app:
+ClaudeStudio is a two-process macOS app:
 
 - **Swift UI layer** (SwiftUI + SwiftData) -- handles the user interface, persistence, and peer-to-peer networking.
 - **TypeScript sidecar** (Claude Agent SDK + Bun runtime) -- manages all Claude sessions, inter-agent communication, hooks, and the blackboard.
@@ -80,7 +80,7 @@ flowchart TB
 
     subgraph External["External Services"]
         MCPs["MCP Servers\nargus, grafana,\nappxray, octocode"]
-        Peers["Network Peers\nother ClaudPeer apps"]
+        Peers["Network Peers\nother ClaudeStudio apps"]
         ExtApps["External Apps\nCLI, Node, iOS, CI\n(via HTTP API)"]
     end
 
@@ -192,7 +192,7 @@ The WebSocket protocol uses JSON messages:
 
 - `id: UUID`
 - `name: String`
-- `path: String` -- `~/.claudpeer/workspaces/{id}/`
+- `path: String` -- `~/.claudestudio/workspaces/{id}/`
 - `participants: [SessionRef]`
 - `createdAt: Date`
 
@@ -321,7 +321,7 @@ Two modes: async fire-and-forget (`peer_send_message`, `peer_broadcast`) and blo
 
 **Layer 2 -- Shared Workspace** (file artifacts)
 
-A shared directory (`~/.claudpeer/workspaces/{id}/`) that multiple agents can read/write to using standard Read/Write tools. For code, reports, data files. Created with `workspace_create`, joined with `workspace_join`.
+A shared directory (`~/.claudestudio/workspaces/{id}/`) that multiple agents can read/write to using standard Read/Write tools. For code, reports, data files. Created with `workspace_create`, joined with `workspace_join`.
 
 **Layer 3 -- Blackboard** (structured knowledge)
 
@@ -353,7 +353,7 @@ An agent can use any combination. A simple delegation might only use messages. A
 The Blackboard is implemented in the TypeScript sidecar as:
 
 1. **In-memory Map** for fast reads/writes during a session
-2. **Persisted to JSON file** (`~/.claudpeer/blackboard/{workspace-id}.json`) so it survives restarts
+2. **Persisted to JSON file** (`~/.claudestudio/blackboard/{workspace-id}.json`) so it survives restarts
 3. **Exposed as custom SDK tools** that agents call like any other tool
 4. **Event-emitting** -- every write sends a `blackboard.update` WebSocket event to Swift UI, and notifies subscribing agents
 
@@ -368,7 +368,7 @@ The sidecar exposes a lightweight HTTP API on localhost, enabling any local appl
 - `WS /blackboard/subscribe?pattern=...` -- WebSocket stream of changes
 - `GET /blackboard/health` -- health check
 
-This turns ClaudPeer into an integration hub. CLI scripts can feed data to agents, Node.js apps can subscribe to changes, iOS companion apps can fetch results, CI pipelines can trigger work and read outcomes.
+This turns ClaudeStudio into an integration hub. CLI scripts can feed data to agents, Node.js apps can subscribe to changes, iOS companion apps can fetch results, CI pipelines can trigger work and read outcomes.
 
 Access control (v1): localhost only (127.0.0.1), no auth. Future (v2): expose as MCP server for Claude Desktop and other AI tools.
 
@@ -377,10 +377,10 @@ Access control (v1): localhost only (127.0.0.1), no auth. Future (v2): expose as
 Each agent session needs a working directory. The WorkspaceResolver resolves it by priority:
 
 1. **Explicit path** -- user picks a directory when starting the session
-2. **GitHub clone** -- if agent has `githubRepo`, clone to `~/.claudpeer/repos/{owner}-{repo}/`. If session has `githubIssue`, create a feature branch
+2. **GitHub clone** -- if agent has `githubRepo`, clone to `~/.claudestudio/repos/{owner}-{repo}/`. If session has `githubIssue`, create a feature branch
 3. **Agent default** -- agent's `defaultWorkingDirectory` if set
-4. **Shared workspace** -- if session joins a collaboration, use `~/.claudpeer/workspaces/{id}/`
-5. **Ephemeral sandbox** -- fallback: create `~/.claudpeer/sandboxes/{session-id}/`
+4. **Shared workspace** -- if session joins a collaboration, use `~/.claudestudio/workspaces/{id}/`
+5. **Ephemeral sandbox** -- fallback: create `~/.claudestudio/sandboxes/{session-id}/`
 
 GitHub integration: when `githubRepo` is set, auto-adds `Bash(gh *)` and `Bash(git *)` to allowedTools. System prompt is appended with repo/issue context. The `gh` CLI handles all GitHub operations natively.
 
@@ -446,8 +446,8 @@ flowchart LR
     end
 
     subgraph Disk["Filesystem"]
-        SharedDir["~/.claudpeer/workspaces/"]
-        BBFile["~/.claudpeer/blackboard.json"]
+        SharedDir["~/.claudestudio/workspaces/"]
+        BBFile["~/.claudestudio/blackboard.json"]
     end
 
     A1 -->|"peer_chat_start"| Chat
@@ -500,10 +500,10 @@ Composes an `AgentConfig` from building blocks and sends it to the sidecar:
 Resolves the working directory for a session based on priority:
 
 1. **Explicit path** -- user picks a directory when starting the session
-2. **GitHub clone** -- if agent has `githubRepo`, clone to `~/.claudpeer/repos/{owner}-{repo}/` (or pull if already cloned). If session has `githubIssue`, create a feature branch
+2. **GitHub clone** -- if agent has `githubRepo`, clone to `~/.claudestudio/repos/{owner}-{repo}/` (or pull if already cloned). If session has `githubIssue`, create a feature branch
 3. **Agent default** -- agent's `defaultWorkingDirectory` if set
-4. **Shared workspace** -- if session joins a collaboration, use `~/.claudpeer/workspaces/{id}/`
-5. **Ephemeral sandbox** -- fallback: create `~/.claudpeer/sandboxes/{session-id}/`
+4. **Shared workspace** -- if session joins a collaboration, use `~/.claudestudio/workspaces/{id}/`
+5. **Ephemeral sandbox** -- fallback: create `~/.claudestudio/sandboxes/{session-id}/`
 
 GitHub integration: when `githubRepo` is set, auto-adds `Bash(gh *)` and `Bash(git *)` to allowedTools. System prompt is appended with repo context.
 
@@ -511,7 +511,7 @@ GitHub integration: when `githubRepo` is set, auto-adds `Bash(gh *)` and `Bash(g
 
 Handles multi-user networking (lives in the Swift app, not the sidecar):
 
-- **Discovery**: Bonjour/mDNS service type `_claudpeer._tcp`
+- **Discovery**: Bonjour/mDNS service type `_claudestudio._tcp`
 - **Sync**: WebSocket protocol for sharing agent definitions (JSON export/import)
 - **Relay** (v2): Routes cross-machine agent messages through the sidecar's PeerBus
 - **Cross-machine blackboard** (v2): Optionally sync blackboard entries between peers
@@ -718,7 +718,7 @@ Each entry is clickable -- chats expand to show full conversation, delegations l
 |  PEER NETWORK                                              [Settings]  |
 |                                                                        |
 |  My Identity: Shay's MacBook Pro                                      |
-|  Status: Broadcasting on _claudpeer._tcp                              |
+|  Status: Broadcasting on _claudestudio._tcp                              |
 |  Sharing: 5 agents, 12 skills                                        |
 |                                                                        |
 |  DISCOVERED PEERS (2)                                                  |
@@ -758,7 +758,7 @@ flowchart TD
     Library --> StartConvo["User clicks Start"]
     StartConvo --> Mission["Enter mission/goal\n+ optional GitHub issue URL\n+ optional dir override"]
     Mission --> Resolve{"Resolve\nworkspace"}
-    Resolve -->|"GitHub"| Clone["Clone repo to\n~/.claudpeer/repos/"]
+    Resolve -->|"GitHub"| Clone["Clone repo to\n~/.claudestudio/repos/"]
     Resolve -->|"Explicit"| UseDir["Use specified dir"]
     Resolve -->|"None"| Sandbox["Ephemeral sandbox"]
     Clone --> Provision
@@ -844,7 +844,7 @@ sequenceDiagram
     SC->>R: ClaudeSDKClient.query(...)
 
     R->>PB: workspace_create("sorting-collab")
-    PB-->>R: {path: "~/.claudpeer/workspaces/ws-1/"}
+    PB-->>R: {path: "~/.claudestudio/workspaces/ws-1/"}
     R->>R: Research (Write findings.md to workspace)
     R->>PB: blackboard_write("research.top3", "[quick, merge, heap]")
     PB-->>UI: blackboard.update event
@@ -915,12 +915,12 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Shay as Shay's ClaudPeer
+    participant Shay as Shay's ClaudeStudio
     participant Network as Local Network (Bonjour)
-    participant Alex as Alex's ClaudPeer
+    participant Alex as Alex's ClaudeStudio
 
-    Shay->>Network: Advertise _claudpeer._tcp (5 agents shared)
-    Alex->>Network: Browse _claudpeer._tcp
+    Shay->>Network: Advertise _claudestudio._tcp (5 agents shared)
+    Alex->>Network: Browse _claudestudio._tcp
     Network-->>Alex: Found: Shay's MacBook Pro
     Alex->>Shay: WebSocket: GET /agents
     Shay-->>Alex: [ResearchBot, CodeReviewer, BugFixer, ...]
@@ -1140,7 +1140,7 @@ In v1, the P2P network is a simple discovery + sync layer. No cross-machine agen
 
 **Discovery (Bonjour)**
 
-- Service type: `_claudpeer._tcp`
+- Service type: `_claudestudio._tcp`
 - TXT records: `version=1`, `agents=5`, `displayName=Shay's MacBook`
 - Port: Dynamic (assigned by OS)
 
@@ -1169,7 +1169,7 @@ Adds live cross-machine agent-to-agent communication. The Swift app becomes a br
 
 1. **Local network (Bonjour)** -- zero-config, automatic. Works within LAN.
 2. **VPN/Tailnet (Tailscale)** -- Bonjour works over Tailscale with no code changes. Extends to remote machines on the same Tailnet.
-3. **Cloud relay (future v3)** -- lightweight relay server for internet-wide connectivity. Each ClaudPeer registers with the relay, which forwards messages between peers that can't reach each other directly.
+3. **Cloud relay (future v3)** -- lightweight relay server for internet-wide connectivity. Each ClaudeStudio registers with the relay, which forwards messages between peers that can't reach each other directly.
 
 **Peer Registry**
 
@@ -1256,13 +1256,13 @@ Messages crossing the P2P network use this envelope format:
 ## 9. Project Structure
 
 ```
-ClaudPeer/
-  ClaudPeer.xcodeproj
+ClaudeStudio/
+  ClaudeStudio.xcodeproj
   system-plan-vision.md               -- This document
 
-  ClaudPeer/                           -- SWIFT APP (UI + Persistence + P2P)
+  ClaudeStudio/                           -- SWIFT APP (UI + Persistence + P2P)
     App/
-      ClaudPeerApp.swift              -- @main entry, WindowGroup, sidecar lifecycle
+      ClaudeStudioApp.swift              -- @main entry, WindowGroup, sidecar lifecycle
       AppState.swift                  -- Global app state (ObservableObject)
     Models/
       Agent.swift                     -- SwiftData @Model (+ instancePolicy, githubRepo)
@@ -1322,7 +1322,7 @@ ClaudPeer/
         tester.json
         devops.json
         writer.json
-      DefaultSkills/                  -- 5 ClaudPeer-specific skills
+      DefaultSkills/                  -- 5 ClaudeStudio-specific skills
         peer-collaboration/SKILL.md
         blackboard-patterns/SKILL.md
         delegation-patterns/SKILL.md
@@ -1383,7 +1383,7 @@ ClaudPeer/
 
 ## 11. Built-in Ecosystem
 
-ClaudPeer ships with a curated set of default agents, skills, MCP integrations, permission presets, and system prompt templates. These components are designed to work together out of the box, enabling the delegation and collaboration flows described in Section 3 without requiring users to build agents from scratch.
+ClaudeStudio ships with a curated set of default agents, skills, MCP integrations, permission presets, and system prompt templates. These components are designed to work together out of the box, enabling the delegation and collaboration flows described in Section 3 without requiring users to build agents from scratch.
 
 On first launch, the app seeds SwiftData from bundled JSON/Markdown resources in `Resources/`. Users can modify, duplicate, or delete any default -- they are starting points, not locked.
 
@@ -1457,9 +1457,9 @@ Each agent has a distinct role, permission scope, and instance policy. Together 
 - **Skills**: `peer-collaboration`, `blackboard-patterns`
 - **System prompt template**: Specialist (role=technical writer, domain=documentation)
 
-### 11.2 Built-in Skills (5 ClaudPeer-specific)
+### 11.2 Built-in Skills (5 ClaudeStudio-specific)
 
-These skills are specific to the multi-agent context. They teach agents how to use ClaudPeer's collaboration primitives (PeerBus, blackboard, workspaces). Distinct from the user's `~/.cursor/skills/` library, which can also be imported into the skill pool.
+These skills are specific to the multi-agent context. They teach agents how to use ClaudeStudio's collaboration primitives (PeerBus, blackboard, workspaces). Distinct from the user's `~/.cursor/skills/` library, which can also be imported into the skill pool.
 
 **`peer-collaboration`**
 
@@ -1504,7 +1504,7 @@ For agents sharing a directory. Covers:
 **`agent-identity`**
 
 Injected at every session start. Covers:
-- What ClaudPeer is (multi-agent orchestration system)
+- What ClaudeStudio is (multi-agent orchestration system)
 - That this agent is one of several, potentially collaborating
 - How to discover peers: `peer_list_agents()` returns all active agents
 - How to introduce itself in conversations (name, role, current task)
@@ -1520,7 +1520,7 @@ These MCP servers are pre-configured in the MCP pool. Users enable them per-agen
 - **Sentry** -- Error monitoring integration: query recent crashes, stack traces, error frequency. For Tester and DevOps. Transport: http.
 - **Linear / Jira** -- Issue tracking: create/update tickets, query sprint boards. For Orchestrator (task tracking) and DevOps. Transport: http.
 - **Slack / Discord** -- Notifications: post summaries, alert on failures, share results. For Orchestrator (team updates). Transport: http.
-- **Blackboard MCP** (v2, future) -- Exposes the ClaudPeer blackboard as a standard MCP server, allowing Claude Desktop and other external AI tools to read/write the shared knowledge store.
+- **Blackboard MCP** (v2, future) -- Exposes the ClaudeStudio blackboard as a standard MCP server, allowing Claude Desktop and other external AI tools to read/write the shared knowledge store.
 
 ### 11.4 Permission Presets (5 defaults)
 
@@ -1534,9 +1534,9 @@ Shipped in `DefaultPermissionPresets.json` and loaded into SwiftData on first la
   - Allow: `["Read", "Grep", "Glob", "Write(*.md)", "Write(*.txt)", "Write(*.json)", "WebSearch", "WebFetch"]`
 - **Git Only** -- Git and GitHub CLI operations plus read access. For: DevOps.
   - Allow: `["Read", "Grep", "Glob", "Bash(git *)", "Bash(gh *)", "Bash(docker *)", "Bash(npm *)", "Bash(bun *)"]`
-- **Sandbox** -- Full access restricted to `~/.claudpeer/sandboxes/`. For untrusted or experimental agents.
+- **Sandbox** -- Full access restricted to `~/.claudestudio/sandboxes/`. For untrusted or experimental agents.
   - Allow: `["*"]`
-  - Additional directories: `["~/.claudpeer/sandboxes/"]`
+  - Additional directories: `["~/.claudestudio/sandboxes/"]`
   - Deny: directories outside sandbox
 
 ### 11.5 System Prompt Templates (3 defaults)
@@ -1569,7 +1569,7 @@ Used by: Orchestrator.
 
 ### 11.6 First-Launch Seeding
 
-On first launch (detected by checking if the SwiftData store is empty), `ClaudPeerApp.swift` runs a seeding routine:
+On first launch (detected by checking if the SwiftData store is empty), `ClaudeStudioApp.swift` runs a seeding routine:
 
 1. Load `DefaultPermissionPresets.json` -> insert 5 `PermissionSet` records
 2. Load `DefaultMCPs.json` -> insert MCP server definitions (users still need to configure API keys)
@@ -1617,17 +1617,17 @@ All seeded records have `origin: .builtin`. Users can modify them freely -- edit
 
 ### Phase 4.5: Built-in Ecosystem ✅
 
-18. **ClaudPeer-specific skills** -- 5 SKILL.md files (peer-collaboration, blackboard-patterns, delegation-patterns, workspace-collaboration, agent-identity) in `Resources/DefaultSkills/`
+18. **ClaudeStudio-specific skills** -- 5 SKILL.md files (peer-collaboration, blackboard-patterns, delegation-patterns, workspace-collaboration, agent-identity) in `Resources/DefaultSkills/`
 19. **Built-in agent definitions** -- 7 agent JSON files (Orchestrator, Coder, Reviewer, Researcher, Tester, DevOps, Writer) in `Resources/DefaultAgents/`
 20. **Permission presets and MCP configs** -- `DefaultPermissionPresets.json` (5 presets) and `DefaultMCPs.json` (4 servers) in `Resources/`
 21. **System prompt templates** -- 3 template files (specialist.md, worker.md, coordinator.md) in `Resources/SystemPromptTemplates/` with `{{variable}}` placeholder resolution
 22. **First-launch seeding** -- `DefaultsSeeder` seeds all 5 categories (permissions, MCPs, skills, agents, templates) into SwiftData on first launch, with cross-entity linking (agents reference seeded skills, MCPs, and permissions by name)
-23. **Catalog PeerBus alignment** -- All 30 catalog agents include PeerBus system skills (peer-collaboration, blackboard-patterns, agent-identity) in their `requiredSkills` -- every agent in ClaudPeer can collaborate via PeerBus out of the box
+23. **Catalog PeerBus alignment** -- All 30 catalog agents include PeerBus system skills (peer-collaboration, blackboard-patterns, agent-identity) in their `requiredSkills` -- every agent in ClaudeStudio can collaborate via PeerBus out of the box
 
 ### Phase 5: Persistence and Polish ✅ (partial)
 
 23. **Session persistence** -- SwiftData persistence with `claudeSessionId` for SDK resume; `lastInjectedMessageId` watermark for group chat recovery. ⚠️ Missing: automatic crash recovery / sidecar watchdog
-24. **GitHub integration** -- `GitHubIntegration.swift` clones repos (shallow `--depth 1`, branch tracking, multi-path git detection); `WorkspaceResolver.swift` normalises repo URLs and resolves clone paths to `~/.claudpeer/repos/`. ⚠️ Missing: branch-from-issue workflow, `gh` CLI integration
+24. **GitHub integration** -- `GitHubIntegration.swift` clones repos (shallow `--depth 1`, branch tracking, multi-path git detection); `WorkspaceResolver.swift` normalises repo URLs and resolves clone paths to `~/.claudestudio/repos/`. ⚠️ Missing: branch-from-issue workflow, `gh` CLI integration
 25. **Conversation forking** -- Fork entire conversation or from any pivot message; clones sessions, participants, and message history; tracks lineage via `parentConversationId`
 
 ### Phase 5.5: UX and Quality-of-Life ✅
@@ -1645,8 +1645,8 @@ All seeded records have `origin: .builtin`. Users can modify them freely -- edit
 
 ### Phase 6: P2P Networking (v1) ✅
 
-36. **Bonjour discovery** -- `P2PNetworkManager` with `NWBrowser` for `_claudpeer._tcp`; auto-filters self; published `peers` array for UI
-37. **Peer catalog server** -- `PeerCatalogServer` TCP HTTP server on dynamic port; Bonjour TXT record with version and instance name; serves `GET /claudpeer/v1/agents` JSON
+36. **Bonjour discovery** -- `P2PNetworkManager` with `NWBrowser` for `_claudestudio._tcp`; auto-filters self; published `peers` array for UI
+37. **Peer catalog server** -- `PeerCatalogServer` TCP HTTP server on dynamic port; Bonjour TXT record with version and instance name; serves `GET /claudestudio/v1/agents` JSON
 38. **Definition sharing** -- `PeerAgentImporter` imports remote agents with duplicate detection via `originKind`/`originRemoteId`; tracks missing dependencies (skills, MCPs, permissions); disambiguates name collisions
 39. **P2P Network panel** -- `PeerNetworkView` two-pane layout: discovered peers on left, agent list on right; browse/import/refresh actions; import status feedback with missing-dependency reporting
 

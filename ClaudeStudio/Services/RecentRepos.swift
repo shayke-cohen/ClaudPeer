@@ -1,13 +1,13 @@
 import Foundation
 
 /// Manages a global list of recently-used GitHub repositories, persisted to
-/// `~/.claudpeer/recent-repos.json` so all instances share the same history.
+/// `~/.claudestudio/recent-repos.json` so all instances share the same history.
 enum RecentRepos {
     private static let maxCount = 10
 
     private static var fileURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claudpeer/recent-repos.json")
+            .appendingPathComponent(".claudestudio/recent-repos.json")
     }
 
     static func load() -> [String] {

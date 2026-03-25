@@ -1,4 +1,4 @@
-# ClaudPeer Test Report
+# ClaudeStudio Test Report
 
 **Date:** 2026-03-21
 **Platform:** macOS (darwin 24.6.0)
@@ -43,7 +43,7 @@
 ## 2. UI Tests (Argus MCP — macOS)
 
 **Tool:** Argus MCP (macOS platform, screenshot + AI assertion)
-**App:** ClaudPeer.app (Debug build, PID 56176)
+**App:** ClaudeStudio.app (Debug build, PID 56176)
 
 ### Layout & Structure
 
@@ -84,7 +84,7 @@
 
 | # | Test | Result | Notes |
 |---|------|--------|-------|
-| 21 | ClaudPeer title in toolbar | PASS | Centered in title bar |
+| 21 | ClaudeStudio title in toolbar | PASS | Centered in title bar |
 | 22 | New Chat button (plus.bubble) | PASS | Creates new conversations |
 | 23 | Agent Library button (cpu) | PASS | Opens agent library sheet |
 | 24 | Peer Network button (network) | PASS | Visible in toolbar |
@@ -109,7 +109,7 @@
 | # | Severity | Description |
 |---|----------|-------------|
 | 1 | Low | AppXray relay (port 19400) not running — `Connection refused` errors in logs. Non-functional impact since AppXray is optional for testing. |
-| 2 | Low | Zombie ClaudPeer process (PID 99899, UE state) from prior SwiftData crash still present. Requires reboot to clear. |
+| 2 | Low | Zombie ClaudeStudio process (PID 99899, UE state) from prior SwiftData crash still present. Requires reboot to clear. |
 | 3 | Medium | Sidecar EADDRINUSE when app launches while standalone sidecar is already running. App's embedded sidecar launch fails gracefully but doesn't connect to existing instance. |
 | 4 | Low | All sidebar conversations show "New Chat" — no auto-rename based on first message content. |
 

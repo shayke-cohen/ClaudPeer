@@ -1,4 +1,4 @@
-name: ClaudPeer UI Tests
+name: ClaudeStudio UI Tests
 description: Interactive UI tests for sidebar, chat, agents, comms, and orchestration
 
 tests:

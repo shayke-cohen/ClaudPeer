@@ -1,13 +1,13 @@
 #!/usr/bin/env bun
 /**
- * Standalone MCP server exposing the ClaudPeer blackboard as tools.
+ * Standalone MCP server exposing the ClaudeStudio blackboard as tools.
  * Communicates via JSON-RPC over stdio (MCP protocol).
- * Connects to the blackboard HTTP API at CLAUDPEER_HTTP_PORT (default 9850).
+ * Connects to the blackboard HTTP API at CLAUDESTUDIO_HTTP_PORT (default 9850).
  *
  * Usage: bun run sidecar/src/blackboard-mcp-server.ts
  */
 
-const HTTP_PORT = parseInt(process.env.CLAUDPEER_HTTP_PORT ?? "9850", 10);
+const HTTP_PORT = parseInt(process.env.CLAUDESTUDIO_HTTP_PORT ?? "9850", 10);
 const BASE_URL = `http://127.0.0.1:${HTTP_PORT}`;
 
 // --- MCP stdio transport ---
@@ -130,7 +130,7 @@ async function handleMessage(msg: any): Promise<void> {
       result: {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "claudpeer-blackboard", version: "0.1.0" },
+        serverInfo: { name: "claudestudio-blackboard", version: "0.1.0" },
       },
     });
     return;

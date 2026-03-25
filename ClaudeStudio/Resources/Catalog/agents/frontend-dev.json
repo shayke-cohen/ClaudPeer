@@ -15,7 +15,7 @@
     "component-design",
     "web-performance",
     "accessibility-audit",
-    "claudpeer-accessibility"
+    "claudestudio-accessibility"
   ],
   "extraMCPs": [],
   "systemPromptTemplate": "specialist",

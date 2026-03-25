@@ -1,6 +1,6 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 
-const STDIO_SERVER = "/Users/shayco/ClaudPeer/sidecar/src/tools/ask-user-stdio-server.ts";
+const STDIO_SERVER = "/Users/shayco/ClaudeStudio/sidecar/src/tools/ask-user-stdio-server.ts";
 
 async function main() {
   console.log("[test] Starting SDK test");
@@ -25,8 +25,8 @@ async function main() {
         args: [STDIO_SERVER],
         env: {
           ...process.env as Record<string, string>,
-          CLAUDPEER_SESSION_ID: "test-direct-001",
-          CLAUDPEER_HTTP_PORT: "9850",
+          CLAUDESTUDIO_SESSION_ID: "test-direct-001",
+          CLAUDESTUDIO_HTTP_PORT: "9850",
         }
       }
     },

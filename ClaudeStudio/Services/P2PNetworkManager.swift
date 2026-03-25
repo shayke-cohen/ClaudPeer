@@ -17,7 +17,7 @@ final class P2PNetworkManager: ObservableObject {
 
     private var browser: NWBrowser?
     private let server: PeerCatalogServer
-    private let browserQueue = DispatchQueue(label: "com.claudpeer.p2p.browser")
+    private let browserQueue = DispatchQueue(label: "com.claudestudio.p2p.browser")
     private var modelContext: ModelContext?
     weak var sidecarManager: SidecarManager?
     private var previousPeerNames: Set<String> = []
@@ -72,7 +72,7 @@ final class P2PNetworkManager: ObservableObject {
 
     private func startBrowser() {
         let params = NWParameters.tcp
-        let b = NWBrowser(for: .bonjour(type: "_claudpeer._tcp", domain: nil), using: params)
+        let b = NWBrowser(for: .bonjour(type: "_claudestudio._tcp", domain: nil), using: params)
         b.stateUpdateHandler = { [weak self] state in
             if case .failed(let err) = state {
                 Task { @MainActor in
@@ -251,7 +251,7 @@ private let p2pHTTPTimeoutSeconds: Double = 10
 /// Sendable helper that owns connection state for a single HTTP GET to a peer.
 private final class P2PHTTPFetch: Sendable {
     private let conn: NWConnection
-    private let queue = DispatchQueue(label: "com.claudpeer.p2p.http.client")
+    private let queue = DispatchQueue(label: "com.claudestudio.p2p.http.client")
     private let state: P2PHTTPFetchState
 
     init(endpoint: NWEndpoint, continuation: CheckedContinuation<[WireAgentExport], Error>) {
@@ -266,7 +266,7 @@ private final class P2PHTTPFetch: Sendable {
         conn.stateUpdateHandler = { [weak self] connState in
             switch connState {
             case .ready:
-                let req = "GET /claudpeer/v1/agents HTTP/1.1\r\nHost: claudpeer.local\r\nConnection: close\r\n\r\n"
+                let req = "GET /claudestudio/v1/agents HTTP/1.1\r\nHost: claudestudio.local\r\nConnection: close\r\n\r\n"
                 conn.send(content: Data(req.utf8), completion: .contentProcessed { err in
                     if let err {
                         state.complete(with: .failure(err), conn: conn)

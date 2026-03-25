@@ -1,10 +1,10 @@
-# AGENTS.md — ClaudPeer Codebase Guide
+# AGENTS.md — ClaudeStudio Codebase Guide
 
-This file helps AI coding agents navigate the ClaudPeer codebase efficiently.
+This file helps AI coding agents navigate the ClaudeStudio codebase efficiently.
 
 ## Quick Orientation
 
-ClaudPeer = **Swift macOS app** + **TypeScript Bun sidecar**, talking over **WebSocket JSON**.
+ClaudeStudio = **Swift macOS app** + **TypeScript Bun sidecar**, talking over **WebSocket JSON**.
 
 ```
 User ↔ SwiftUI ↔ AppState ↔ SidecarManager ↔ [WebSocket] ↔ WsServer ↔ SessionManager ↔ Claude Agent SDK
@@ -12,10 +12,10 @@ User ↔ SwiftUI ↔ AppState ↔ SidecarManager ↔ [WebSocket] ↔ WsServer �
 
 ## Codebase Map
 
-### Swift App (`ClaudPeer/`)
+### Swift App (`ClaudeStudio/`)
 
 #### Entry Points
-- `App/ClaudPeerApp.swift` — `@main`, window setup, model container registration, sidecar connect on appear
+- `App/ClaudeStudioApp.swift` — `@main`, window setup, model container registration, sidecar connect on appear
 - `App/AppState.swift` — `@MainActor ObservableObject`: sidecar status, active sessions, streaming text buffers, event handling, UI sheet toggles (`showNewSessionSheet`, `showAgentLibrary`, `showPeerNetwork`)
 
 #### Models (`Models/`)
@@ -46,10 +46,10 @@ All are SwiftData `@Model` classes. Relationships use UUID references (not Swift
 | `GitHubIntegration.swift` | `git` operations | `ensureClone` |
 | `GitWorkspacePreparer.swift` | Pre-sidecar clone | `prepareIfNeeded` |
 | `P2PNetworkManager.swift` | LAN peer sync | Bonjour browse/advertise, `fetchAgents` |
-| `PeerCatalogServer.swift` | Peer HTTP | `GET /claudpeer/v1/agents` |
+| `PeerCatalogServer.swift` | Peer HTTP | `GET /claudestudio/v1/agents` |
 | `PeerAgentImporter.swift` | Import from wire DTO | `importFromWire` |
 
-**SidecarManager** finds Bun at `/opt/homebrew/bin/bun`, `/usr/local/bin/bun`, or `~/.bun/bin/bun`. Finds sidecar at: bundle resources, cwd, `~/ClaudPeer/sidecar/`, or `UserDefaults["claudpeer.projectPath"]`.
+**SidecarManager** finds Bun at `/opt/homebrew/bin/bun`, `/usr/local/bin/bun`, or `~/.bun/bin/bun`. Finds sidecar at: bundle resources, cwd, `~/ClaudeStudio/sidecar/`, or `UserDefaults["claudestudio.projectPath"]`.
 
 **AgentProvisioner** resolves working directory by priority: explicit override → GitHub clone path → agent default → ephemeral sandbox. Appends PeerBus tool names to allowedTools (injected via in-process MCP in the sidecar). **GitWorkspacePreparer** runs before the first sidecar message when the session is GitHub-backed so the clone exists on disk.
 
@@ -95,7 +95,7 @@ All views have `.accessibilityIdentifier()` modifiers for AppXray UI testing (`@
 
 | File | Role |
 |---|---|
-| `stores/blackboard-store.ts` | In-memory Map + JSON disk at `~/.claudpeer/blackboard/{scope}.json` |
+| `stores/blackboard-store.ts` | In-memory Map + JSON disk at `~/.claudestudio/blackboard/{scope}.json` |
 | `stores/session-registry.ts` | Per-session state (config, status, claudeSessionId, cost) |
 
 #### SDK Integration (`session-manager.ts`)
@@ -146,7 +146,7 @@ These items from `system-plan-vision.md` are still ahead of the current app (see
 |---|---|
 | Hook engine (SDK) | Optional depth: `PreToolUse` / `PostToolUse` in the sidecar beyond streaming message handling |
 | P2P v2 | `peer.registry.update`, `route.remote`, cross-machine PeerBus relay, Swift bridge |
-| Blackboard as MCP | External MCP server exposing ClaudPeer blackboard (vision §11.3) |
+| Blackboard as MCP | External MCP server exposing ClaudeStudio blackboard (vision §11.3) |
 | Pool views | SkillPoolView / MCPPoolView as first-class management UIs (catalog covers install) |
 | Sidecar provisioner | `sidecar/src/agent-provisioner.ts` — TS-side config builder (optional mirror of Swift) |
 
@@ -158,9 +158,9 @@ See `TESTING.md` for the full testing guide — screen-by-screen control referen
 
 ### Quick Reference
 
-**Swift unit tests** (`ClaudPeerTests/`, run with `xcodebuild test`):
+**Swift unit tests** (`ClaudeStudioTests/`, run with `xcodebuild test`):
 ```bash
-xcodebuild test -project ClaudPeer.xcodeproj -scheme ClaudPeer -destination 'platform=macOS'
+xcodebuild test -project ClaudeStudio.xcodeproj -scheme ClaudeStudio -destination 'platform=macOS'
 ```
 
 **Sidecar tests** (require a running sidecar):
@@ -170,14 +170,14 @@ bun run start &
 bun test
 ```
 
-**AppXray** (inside-out, DEBUG builds): connect via `session({ action: "discover" })` then `session({ action: "connect", appId: "com.claudpeer.app" })`. Target elements with `@testId("chat.sendButton")`.
+**AppXray** (inside-out, DEBUG builds): connect via `session({ action: "discover" })` then `session({ action: "connect", appId: "com.claudestudio.app" })`. Target elements with `@testId("chat.sendButton")`.
 
-**Argus** (outside-in E2E): `inspect({ platform: "macos", appName: "ClaudPeer" })` to start, then `act`/`assert`/`wait` for automation.
+**Argus** (outside-in E2E): `inspect({ platform: "macos", appName: "ClaudeStudio" })` to start, then `act`/`assert`/`wait` for automation.
 
 ## Environment
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | — | Required by Claude Agent SDK |
-| `CLAUDPEER_WS_PORT` | 9849 | WebSocket port |
-| `CLAUDPEER_HTTP_PORT` | 9850 | Blackboard HTTP API port |
+| `CLAUDESTUDIO_WS_PORT` | 9849 | WebSocket port |
+| `CLAUDESTUDIO_HTTP_PORT` | 9850 | Blackboard HTTP API port |

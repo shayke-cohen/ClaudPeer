@@ -1,5 +1,5 @@
 import XCTest
-@testable import ClaudPeer
+@testable import ClaudeStudio
 
 final class WorkspaceResolverTests: XCTestCase {
     func testCloneURLShorthand() {
@@ -23,6 +23,6 @@ final class WorkspaceResolverTests: XCTestCase {
 
     func testCloneDestinationUnderRepos() {
         let p = WorkspaceResolver.cloneDestinationPath(repoInput: "org/repo")
-        XCTAssertTrue(p.hasSuffix("/.claudpeer/repos/org-repo"))
+        XCTAssertTrue(p.hasSuffix("/.claudestudio/repos/org-repo"))
     }
 }
