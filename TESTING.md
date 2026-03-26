@@ -233,9 +233,9 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Mission preview | `chat.missionPreview` | — | `@testId("chat.missionPreview")` |
 | Agent icon button | `chat.agentIconButton` | `Open agent {name}` | `@testId("chat.agentIconButton")` |
 | Default chat icon | `chat.chatIcon` | — | `@testId("chat.chatIcon")` |
-| Pause button | `chat.pauseButton` | `Pause session` | `@testId("chat.pauseButton")` |
-| Close session button | `chat.closeSessionButton` | `Close session` | `@testId("chat.closeSessionButton")` |
-| Resume button | `chat.resumeButton` | `Resume session` | `@testId("chat.resumeButton")` |
+| Stop button | `chat.stopButton` | `Stop agent` | `@testId("chat.stopButton")` |
+| Resume button | `chat.resumeButton` | `Resume agent` | `@testId("chat.resumeButton")` |
+| Menu: Close Conversation | `chat.moreOptions.closeConversation` | `Close conversation` | `@testId("chat.moreOptions.closeConversation")` |
 | More options menu | `chat.moreOptionsMenu` | `More options` | `@testId("chat.moreOptionsMenu")` |
 | Menu: Fork | `chat.moreOptions.fork` | — | `@testId("chat.moreOptions.fork")` |
 | Menu: Rename | `chat.moreOptions.rename` | — | `@testId("chat.moreOptions.rename")` |

@@ -218,6 +218,7 @@ struct ChatView: View {
     let conversationId: UUID
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var appState: AppState
+    @Environment(WindowState.self) private var windowState: WindowState
     @StateObject private var quickActionTracker = QuickActionUsageTracker()
     @State private var inputText = ""
     @State private var inputHeight: CGFloat = PasteableTextField.minHeight
@@ -250,7 +251,6 @@ struct ChatView: View {
     }
     /// The ID of the last assistant message produced while plan mode was active (for showing the Execute Plan action bar).
     @State private var lastPlanResponseMessageId: UUID?
-    @State private var showAttachRepoSheet = false
     @FocusState private var topicFieldFocused: Bool
 
     @Query private var allConversations: [Conversation]
@@ -429,7 +429,7 @@ struct ChatView: View {
                 checkForPendingResponse()
             }
         }
-        .onChange(of: appState.autoSendText) { _, _ in consumeAutoSendText() }
+        .onChange(of: windowState.autoSendText) { _, _ in consumeAutoSendText() }
         .onAppear { consumeAutoSendText() }
         .onChange(of: appState.sessionActivity) { _, _ in
             if let convo = conversation {
@@ -487,11 +487,6 @@ struct ChatView: View {
         }
         .sheet(isPresented: $showAddAgentsSheet) {
             AddAgentsToChatSheet(conversationId: conversationId)
-                .environmentObject(appState)
-                .environment(\.modelContext, modelContext)
-        }
-        .sheet(isPresented: $showAttachRepoSheet) {
-            AttachRepoSheet(conversationId: conversationId)
                 .environmentObject(appState)
                 .environment(\.modelContext, modelContext)
         }
@@ -612,7 +607,7 @@ struct ChatView: View {
             .xrayId("chat.groupAgentIcons")
         } else if let agent = primarySession?.agent {
             Button {
-                appState.showAgentLibrary = true
+                windowState.showAgentLibrary = true
             } label: {
                 Image(systemName: agent.icon)
                     .foregroundStyle(Color.fromAgentColor(agent.color))
@@ -634,26 +629,29 @@ struct ChatView: View {
     private func headerActions(_ convo: Conversation) -> some View {
         HStack(spacing: 6) {
             if convo.status == .active {
-                Button { pauseSession() } label: {
-                    Image(systemName: "pause.fill")
+                let allSessionsPaused = !convo.sessions.isEmpty && convo.sessions.allSatisfy { $0.status == .paused }
+                if allSessionsPaused {
+                    Button { resumeSession() } label: {
+                        Image(systemName: "play.fill")
+                    }
+                    .help("Resume agent")
+                    .xrayId("chat.resumeButton")
+                    .accessibilityLabel("Resume agent")
+                } else if !convo.sessions.isEmpty {
+                    Button { pauseSession() } label: {
+                        Image(systemName: "stop.fill")
+                    }
+                    .help("Stop agent")
+                    .xrayId("chat.stopButton")
+                    .accessibilityLabel("Stop agent")
                 }
-                .help("Pause session")
-                .xrayId("chat.pauseButton")
-                .accessibilityLabel("Pause session")
-
-                Button { closeConversation(convo) } label: {
-                    Image(systemName: "stop.circle")
-                }
-                .help("Close session")
-                .xrayId("chat.closeSessionButton")
-                .accessibilityLabel("Close session")
             } else if convo.sessions.contains(where: { $0.status == .paused }) {
                 Button { resumeSession() } label: {
                     Image(systemName: "play.fill")
                 }
-                .help("Resume session")
+                .help("Resume agent")
                 .xrayId("chat.resumeButton")
-                .accessibilityLabel("Resume session")
+                .accessibilityLabel("Resume agent")
             }
 
             Menu {
@@ -663,6 +661,14 @@ struct ChatView: View {
                     }
                     .xrayId("chat.moreOptions.fork")
                 }
+                if convo.status == .active {
+                    Button { closeConversation(convo) } label: {
+                        Label("Close Conversation", systemImage: "xmark.circle")
+                    }
+                    .xrayId("chat.moreOptions.closeConversation")
+                    .accessibilityLabel("Close conversation")
+                }
+                Divider()
                 Button {
                     editedTopic = convo.topic ?? ""
                     isEditingTopic = true
@@ -732,11 +738,6 @@ struct ChatView: View {
                 .disabled(!canExportChat)
                 .xrayId("chat.shareSubmenu")
                 .accessibilityLabel("Share chat")
-                Divider()
-                Button { showAttachRepoSheet = true } label: {
-                    Label("Attach GitHub Repo", systemImage: "arrow.triangle.branch")
-                }
-                .xrayId("chat.moreOptions.attachRepo")
                 Divider()
                 Toggle(isOn: Binding(
                     get: { AppSettings.store.object(forKey: AppSettings.notificationsEnabledKey) as? Bool ?? true },
@@ -1602,7 +1603,7 @@ struct ChatView: View {
             agent: nil,
             mission: nil,
             mode: .interactive,
-            workingDirectory: appState.instanceWorkingDirectory ?? NSHomeDirectory()
+            workingDirectory: windowState.projectDirectory.isEmpty ? NSHomeDirectory() : windowState.projectDirectory
         )
         session.conversations = [convo]
         convo.sessions.append(session)
@@ -1658,8 +1659,8 @@ struct ChatView: View {
     // MARK: - Auto-Send from Launch Intent
 
     private func consumeAutoSendText() {
-        guard let text = appState.autoSendText else { return }
-        appState.autoSendText = nil
+        guard let text = windowState.autoSendText else { return }
+        windowState.autoSendText = nil
         inputText = text
         Task { @MainActor in
             for _ in 0..<30 {
@@ -1739,11 +1740,10 @@ struct ChatView: View {
             modelContext.insert(session)
             modelContext.insert(p)
         }
-        GroupWorkingDirectory.ensureShared(
-            for: convo,
-            instanceDefault: appState.instanceWorkingDirectory,
-            modelContext: modelContext
-        )
+        // Ensure all sessions use the project directory
+        for session in convo.sessions where session.workingDirectory.isEmpty {
+            session.workingDirectory = windowState.projectDirectory
+        }
         try? modelContext.save()
 
         var targetSessions: [Session] = conversationSessions.sorted(by: { $0.startedAt < $1.startedAt })
@@ -1833,22 +1833,17 @@ struct ChatView: View {
         manager: SidecarManager,
         planMode: Bool = false
     ) async {
-        GroupWorkingDirectory.ensureShared(
+        // Ensure worktree exists for this conversation (lazy — created on first message)
+        let worktreePath = await WorktreeManager.ensureWorktree(
             for: convo,
-            instanceDefault: appState.instanceWorkingDirectory,
+            projectDirectory: windowState.projectDirectory,
             modelContext: modelContext
         )
-        for session in targetSessions {
-            do {
-                try await GitWorkspacePreparer.prepareIfNeeded(session: session, modelContext: modelContext)
-            } catch {
-                isProcessing = false
-                activeStreamSessionKey = nil
-                let key = session.id.uuidString
-                appState.lastSessionEvent[key] = .error("Workspace: \(error.localizedDescription)")
-                return
-            }
+        // Update all sessions to use the worktree path
+        for session in targetSessions where session.workingDirectory != worktreePath {
+            session.workingDirectory = worktreePath
         }
+        try? modelContext.save()
         let participants = convo.participants
         let provisioner = AgentProvisioner(modelContext: modelContext)
         let fanOutContext = GroupPeerFanOutContext()
@@ -1964,7 +1959,7 @@ struct ChatView: View {
             maxTurns: 5,
             maxBudget: nil,
             maxThinkingTokens: 10000,
-            workingDirectory: appState.instanceWorkingDirectory ?? NSHomeDirectory(),
+            workingDirectory: windowState.projectDirectory.isEmpty ? NSHomeDirectory() : windowState.projectDirectory,
             skills: [],
             interactive: true
         )
@@ -2300,7 +2295,7 @@ struct ChatView: View {
         guard let newConvo = cloneConversationForFork(from: conversation, throughMessage: nil),
               let oldPrimary = conversation?.primarySession,
               let newPrimary = newConvo.primarySession else { return }
-        appState.selectedConversationId = newConvo.id
+        windowState.selectedConversationId = newConvo.id
         Task {
             try? await appState.sidecarManager?.send(.sessionFork(
                 parentSessionId: oldPrimary.id.uuidString,
@@ -2313,7 +2308,7 @@ struct ChatView: View {
         guard let newConvo = cloneConversationForFork(from: conversation, throughMessage: pivot),
               let oldPrimary = conversation?.primarySession,
               let newPrimary = newConvo.primarySession else { return }
-        appState.selectedConversationId = newConvo.id
+        windowState.selectedConversationId = newConvo.id
         Task {
             try? await appState.sidecarManager?.send(.sessionFork(
                 parentSessionId: oldPrimary.id.uuidString,
@@ -2339,8 +2334,7 @@ struct ChatView: View {
                 agent: oldSession.agent,
                 mission: oldSession.mission,
                 mode: oldSession.mode,
-                workingDirectory: oldSession.workingDirectory,
-                workspaceType: oldSession.workspaceType
+                workingDirectory: oldSession.workingDirectory
             )
             let agent = oldSession.agent
             newSession.conversations = [newConvo]
@@ -2439,8 +2433,7 @@ struct ChatView: View {
                 agent: session.agent,
                 mission: session.mission,
                 mode: session.mode,
-                workingDirectory: session.workingDirectory,
-                workspaceType: session.workspaceType
+                workingDirectory: session.workingDirectory
             )
             newSession.conversations = [newConvo]
             newConvo.sessions.append(newSession)
@@ -2457,6 +2450,6 @@ struct ChatView: View {
 
         modelContext.insert(newConvo)
         try? modelContext.save()
-        appState.selectedConversationId = newConvo.id
+        windowState.selectedConversationId = newConvo.id
     }
 }
