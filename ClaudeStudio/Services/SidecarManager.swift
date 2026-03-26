@@ -136,6 +136,10 @@ final class SidecarManager: ObservableObject, Sendable {
     }
 
     private func connectWebSocket() async throws {
+        // Cancel any previous connection attempt
+        webSocketTask?.cancel(with: .goingAway, reason: nil)
+        urlSession?.invalidateAndCancel()
+
         let url = URL(string: "ws://localhost:\(config.wsPort)")!
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 5

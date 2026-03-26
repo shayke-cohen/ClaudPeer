@@ -17,6 +17,7 @@ struct MessageBubble: View {
     @State private var isHovered = false
     @State private var isCopied = false
     @State private var isThinkingExpanded = false
+    @State private var mermaidHeight: CGFloat = 150
 
     private var sender: Participant? {
         guard let senderId = message.senderParticipantId else { return nil }
@@ -59,21 +60,42 @@ struct MessageBubble: View {
         let format = message.toolName ?? "html"
         let title = message.toolInput
         let content = message.text
-        let maxHeight = Double(message.toolOutput ?? "400") ?? 400
+        let maxHeight = Double(message.toolOutput ?? "800") ?? 800
 
         switch format {
         case "mermaid":
-            VStack(alignment: .leading, spacing: 4) {
-                if let title, !title.isEmpty {
-                    Text(title)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 6) {
+                    Image(systemName: "diagram.below.topbar")
+                        .foregroundStyle(.purple)
+                        .font(.caption)
+                    Text(title ?? "Diagram")
                         .font(.caption)
                         .fontWeight(.medium)
-                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer()
+                    Button {
+                        RichContentOpener.openMermaid(content, title: title)
+                    } label: {
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Open in browser")
                 }
-                MermaidDiagramView(source: content)
-                    .frame(height: min(maxHeight, 500))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color(.textBackgroundColor).opacity(0.4))
+                Divider().opacity(0.3)
+                MermaidDiagramView(source: content, measuredHeight: $mermaidHeight)
+                    .frame(height: min(mermaidHeight, maxHeight))
             }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.secondary.opacity(0.2), lineWidth: 0.5)
+            )
         case "markdown":
             VStack(alignment: .leading, spacing: 4) {
                 if let title, !title.isEmpty {

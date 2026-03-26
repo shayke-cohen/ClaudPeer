@@ -13,7 +13,11 @@ export type SidecarCommand =
   | { type: "generate.agent"; requestId: string; prompt: string; availableSkills: SkillCatalogEntry[]; availableMCPs: MCPCatalogEntry[] }
   | { type: "session.questionAnswer"; sessionId: string; questionId: string; answer: string; selectedOptions?: string[] }
   | { type: "session.confirmationAnswer"; sessionId: string; confirmationId: string; approved: boolean; modifiedAction?: string }
-  | { type: "session.updateCwd"; sessionId: string; workingDirectory: string };
+  | { type: "session.updateCwd"; sessionId: string; workingDirectory: string }
+  | { type: "task.create"; task: TaskWire }
+  | { type: "task.update"; taskId: string; updates: Partial<TaskWire> }
+  | { type: "task.list"; filter?: { status?: string } }
+  | { type: "task.claim"; taskId: string; agentName: string };
 
 export interface PeerAgentWire {
   name: string;
@@ -113,7 +117,11 @@ export type SidecarEvent =
   | { type: "agent.confirmation"; sessionId: string; confirmationId: string; action: string; reason: string; riskLevel: "low" | "medium" | "high"; details?: string }
   | { type: "stream.richContent"; sessionId: string; format: "html" | "mermaid" | "markdown"; title?: string; content: string; height?: number }
   | { type: "stream.progress"; sessionId: string; progressId: string; title: string; steps: ProgressStep[] }
-  | { type: "stream.suggestions"; sessionId: string; suggestions: SuggestionItem[] };
+  | { type: "stream.suggestions"; sessionId: string; suggestions: SuggestionItem[] }
+  | { type: "conversation.inviteAgent"; sessionId: string; agentName: string }
+  | { type: "task.created"; task: TaskWire }
+  | { type: "task.updated"; task: TaskWire }
+  | { type: "task.list.result"; tasks: TaskWire[] };
 
 export interface QuestionOption {
   label: string;
@@ -173,6 +181,24 @@ export interface BlackboardEntry {
   workspaceId?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Task board entry
+export interface TaskWire {
+  id: string;
+  title: string;
+  description: string;
+  status: "backlog" | "ready" | "inProgress" | "done" | "failed" | "blocked";
+  priority: "low" | "medium" | "high" | "critical";
+  labels: string[];
+  result?: string;
+  parentTaskId?: string;
+  assignedAgentId?: string;
+  assignedGroupId?: string;
+  conversationId?: string;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
 }
 
 // ─── REST API Types ───

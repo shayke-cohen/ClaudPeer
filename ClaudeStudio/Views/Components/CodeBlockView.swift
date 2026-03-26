@@ -7,6 +7,7 @@ struct CodeBlockView: View {
     @AppStorage(AppSettings.renderMermaidKey, store: AppSettings.store) private var renderMermaid = true
     @State private var isCopied = false
     @State private var showMermaidSource = false
+    @State private var mermaidHeight: CGFloat = 150
 
     private var isMermaid: Bool {
         configuration.language?.lowercased() == "mermaid" && renderMermaid
@@ -17,8 +18,8 @@ struct CodeBlockView: View {
             header
             Divider().opacity(0.3)
             if isMermaid && !showMermaidSource {
-                MermaidDiagramView(source: configuration.content)
-                    .frame(minHeight: 100, maxHeight: 500)
+                MermaidDiagramView(source: configuration.content, measuredHeight: $mermaidHeight)
+                    .frame(height: min(mermaidHeight, 500))
             } else {
                 codeContent
             }

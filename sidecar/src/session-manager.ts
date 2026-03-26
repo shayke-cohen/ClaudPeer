@@ -109,6 +109,8 @@ export class SessionManager {
       const attachmentCount = attachments?.length ?? 0;
       const mcpNames = Object.keys(options.mcpServers ?? {});
       debugLog(`[session] query() start for ${sessionId} (model=${options.model}, cwd=${options.cwd ?? "none"}, turns=${options.maxTurns}, attachments=${attachmentCount}, mcpServers=${mcpNames.join(",")})`);
+      const appendUsed = (options.systemPrompt as any)?.append ? "YES" : "NO";
+      Bun.write("/tmp/claudestudio-session.log", `[${new Date().toISOString()}] query start: session=${sessionId} model=${options.model} append=${appendUsed} mcps=${mcpNames.join(",")}\n`).catch(() => {});
       const stream = query({ prompt, options });
       let resultText = "";
       const usageAccum = { inputTokens: 0, outputTokens: 0, numTurns: 0 };
@@ -507,6 +509,7 @@ You can also use these markdown features that render as rich cards:
 
       case "tool_use":
         console.log(`[session:${sessionId}] tool_use: name="${message.name}" id="${message.id}" input=${JSON.stringify(message.input ?? {}).substring(0, 100)}`);
+        Bun.write("/tmp/claudestudio-tooluse.log", `[${new Date().toISOString()}] tool_use: name="${message.name}" session=${sessionId}\n`).catch(() => {});
         this.emit({
           type: "stream.toolCall",
           sessionId,

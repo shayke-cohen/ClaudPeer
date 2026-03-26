@@ -331,6 +331,7 @@ enum SidecarEvent: Sendable {
     case streamRichContent(sessionId: String, format: String, title: String?, content: String, height: Int?)
     case streamProgress(sessionId: String, progressId: String, title: String, steps: [ProgressStep])
     case streamSuggestions(sessionId: String, suggestions: [SuggestionItem])
+    case conversationInviteAgent(sessionId: String, agentName: String)
     case taskCreated(task: TaskWireSwift)
     case taskUpdated(task: TaskWireSwift)
     case taskListResult(tasks: [TaskWireSwift])
@@ -429,6 +430,7 @@ struct IncomingWireMessage: Codable, Sendable {
     let suggestions: [SuggestionItem]?
     let taskWire: TaskWireSwift?
     let tasks: [TaskWireSwift]?
+    let agentName: String?
 
     enum CodingKeys: String, CodingKey {
         case type, sessionId, text, tool, input, output, result, cost
@@ -442,6 +444,7 @@ struct IncomingWireMessage: Codable, Sendable {
         case format, title, content, height, progressId, steps, suggestions
         case taskWire = "task"
         case tasks
+        case agentName
     }
 
     func toEvent() -> SidecarEvent? {
@@ -508,6 +511,9 @@ struct IncomingWireMessage: Codable, Sendable {
         case "stream.suggestions":
             guard let sid = sessionId, let s = suggestions else { return nil }
             return .streamSuggestions(sessionId: sid, suggestions: s)
+        case "conversation.inviteAgent":
+            guard let sid = sessionId, let name = agentName else { return nil }
+            return .conversationInviteAgent(sessionId: sid, agentName: name)
         case "task.created":
             guard let t = taskWire else { return nil }
             return .taskCreated(task: t)

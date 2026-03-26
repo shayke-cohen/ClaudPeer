@@ -830,6 +830,9 @@ final class AppState: ObservableObject {
             generateAgentRequestId = nil
             print("[AppState] Agent generation error: \(error)")
 
+        case .conversationInviteAgent(let sessionId, let agentName):
+            handleInviteAgent(sessionId: sessionId, agentName: agentName)
+
         case .taskCreated(let task):
             persistTask(task)
 
@@ -851,6 +854,63 @@ final class AppState: ObservableObject {
             pendingQuestions.removeAll()
             startDisconnectTimer()
         }
+    }
+
+    // MARK: - Group Invite Agent
+
+    private func handleInviteAgent(sessionId: String, agentName: String) {
+        guard let ctx = modelContext else { return }
+        guard let sessionUUID = UUID(uuidString: sessionId) else { return }
+
+        // Find the conversation that the requesting session belongs to
+        let sessionDescriptor = FetchDescriptor<Session>(predicate: #Predicate { s in s.id == sessionUUID })
+        guard let requestingSession = try? ctx.fetch(sessionDescriptor).first,
+              let conversation = requestingSession.conversations.first else {
+            print("[AppState] handleInviteAgent: no conversation found for session \(sessionId)")
+            return
+        }
+
+        // Find the agent by name
+        let agentDescriptor = FetchDescriptor<Agent>()
+        guard let agents = try? ctx.fetch(agentDescriptor),
+              let agent = agents.first(where: { $0.name.localizedCaseInsensitiveCompare(agentName) == .orderedSame }) else {
+            print("[AppState] handleInviteAgent: agent '\(agentName)' not found")
+            return
+        }
+
+        // Check if agent is already in the conversation
+        if conversation.sessions.contains(where: { $0.agent?.id == agent.id }) {
+            print("[AppState] handleInviteAgent: '\(agentName)' already in conversation")
+            return
+        }
+
+        // Provision a new session for the invited agent
+        let provisioner = AgentProvisioner(modelContext: ctx)
+        let primaryWd = requestingSession.workingDirectory
+        let (config, newSession) = provisioner.provision(
+            agent: agent,
+            mission: requestingSession.mission,
+            workingDirOverride: primaryWd.isEmpty ? nil : primaryWd
+        )
+
+        newSession.conversations = [conversation]
+        conversation.sessions.append(newSession)
+
+        let participant = Participant(type: .agentSession(sessionId: newSession.id), displayName: agent.name)
+        participant.conversation = conversation
+        conversation.participants.append(participant)
+
+        ctx.insert(newSession)
+        ctx.insert(participant)
+        try? ctx.save()
+
+        // Send sessionCreate to the sidecar so the agent is ready to receive messages
+        sendToSidecar(.sessionCreate(
+            conversationId: newSession.id.uuidString,
+            agentConfig: config
+        ))
+
+        print("[AppState] handleInviteAgent: added '\(agentName)' to conversation \(conversation.id)")
     }
 
     // MARK: - Task Board
@@ -948,6 +1008,61 @@ final class AppState: ObservableObject {
             task.assignedGroupId = nil
         }
         try? modelContext?.save()
+    }
+
+    /// Launch an Orchestrator session to process a specific task.
+    /// Marks the task as ready if it's in backlog, then creates a new Orchestrator
+    /// conversation with a prompt instructing it to claim and execute the task.
+    func runTaskWithOrchestrator(_ task: TaskItem, modelContext: ModelContext) {
+        // Ensure task is ready for the orchestrator
+        if task.status == .backlog {
+            updateTaskStatus(task, status: .ready)
+        }
+
+        // Find the Orchestrator agent
+        let descriptor = FetchDescriptor<Agent>()
+        guard let agents = try? modelContext.fetch(descriptor),
+              let orchestrator = agents.first(where: { $0.name.lowercased() == "orchestrator" }) else {
+            print("[AppState] runTaskWithOrchestrator: Orchestrator agent not found")
+            return
+        }
+
+        // Provision a new session
+        let provisioner = AgentProvisioner(modelContext: modelContext)
+        let (_, session) = provisioner.provision(agent: orchestrator, mission: task.title)
+
+        // Create conversation
+        let conversation = Conversation(topic: "Task: \(task.title)")
+        let userParticipant = Participant(type: .user, displayName: "You")
+        let agentParticipant = Participant(
+            type: .agentSession(sessionId: session.id),
+            displayName: orchestrator.name
+        )
+        userParticipant.conversation = conversation
+        agentParticipant.conversation = conversation
+        conversation.participants = [userParticipant, agentParticipant]
+        session.conversations = [conversation]
+
+        modelContext.insert(session)
+        modelContext.insert(conversation)
+
+        // Link task to this conversation
+        task.conversationId = conversation.id
+        try? modelContext.save()
+
+        selectedConversationId = conversation.id
+
+        // Auto-send the prompt to process this task
+        let prompt = """
+        Check the task board and process the task with ID: \(task.id.uuidString)
+
+        Task: \(task.title)
+        Description: \(task.taskDescription)
+        Priority: \(task.priority.rawValue)
+
+        Use task_board_claim to claim it, then plan and execute it by delegating to the appropriate agents.
+        """
+        autoSendText = prompt
     }
 
     #if DEBUG

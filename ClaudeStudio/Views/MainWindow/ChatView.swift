@@ -1678,11 +1678,12 @@ struct ChatView: View {
             allowedTools: [],
             mcpServers: [],
             model: "claude-sonnet-4-6",
-            maxTurns: 1,
+            maxTurns: 5,
             maxBudget: nil,
             maxThinkingTokens: 10000,
             workingDirectory: appState.instanceWorkingDirectory ?? NSHomeDirectory(),
-            skills: []
+            skills: [],
+            interactive: true
         )
     }
 

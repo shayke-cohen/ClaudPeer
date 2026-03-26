@@ -46,6 +46,7 @@ export function createRichDisplayTools(ctx: ToolContext, callingSessionId: strin
       },
       async (args) => {
         console.log(`[render_content] format=${args.format} for session ${callingSessionId}`);
+        Bun.write("/tmp/claudestudio-render.log", `[${new Date().toISOString()}] render_content called: format=${args.format} title=${args.title} content_len=${args.content.length}\n`);
         ctx.broadcast({
           type: "stream.richContent",
           sessionId: callingSessionId,
