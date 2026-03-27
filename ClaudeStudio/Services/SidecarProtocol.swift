@@ -327,9 +327,9 @@ enum SidecarEvent: Sendable {
     case streamToolResult(sessionId: String, tool: String, output: String)
     case sessionResult(sessionId: String, result: String, cost: Double, tokenCount: Int, toolCallCount: Int)
     case sessionError(sessionId: String, error: String)
-    case peerChat(channelId: String, from: String, message: String)
-    case peerDelegate(from: String, to: String, task: String)
-    case blackboardUpdate(key: String, value: String, writtenBy: String)
+    case peerChat(sessionId: String, channelId: String, from: String, message: String)
+    case peerDelegate(sessionId: String, from: String, to: String, task: String)
+    case blackboardUpdate(sessionId: String, key: String, value: String, writtenBy: String)
     case sessionForked(parentSessionId: String, childSessionId: String)
     case streamImage(sessionId: String, imageData: String, mediaType: String, fileName: String?)
     case streamFileCard(sessionId: String, filePath: String, fileType: String, fileName: String)
@@ -490,14 +490,14 @@ struct IncomingWireMessage: Codable, Sendable {
             guard let sid = sessionId else { return nil }
             return .sessionError(sessionId: sid, error: error ?? "Unknown error")
         case "peer.chat":
-            guard let ch = channelId, let f = from, let m = message else { return nil }
-            return .peerChat(channelId: ch, from: f, message: m)
+            guard let sid = sessionId, let ch = channelId, let f = from, let m = message else { return nil }
+            return .peerChat(sessionId: sid, channelId: ch, from: f, message: m)
         case "peer.delegate":
-            guard let f = from, let t = to, let tk = text ?? message else { return nil }
-            return .peerDelegate(from: f, to: t, task: tk)
+            guard let sid = sessionId, let f = from, let t = to, let tk = text ?? message else { return nil }
+            return .peerDelegate(sessionId: sid, from: f, to: t, task: tk)
         case "blackboard.update":
-            guard let k = key, let v = value, let w = writtenBy else { return nil }
-            return .blackboardUpdate(key: k, value: v, writtenBy: w)
+            guard let sid = sessionId, let k = key, let v = value, let w = writtenBy else { return nil }
+            return .blackboardUpdate(sessionId: sid, key: k, value: v, writtenBy: w)
         case "session.reused":
             guard let orig = originalSessionId, let reused = reusedSessionId else { return nil }
             return .sessionReused(originalSessionId: orig, reusedSessionId: reused)

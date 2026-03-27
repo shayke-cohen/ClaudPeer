@@ -8,8 +8,16 @@ enum MessageType: String, Codable, Sendable {
     case system
     case delegation
     case blackboardUpdate
+    case peerMessage
     case question
     case richContent
+
+    var isPeerChannel: Bool {
+        switch self {
+        case .peerMessage, .delegation, .blackboardUpdate: return true
+        default: return false
+        }
+    }
 }
 
 @Model

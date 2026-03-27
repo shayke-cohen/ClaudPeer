@@ -37,6 +37,7 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
 
         ctx.broadcast({
           type: "peer.chat",
+          sessionId: callingSessionId,
           channelId: channel.id,
           from: senderName,
           message: args.message,
@@ -110,6 +111,7 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
 
         ctx.broadcast({
           type: "peer.chat",
+          sessionId: callingSessionId,
           channelId: args.channel_id,
           from: senderName,
           message: args.message,
@@ -187,6 +189,7 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
         const senderState = ctx.sessions.get(callingSessionId);
         ctx.broadcast({
           type: "peer.chat",
+          sessionId: callingSessionId,
           channelId: args.channel_id,
           from: senderState?.agentName ?? callingSessionId,
           message: `[closed] ${args.summary ?? "Conversation ended"}`,

@@ -88,6 +88,13 @@ enum ChatTranscriptExport {
                     timestampISO: ts,
                     text: message.text
                 )))
+            case .peerMessage:
+                rows.append(ChatTranscriptSnapshot.Row(kind: .labeled(
+                    kindLabel: "Peer Message",
+                    sender: sender,
+                    timestampISO: ts,
+                    text: message.text
+                )))
             case .delegation:
                 rows.append(ChatTranscriptSnapshot.Row(kind: .labeled(
                     kindLabel: "Delegation",

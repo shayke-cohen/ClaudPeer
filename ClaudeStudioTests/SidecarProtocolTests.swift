@@ -88,13 +88,14 @@ final class SidecarProtocolTests: XCTestCase {
 
     func testPeerChatDecoding() throws {
         let jsonStr = """
-        {"type":"peer.chat","channelId":"ch-1","from":"AgentA","message":"discuss design"}
+        {"type":"peer.chat","sessionId":"sess-1","channelId":"ch-1","from":"AgentA","message":"discuss design"}
         """
         let data = jsonStr.data(using: .utf8)!
         let wire = try JSONDecoder().decode(IncomingWireMessage.self, from: data)
         let event = wire.toEvent()
 
-        if case .peerChat(let channelId, let from, let message) = event {
+        if case .peerChat(let sessionId, let channelId, let from, let message) = event {
+            XCTAssertEqual(sessionId, "sess-1")
             XCTAssertEqual(channelId, "ch-1")
             XCTAssertEqual(from, "AgentA")
             XCTAssertEqual(message, "discuss design")
@@ -105,13 +106,14 @@ final class SidecarProtocolTests: XCTestCase {
 
     func testPeerDelegateDecoding() throws {
         let jsonStr = """
-        {"type":"peer.delegate","from":"Orchestrator","to":"Coder","task":"implement feature"}
+        {"type":"peer.delegate","sessionId":"sess-2","from":"Orchestrator","to":"Coder","text":"implement feature"}
         """
         let data = jsonStr.data(using: .utf8)!
         let wire = try JSONDecoder().decode(IncomingWireMessage.self, from: data)
         let event = wire.toEvent()
 
-        if case .peerDelegate(let from, let to, let task) = event {
+        if case .peerDelegate(let sessionId, let from, let to, let task) = event {
+            XCTAssertEqual(sessionId, "sess-2")
             XCTAssertEqual(from, "Orchestrator")
             XCTAssertEqual(to, "Coder")
             XCTAssertEqual(task, "implement feature")
@@ -122,13 +124,14 @@ final class SidecarProtocolTests: XCTestCase {
 
     func testBlackboardUpdateDecoding() throws {
         let jsonStr = """
-        {"type":"blackboard.update","key":"pipeline.phase","value":"research","writtenBy":"Orchestrator"}
+        {"type":"blackboard.update","sessionId":"sess-3","key":"pipeline.phase","value":"research","writtenBy":"Orchestrator"}
         """
         let data = jsonStr.data(using: .utf8)!
         let wire = try JSONDecoder().decode(IncomingWireMessage.self, from: data)
         let event = wire.toEvent()
 
-        if case .blackboardUpdate(let key, let value, let writtenBy) = event {
+        if case .blackboardUpdate(let sessionId, let key, let value, let writtenBy) = event {
+            XCTAssertEqual(sessionId, "sess-3")
             XCTAssertEqual(key, "pipeline.phase")
             XCTAssertEqual(value, "research")
             XCTAssertEqual(writtenBy, "Orchestrator")

@@ -42,6 +42,8 @@ struct MessageBubble: View {
                 ToolCallView(message: message)
             case .system:
                 systemMessage
+            case .peerMessage:
+                peerMessageCard
             case .delegation:
                 delegationMessage
             case .blackboardUpdate:
@@ -310,6 +312,25 @@ struct MessageBubble: View {
                 .clipShape(Capsule())
             Spacer()
         }
+    }
+
+    @ViewBuilder
+    private var peerMessageCard: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "bubble.left.and.bubble.right.fill")
+                .foregroundStyle(.blue)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Peer Message")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                Text(message.text)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(8)
+        .background(.blue.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     @ViewBuilder

@@ -709,26 +709,26 @@ final class AppState: ObservableObject {
             Log.appState.error("Session \(sessionId, privacy: .public) error: \(error, privacy: .public)")
             cleanupWorktreeIfNeeded(sessionId: sessionId)
 
-        case .peerChat(let channelId, let from, let message):
+        case .peerChat(let sessionId, let channelId, let from, let message):
             commsEvents.append(CommsEvent(
                 timestamp: Date(),
                 kind: .chat(channelId: channelId, from: from, message: message)
             ))
-            persistPeerChatMessage(channelId: channelId, from: from, message: message)
+            persistPeerChatMessage(sessionId: sessionId, channelId: channelId, from: from, message: message)
 
-        case .peerDelegate(let from, let to, let task):
+        case .peerDelegate(let sessionId, let from, let to, let task):
             commsEvents.append(CommsEvent(
                 timestamp: Date(),
                 kind: .delegation(from: from, to: to, task: task)
             ))
-            persistDelegationEvent(from: from, to: to, task: task)
+            persistDelegationEvent(sessionId: sessionId, from: from, to: to, task: task)
 
-        case .blackboardUpdate(let key, let value, let writtenBy):
+        case .blackboardUpdate(let sessionId, let key, let value, let writtenBy):
             commsEvents.append(CommsEvent(
                 timestamp: Date(),
                 kind: .blackboardUpdate(key: key, value: value, writtenBy: writtenBy)
             ))
-            persistBlackboardUpdate(key: key, value: value, writtenBy: writtenBy)
+            persistBlackboardUpdate(sessionId: sessionId, key: key, value: value, writtenBy: writtenBy)
 
         case .sessionForked(let parentSessionId, let childSessionId):
             Log.appState.info("session.forked parent=\(parentSessionId, privacy: .public) child=\(childSessionId, privacy: .public)")
@@ -1152,30 +1152,26 @@ final class AppState: ObservableObject {
 
     // MARK: - Persistence helpers for inter-agent events
 
-    private func persistPeerChatMessage(channelId: String, from: String, message: String) {
-        guard let ctx = modelContext else { return }
+    private func conversationForSession(sessionId: String) -> Conversation? {
+        guard let ctx = modelContext, let uuid = UUID(uuidString: sessionId) else { return nil }
+        let descriptor = FetchDescriptor<Session>(predicate: #Predicate { $0.id == uuid })
+        return (try? ctx.fetch(descriptor).first)?.conversations.first
+    }
 
-        let descriptor = FetchDescriptor<Conversation>(predicate: #Predicate { conv in
-            conv.topic == channelId
-        })
-        let existing = try? ctx.fetch(descriptor).first
-
-        if let convo = existing {
-            let msg = ConversationMessage(text: "[\(from)] \(message)", type: .chat, conversation: convo)
-            ctx.insert(msg)
-        }
+    private func persistPeerChatMessage(sessionId: String, channelId: String, from: String, message: String) {
+        guard let ctx = modelContext,
+              let convo = conversationForSession(sessionId: sessionId) else { return }
+        let msg = ConversationMessage(text: "\(from): \(message)", type: .peerMessage, conversation: convo)
+        msg.toolName = channelId
+        ctx.insert(msg)
         try? ctx.save()
     }
 
-    private func persistDelegationEvent(from: String, to: String, task: String) {
-        guard let ctx = modelContext else { return }
-
-        let convo = Conversation(topic: "\(from) → \(to)")
-        convo.parentConversationId = visibleConversationIds.first
-        ctx.insert(convo)
-
+    private func persistDelegationEvent(sessionId: String, from: String, to: String, task: String) {
+        guard let ctx = modelContext,
+              let convo = conversationForSession(sessionId: sessionId) else { return }
         let msg = ConversationMessage(
-            text: "[Delegation] \(from) delegated to \(to): \(task)",
+            text: "\(from) → \(to): \(task)",
             type: .delegation,
             conversation: convo
         )
@@ -1183,13 +1179,13 @@ final class AppState: ObservableObject {
         try? ctx.save()
     }
 
-    private func persistBlackboardUpdate(key: String, value: String, writtenBy: String) {
+    private func persistBlackboardUpdate(sessionId: String, key: String, value: String, writtenBy: String) {
         guard let ctx = modelContext else { return }
 
+        // Upsert BlackboardEntry
         let descriptor = FetchDescriptor<BlackboardEntry>(predicate: #Predicate { entry in
             entry.key == key
         })
-
         if let existing = try? ctx.fetch(descriptor).first {
             existing.value = value
             existing.writtenBy = writtenBy
@@ -1197,6 +1193,17 @@ final class AppState: ObservableObject {
         } else {
             let entry = BlackboardEntry(key: key, value: value, writtenBy: writtenBy)
             ctx.insert(entry)
+        }
+
+        // Also inject as ConversationMessage in the source session's conversation
+        if let convo = conversationForSession(sessionId: sessionId) {
+            let preview = value.count > 100 ? String(value.prefix(100)) + "…" : value
+            let msg = ConversationMessage(
+                text: "\(writtenBy) wrote \(key): \(preview)",
+                type: .blackboardUpdate,
+                conversation: convo
+            )
+            ctx.insert(msg)
         }
         try? ctx.save()
     }

@@ -240,6 +240,7 @@ struct ChatView: View {
     @State private var showUnknownSlash = false
     @State private var unknownSlashName = ""
     @State private var showMentionError = false
+    @State private var showPeerChannelMessages = true
     @State private var mentionErrorDetail = ""
     @State private var showAddAgentsSheet = false
     /// Retained while the system share sheet is visible so temp export files can be cleaned up.
@@ -273,6 +274,11 @@ struct ChatView: View {
 
     private var sortedMessages: [ConversationMessage] {
         (conversation?.messages ?? []).sorted { $0.timestamp < $1.timestamp }
+    }
+
+    private var displayMessages: [ConversationMessage] {
+        if showPeerChannelMessages { return sortedMessages }
+        return sortedMessages.filter { !$0.type.isPeerChannel }
     }
 
     private var hasUserChatMessages: Bool {
@@ -544,6 +550,27 @@ struct ChatView: View {
                         .xrayId("chat.planModeBadge")
                 }
 
+                if conversationSessions.count > 1 {
+                    Button {
+                        showPeerChannelMessages.toggle()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: showPeerChannelMessages
+                                ? "bubble.left.and.bubble.right.fill"
+                                : "bubble.left.and.bubble.right")
+                            Text("Comms")
+                        }
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(showPeerChannelMessages ? AnyShapeStyle(.blue.opacity(0.15)) : AnyShapeStyle(.quaternary))
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .xrayId("chat.peerChannelToggle")
+                }
+
                 if let model = currentModel {
                     Text(modelShortName(model))
                         .font(.caption2)
@@ -781,7 +808,7 @@ struct ChatView: View {
                         chatEmptyState
                     }
 
-                    ForEach(sortedMessages) { message in
+                    ForEach(displayMessages) { message in
                         MessageBubble(
                             message: message,
                             participants: conversation?.participants ?? [],

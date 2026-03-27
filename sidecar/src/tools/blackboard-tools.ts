@@ -34,6 +34,7 @@ export function createBlackboardTools(ctx: ToolContext) {
 
         ctx.broadcast({
           type: "blackboard.update",
+          sessionId,
           key: entry.key,
           value: entry.value,
           writtenBy: entry.writtenBy,

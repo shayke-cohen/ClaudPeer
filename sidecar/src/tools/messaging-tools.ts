@@ -34,6 +34,7 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
 
         ctx.broadcast({
           type: "peer.chat",
+          sessionId: callingSessionId,
           channelId: `dm-${callingSessionId}-${targetId}`,
           from: senderState?.agentName ?? callingSessionId,
           message: args.message,
@@ -67,6 +68,7 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
 
         ctx.broadcast({
           type: "peer.chat",
+          sessionId: callingSessionId,
           channelId: `broadcast-${args.channel}`,
           from: senderState?.agentName ?? callingSessionId,
           message: args.message,
@@ -217,6 +219,7 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
 
         ctx.broadcast({
           type: "peer.delegate",
+          sessionId: callingSessionId,
           from: senderState?.agentName ?? callingSessionId,
           to: args.to_agent,
           task: args.task,

@@ -29,10 +29,24 @@ final class AppStateEventTests: XCTestCase {
         context = nil
     }
 
+    // MARK: - Helpers
+
+    /// Creates a Session + Conversation pair and returns the session ID string.
+    private func makeSessionWithConversation(topic: String = "Test") -> String {
+        let session = Session(agent: nil)
+        let convo = Conversation(topic: topic)
+        session.conversations = [convo]
+        context.insert(session)
+        context.insert(convo)
+        try? context.save()
+        return session.id.uuidString
+    }
+
     // MARK: - EH: Event Handling
 
     func testEH1_peerChatEvent_appendsCommsAndPersists() {
-        appState.handleEventForTesting(.peerChat(channelId: "ch-1", from: "AgentA", message: "hello"))
+        let sid = makeSessionWithConversation()
+        appState.handleEventForTesting(.peerChat(sessionId: sid, channelId: "ch-1", from: "AgentA", message: "hello"))
 
         XCTAssertEqual(appState.commsEvents.count, 1)
         if case .chat(let channelId, let from, let message) = appState.commsEvents[0].kind {
@@ -42,14 +56,17 @@ final class AppStateEventTests: XCTestCase {
         } else {
             XCTFail("Expected .chat event kind")
         }
+
+        // Verify message persisted in the session's conversation
+        let allMessages = (try? context.fetch(FetchDescriptor<ConversationMessage>())) ?? []
+        let peerMessages = allMessages.filter { $0.type == .peerMessage }
+        XCTAssertEqual(peerMessages.count, 1)
+        XCTAssertEqual(peerMessages.first?.text, "AgentA: hello")
     }
 
-    func testEH2_peerDelegateEvent_appendsCommsAndCreatesConversation() {
-        let parentConvo = Conversation(topic: "Parent")
-        context.insert(parentConvo)
-        appState.visibleConversationIds.insert(parentConvo.id)
-
-        appState.handleEventForTesting(.peerDelegate(from: "Orchestrator", to: "Coder", task: "implement login"))
+    func testEH2_peerDelegateEvent_appendsCommsAndPersistsInConversation() {
+        let sid = makeSessionWithConversation(topic: "Group Chat")
+        appState.handleEventForTesting(.peerDelegate(sessionId: sid, from: "Orchestrator", to: "Coder", task: "implement login"))
 
         XCTAssertEqual(appState.commsEvents.count, 1)
         if case .delegation(let from, let to, let task) = appState.commsEvents[0].kind {
@@ -60,16 +77,17 @@ final class AppStateEventTests: XCTestCase {
             XCTFail("Expected .delegation event kind")
         }
 
-        let descriptor = FetchDescriptor<Conversation>(predicate: #Predicate { conv in
-            conv.topic == "Orchestrator → Coder"
-        })
-        let convos = try? context.fetch(descriptor)
-        XCTAssertEqual(convos?.count, 1)
-        XCTAssertEqual(convos?.first?.parentConversationId, parentConvo.id)
+        // Verify delegation message persisted in the session's conversation
+        let allMessages = (try? context.fetch(FetchDescriptor<ConversationMessage>())) ?? []
+        let delegationMessages = allMessages.filter { $0.type == .delegation }
+        XCTAssertEqual(delegationMessages.count, 1)
+        XCTAssertTrue(delegationMessages.first?.text.contains("Orchestrator") == true)
+        XCTAssertTrue(delegationMessages.first?.text.contains("Coder") == true)
     }
 
     func testEH3_blackboardUpdateEvent_appendsCommsAndUpsertsEntry() {
-        appState.handleEventForTesting(.blackboardUpdate(key: "pipeline.phase", value: "research", writtenBy: "Orchestrator"))
+        let sid = makeSessionWithConversation()
+        appState.handleEventForTesting(.blackboardUpdate(sessionId: sid, key: "pipeline.phase", value: "research", writtenBy: "Orchestrator"))
 
         XCTAssertEqual(appState.commsEvents.count, 1)
         if case .blackboardUpdate(let key, let value, let writtenBy) = appState.commsEvents[0].kind {
@@ -87,10 +105,15 @@ final class AppStateEventTests: XCTestCase {
         XCTAssertEqual(entries?.count, 1)
         XCTAssertEqual(entries?.first?.value, "research")
 
-        appState.handleEventForTesting(.blackboardUpdate(key: "pipeline.phase", value: "implementation", writtenBy: "Orchestrator"))
+        appState.handleEventForTesting(.blackboardUpdate(sessionId: sid, key: "pipeline.phase", value: "implementation", writtenBy: "Orchestrator"))
         let updated = try? context.fetch(descriptor)
         XCTAssertEqual(updated?.count, 1)
         XCTAssertEqual(updated?.first?.value, "implementation")
+
+        // Verify blackboard messages persisted in conversation
+        let allMessages = (try? context.fetch(FetchDescriptor<ConversationMessage>())) ?? []
+        let bbMessages = allMessages.filter { $0.type == .blackboardUpdate }
+        XCTAssertEqual(bbMessages.count, 2)
     }
 
     func testEH4_streamTokenEvent_concatenatesText() {
@@ -141,10 +164,11 @@ final class AppStateEventTests: XCTestCase {
     // MARK: - CF: Comms Filtering
 
     func testCF1_filterByChats_returnsOnlyChatEvents() {
-        appState.handleEventForTesting(.peerChat(channelId: "c1", from: "A", message: "hi"))
-        appState.handleEventForTesting(.peerDelegate(from: "A", to: "B", task: "do it"))
-        appState.handleEventForTesting(.blackboardUpdate(key: "k", value: "v", writtenBy: "A"))
-        appState.handleEventForTesting(.peerChat(channelId: "c2", from: "B", message: "bye"))
+        let sid = makeSessionWithConversation()
+        appState.handleEventForTesting(.peerChat(sessionId: sid, channelId: "c1", from: "A", message: "hi"))
+        appState.handleEventForTesting(.peerDelegate(sessionId: sid, from: "A", to: "B", task: "do it"))
+        appState.handleEventForTesting(.blackboardUpdate(sessionId: sid, key: "k", value: "v", writtenBy: "A"))
+        appState.handleEventForTesting(.peerChat(sessionId: sid, channelId: "c2", from: "B", message: "bye"))
 
         let filtered = appState.commsEvents.filter { event in
             if case .chat = event.kind { return true }
@@ -154,9 +178,10 @@ final class AppStateEventTests: XCTestCase {
     }
 
     func testCF2_filterByDelegations_returnsOnlyDelegationEvents() {
-        appState.handleEventForTesting(.peerChat(channelId: "c1", from: "A", message: "hi"))
-        appState.handleEventForTesting(.peerDelegate(from: "A", to: "B", task: "task1"))
-        appState.handleEventForTesting(.peerDelegate(from: "B", to: "C", task: "task2"))
+        let sid = makeSessionWithConversation()
+        appState.handleEventForTesting(.peerChat(sessionId: sid, channelId: "c1", from: "A", message: "hi"))
+        appState.handleEventForTesting(.peerDelegate(sessionId: sid, from: "A", to: "B", task: "task1"))
+        appState.handleEventForTesting(.peerDelegate(sessionId: sid, from: "B", to: "C", task: "task2"))
 
         let filtered = appState.commsEvents.filter { event in
             if case .delegation = event.kind { return true }
@@ -166,9 +191,10 @@ final class AppStateEventTests: XCTestCase {
     }
 
     func testCF3_filterByAll_returnsEverything() {
-        appState.handleEventForTesting(.peerChat(channelId: "c1", from: "A", message: "hi"))
-        appState.handleEventForTesting(.peerDelegate(from: "A", to: "B", task: "task"))
-        appState.handleEventForTesting(.blackboardUpdate(key: "k", value: "v", writtenBy: "A"))
+        let sid = makeSessionWithConversation()
+        appState.handleEventForTesting(.peerChat(sessionId: sid, channelId: "c1", from: "A", message: "hi"))
+        appState.handleEventForTesting(.peerDelegate(sessionId: sid, from: "A", to: "B", task: "task"))
+        appState.handleEventForTesting(.blackboardUpdate(sessionId: sid, key: "k", value: "v", writtenBy: "A"))
 
         XCTAssertEqual(appState.commsEvents.count, 3)
     }
