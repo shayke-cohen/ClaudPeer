@@ -75,4 +75,24 @@ final class ChatSendRoutingTests: XCTestCase {
         let names = ChatSendRouting.mentionedAgentNames(in: "@Z @A @M")
         XCTAssertEqual(names, ["Z", "A", "M"])
     }
+
+    // MARK: - @all Detection
+
+    func testContainsMentionAll() {
+        XCTAssertTrue(ChatSendRouting.containsMentionAll(in: "Hey @all check this"))
+    }
+
+    func testContainsMentionAllCaseInsensitive() {
+        XCTAssertTrue(ChatSendRouting.containsMentionAll(in: "@ALL please review"))
+    }
+
+    func testContainsMentionAllNegative() {
+        XCTAssertFalse(ChatSendRouting.containsMentionAll(in: "@Alice hello"))
+    }
+
+    func testContainsMentionAllMixedWithNames() {
+        XCTAssertTrue(ChatSendRouting.containsMentionAll(in: "@all @Bob status update"))
+        let names = ChatSendRouting.mentionedAgentNames(in: "@all @Bob")
+        XCTAssertEqual(names, ["all", "Bob"])
+    }
 }

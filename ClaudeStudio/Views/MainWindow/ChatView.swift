@@ -1883,6 +1883,14 @@ struct ChatView: View {
                 return group.roleFor(agentId: agentId)
             }()
 
+            let teamMembers: [GroupPromptBuilder.TeamMemberInfo] = convo.sessions
+                .filter { $0.id != session.id }
+                .compactMap { s in
+                    guard let agent = s.agent else { return nil }
+                    let role = sourceGroup?.roleFor(agentId: agent.id) ?? .participant
+                    return .init(name: agent.name, description: agent.agentDescription, role: role)
+                }
+
             let promptText = GroupPromptBuilder.buildMessageText(
                 conversation: convo,
                 targetSession: session,
@@ -1890,7 +1898,8 @@ struct ChatView: View {
                 participants: participants,
                 highlightedMentionAgentNames: highlightedMentionAgentNames,
                 groupInstruction: groupInstruction,
-                role: agentRole
+                role: agentRole,
+                teamMembers: teamMembers
             )
 
             do {
@@ -1966,6 +1975,7 @@ struct ChatView: View {
     }
 
     /// Delivers peer messages to other agents (`may_reply`); skips recipients that still have their user-turn prompt pending in `runSequentialAgentTurns`.
+    /// Mentioned agents (@Name / @all) get priority delivery that bypasses fan-out budget.
     @MainActor
     private func fanOutPeerNotifications(
         fromSession: Session,
@@ -1980,94 +1990,151 @@ struct ChatView: View {
         guard convo.sessions.count > 1 else { return }
 
         // Check auto-reply toggle on the source group
-        if let gid = convo.sourceGroupId {
+        let sourceGroup: AgentGroup? = {
+            guard let gid = convo.sourceGroupId else { return nil }
             let desc = FetchDescriptor<AgentGroup>(predicate: #Predicate { $0.id == gid })
-            if let group = try? modelContext.fetch(desc).first, !group.autoReplyEnabled {
-                return
-            }
-        }
+            return try? modelContext.fetch(desc).first
+        }()
+        if let group = sourceGroup, !group.autoReplyEnabled { return }
 
         let senderLabel = GroupPromptBuilder.senderDisplayLabel(for: triggerMessage, participants: participants)
         let sortedOthers = convo.sessions
             .filter { $0.id != fromSession.id && !skipRecipientSessionIds.contains($0.id) }
             .sorted { $0.startedAt < $1.startedAt }
 
-        for other in sortedOthers {
+        // Detect @mentions in the trigger message
+        let mentionNames = ChatSendRouting.mentionedAgentNames(in: triggerMessage.text)
+        let isAllMention = ChatSendRouting.containsMentionAll(in: triggerMessage.text)
+
+        let mentionedSessionIds: Set<UUID>
+        if isAllMention {
+            mentionedSessionIds = Set(sortedOthers.map(\.id))
+        } else {
+            let agentMentionNames = mentionNames.filter { $0.caseInsensitiveCompare("all") != .orderedSame }
+            mentionedSessionIds = Set(sortedOthers.filter { session in
+                guard let agentName = session.agent?.name else { return false }
+                return agentMentionNames.contains { $0.caseInsensitiveCompare(agentName) == .orderedSame }
+            }.map(\.id))
+        }
+
+        // Phase 1: Mentioned agents — priority delivery, no budget cost
+        for other in sortedOthers where mentionedSessionIds.contains(other.id) {
+            guard context.tryScheduleMentionDelivery(targetSessionId: other.id, triggerMessageId: triggerMessage.id) else {
+                continue
+            }
+            await deliverPeerNotification(
+                to: other, from: fromSession, triggerMessage: triggerMessage,
+                senderLabel: senderLabel, convo: convo, sourceGroup: sourceGroup,
+                wasMentioned: true, manager: manager, provisioner: provisioner,
+                participants: participants, context: context
+            )
+        }
+
+        // Phase 2: Non-mentioned agents — budget-limited generic fan-out
+        for other in sortedOthers where !mentionedSessionIds.contains(other.id) {
             guard context.trySchedulePeerDelivery(targetSessionId: other.id, triggerMessageId: triggerMessage.id) else {
                 continue
             }
-
-            let key = other.id.uuidString
-            activeStreamSessionKey = key
-            streamingDisplayName = other.agent?.name ?? "Claude"
-            appState.streamingText.removeValue(forKey: key)
-            appState.thinkingText.removeValue(forKey: key)
-            appState.lastSessionEvent.removeValue(forKey: key)
-            appState.sessionActivity[key] = .idle
-
-            var createConfig: AgentConfig?
-            if !appState.createdSessions.contains(key) {
-                if let agent = other.agent {
-                    let (cfg, _) = provisioner.provision(
-                        agent: agent,
-                        mission: other.mission,
-                        workingDirOverride: other.workingDirectory
-                    )
-                    createConfig = cfg
-                } else {
-                    createConfig = makeFreeformAgentConfig()
-                }
-            }
-
-            let peerRole: GroupRole? = {
-                guard let gid = convo.sourceGroupId else { return nil }
-                let desc = FetchDescriptor<AgentGroup>(predicate: #Predicate { $0.id == gid })
-                guard let group = try? modelContext.fetch(desc).first,
-                      let agentId = other.agent?.id else { return nil }
-                return group.roleFor(agentId: agentId)
-            }()
-
-            let prompt = GroupPromptBuilder.buildPeerNotifyPrompt(
-                senderLabel: senderLabel,
-                peerMessageText: triggerMessage.text,
-                recipientSession: other,
-                role: peerRole
+            await deliverPeerNotification(
+                to: other, from: fromSession, triggerMessage: triggerMessage,
+                senderLabel: senderLabel, convo: convo, sourceGroup: sourceGroup,
+                wasMentioned: false, manager: manager, provisioner: provisioner,
+                participants: participants, context: context
             )
+        }
+    }
 
-            do {
-                if let config = createConfig {
-                    try await manager.send(.sessionCreate(
-                        conversationId: key,
-                        agentConfig: config
-                    ))
-                    appState.createdSessions.insert(key)
-                }
-                try await manager.send(.sessionMessage(
-                    sessionId: key,
-                    text: prompt,
-                    attachments: []
-                ))
-            } catch {
-                appState.lastSessionEvent[key] = .error("Peer notify failed: \(error.localizedDescription)")
-                continue
-            }
+    @MainActor
+    private func deliverPeerNotification(
+        to other: Session,
+        from fromSession: Session,
+        triggerMessage: ConversationMessage,
+        senderLabel: String,
+        convo: Conversation,
+        sourceGroup: AgentGroup?,
+        wasMentioned: Bool,
+        manager: SidecarManager,
+        provisioner: AgentProvisioner,
+        participants: [Participant],
+        context: GroupPeerFanOutContext
+    ) async {
+        let key = other.id.uuidString
+        activeStreamSessionKey = key
+        streamingDisplayName = other.agent?.name ?? "Claude"
+        appState.streamingText.removeValue(forKey: key)
+        appState.thinkingText.removeValue(forKey: key)
+        appState.lastSessionEvent.removeValue(forKey: key)
+        appState.sessionActivity[key] = .idle
 
-            await waitForSessionCompletion(sidecarKey: key)
-
-            guard let liveConvo = conversation, liveConvo.id == convo.id else { return }
-
-            if let peerReply = finalizeAssistantStreamIntoMessage(convo: liveConvo, session: other, sidecarKey: key) {
-                await fanOutPeerNotifications(
-                    fromSession: other,
-                    triggerMessage: peerReply,
-                    convo: liveConvo,
-                    skipRecipientSessionIds: [],
-                    manager: manager,
-                    provisioner: provisioner,
-                    participants: participants,
-                    context: context
+        var createConfig: AgentConfig?
+        if !appState.createdSessions.contains(key) {
+            if let agent = other.agent {
+                let (cfg, _) = provisioner.provision(
+                    agent: agent,
+                    mission: other.mission,
+                    workingDirOverride: other.workingDirectory
                 )
+                createConfig = cfg
+            } else {
+                createConfig = makeFreeformAgentConfig()
             }
+        }
+
+        let peerRole: GroupRole? = {
+            guard let group = sourceGroup, let agentId = other.agent?.id else { return nil }
+            return group.roleFor(agentId: agentId)
+        }()
+
+        let teamMembers: [GroupPromptBuilder.TeamMemberInfo] = convo.sessions
+            .filter { $0.id != other.id }
+            .compactMap { s in
+                guard let agent = s.agent else { return nil }
+                let role = sourceGroup?.roleFor(agentId: agent.id) ?? .participant
+                return .init(name: agent.name, description: agent.agentDescription, role: role)
+            }
+
+        let prompt = GroupPromptBuilder.buildPeerNotifyPrompt(
+            senderLabel: senderLabel,
+            peerMessageText: triggerMessage.text,
+            recipientSession: other,
+            role: peerRole,
+            teamMembers: teamMembers,
+            wasMentioned: wasMentioned
+        )
+
+        do {
+            if let config = createConfig {
+                try await manager.send(.sessionCreate(
+                    conversationId: key,
+                    agentConfig: config
+                ))
+                appState.createdSessions.insert(key)
+            }
+            try await manager.send(.sessionMessage(
+                sessionId: key,
+                text: prompt,
+                attachments: []
+            ))
+        } catch {
+            appState.lastSessionEvent[key] = .error("Peer notify failed: \(error.localizedDescription)")
+            return
+        }
+
+        await waitForSessionCompletion(sidecarKey: key)
+
+        guard let liveConvo = conversation, liveConvo.id == convo.id else { return }
+
+        if let peerReply = finalizeAssistantStreamIntoMessage(convo: liveConvo, session: other, sidecarKey: key) {
+            await fanOutPeerNotifications(
+                fromSession: other,
+                triggerMessage: peerReply,
+                convo: liveConvo,
+                skipRecipientSessionIds: [],
+                manager: manager,
+                provisioner: provisioner,
+                participants: participants,
+                context: context
+            )
         }
     }
 

@@ -18,4 +18,12 @@ final class GroupPeerFanOutContext: @unchecked Sendable {
         deliveredNotifyKeys.insert(key)
         return true
     }
+
+    /// Priority delivery for @mentioned agents — deduplicates but does NOT consume budget.
+    func tryScheduleMentionDelivery(targetSessionId: UUID, triggerMessageId: UUID) -> Bool {
+        let key = "\(targetSessionId.uuidString)|\(triggerMessageId.uuidString)"
+        guard !deliveredNotifyKeys.contains(key) else { return false }
+        deliveredNotifyKeys.insert(key)
+        return true
+    }
 }

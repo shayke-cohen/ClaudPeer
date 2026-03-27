@@ -45,6 +45,11 @@ enum ChatSendRouting {
         }
     }
 
+    /// Returns true if the text contains `@all`.
+    static func containsMentionAll(in text: String) -> Bool {
+        mentionedAgentNames(in: text).contains { $0.caseInsensitiveCompare("all") == .orderedSame }
+    }
+
     /// Match mention names to agents (exact name, case-insensitive).
     static func resolveMentionedAgents(names: [String], agents: [Agent]) -> (resolved: [Agent], unknown: [String]) {
         var resolved: [Agent] = []

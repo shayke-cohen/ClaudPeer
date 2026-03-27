@@ -84,7 +84,7 @@ final class GroupPromptBuilderTests: XCTestCase {
         XCTAssertTrue(built.contains("Group thread"))
         XCTAssertTrue(built.contains("[You]:"))
         XCTAssertTrue(built.contains("Hi room"))
-        XCTAssertTrue(built.contains("You are A1"))
+        XCTAssertTrue(built.contains("You are @A1"))
         XCTAssertTrue(built.contains("Next"))
     }
 
@@ -359,7 +359,7 @@ final class GroupPromptBuilderTests: XCTestCase {
         )
         XCTAssertTrue(prompt.contains("Group chat: peer message"))
         XCTAssertTrue(prompt.contains("Alpha: Hello group"))
-        XCTAssertTrue(prompt.contains("You are Beta"))
+        XCTAssertTrue(prompt.contains("You are @Beta"))
     }
 
     func testSenderDisplayLabel() throws {
@@ -456,7 +456,258 @@ final class GroupPromptBuilderTests: XCTestCase {
             peerMessageText: "y",
             recipientSession: session
         )
-        XCTAssertTrue(prompt.contains("You are Assistant"))
+        XCTAssertTrue(prompt.contains("You are @Assistant"))
+    }
+
+    // MARK: - Team Roster Tests
+
+    func testTeamRosterPresent() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let a1 = Agent(name: "Coder", agentDescription: "Writes code")
+        let a2 = Agent(name: "Tester", agentDescription: "Runs tests")
+        ctx.insert(a1)
+        ctx.insert(a2)
+
+        let convo = Conversation()
+        let s1 = Session(agent: a1, workingDirectory: "/tmp")
+        let s2 = Session(agent: a2, workingDirectory: "/tmp")
+        s1.conversations = [convo]
+        s2.conversations = [convo]
+        convo.sessions = [s1, s2]
+
+        let user = Participant(type: .user, displayName: "You")
+        user.conversation = convo
+        convo.participants.append(user)
+        let p1 = Participant(type: .agentSession(sessionId: s1.id), displayName: a1.name)
+        p1.conversation = convo
+        convo.participants.append(p1)
+        let p2 = Participant(type: .agentSession(sessionId: s2.id), displayName: a2.name)
+        p2.conversation = convo
+        convo.participants.append(p2)
+        ctx.insert(convo)
+        ctx.insert(s1)
+        ctx.insert(s2)
+        ctx.insert(user)
+        ctx.insert(p1)
+        ctx.insert(p2)
+
+        let teamMembers: [GroupPromptBuilder.TeamMemberInfo] = [
+            .init(name: "Tester", description: "Runs tests", role: .observer)
+        ]
+        let built = GroupPromptBuilder.buildMessageText(
+            conversation: convo,
+            targetSession: s1,
+            latestUserMessageText: "Hi",
+            participants: convo.participants,
+            teamMembers: teamMembers
+        )
+        XCTAssertTrue(built.contains("[Your Team]"))
+        XCTAssertTrue(built.contains("You are @Coder"))
+        XCTAssertTrue(built.contains("@Tester (Observer) — Runs tests"))
+    }
+
+    func testTeamRosterExcludesTargetAgent() {
+        let roster = GroupPromptBuilder.buildTeamRoster(
+            targetAgentName: "Coder",
+            teamMembers: [
+                .init(name: "Tester", description: "Runs tests", role: .participant),
+                .init(name: "Reviewer", description: "Reviews code", role: .coordinator)
+            ]
+        )
+        XCTAssertTrue(roster.contains("You are @Coder"))
+        XCTAssertTrue(roster.contains("@Tester"))
+        XCTAssertTrue(roster.contains("@Reviewer (Coordinator) — Reviews code"))
+        XCTAssertFalse(roster.contains("- @Coder"))
+    }
+
+    func testTeamRosterEmptyReturnsEmpty() {
+        let roster = GroupPromptBuilder.buildTeamRoster(targetAgentName: "Solo", teamMembers: [])
+        XCTAssertTrue(roster.isEmpty)
+    }
+
+    // MARK: - Communication Guidelines Tests
+
+    func testCommunicationGuidelinesInGroupPrompt() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let a1 = Agent(name: "A1")
+        let a2 = Agent(name: "A2")
+        ctx.insert(a1)
+        ctx.insert(a2)
+
+        let convo = Conversation()
+        let s1 = Session(agent: a1, workingDirectory: "/tmp")
+        let s2 = Session(agent: a2, workingDirectory: "/tmp")
+        s1.conversations = [convo]
+        s2.conversations = [convo]
+        convo.sessions = [s1, s2]
+
+        let user = Participant(type: .user, displayName: "You")
+        user.conversation = convo
+        convo.participants.append(user)
+        let p1 = Participant(type: .agentSession(sessionId: s1.id), displayName: a1.name)
+        p1.conversation = convo
+        convo.participants.append(p1)
+        let p2 = Participant(type: .agentSession(sessionId: s2.id), displayName: a2.name)
+        p2.conversation = convo
+        convo.participants.append(p2)
+        ctx.insert(convo)
+        ctx.insert(s1)
+        ctx.insert(s2)
+        ctx.insert(user)
+        ctx.insert(p1)
+        ctx.insert(p2)
+
+        let built = GroupPromptBuilder.buildMessageText(
+            conversation: convo,
+            targetSession: s1,
+            latestUserMessageText: "Hi",
+            participants: convo.participants
+        )
+        XCTAssertTrue(built.contains("Group Communication Protocol"))
+        XCTAssertTrue(built.contains("@Name"))
+        XCTAssertTrue(built.contains("@all"))
+    }
+
+    func testCommunicationGuidelinesAbsentForSingleSession() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let agent = Agent(name: "Solo")
+        ctx.insert(agent)
+        let convo = Conversation()
+        let session = Session(agent: agent, workingDirectory: "/tmp")
+        session.conversations = [convo]
+        convo.sessions = [session]
+        let user = Participant(type: .user, displayName: "You")
+        user.conversation = convo
+        convo.participants.append(user)
+        ctx.insert(convo)
+        ctx.insert(session)
+        ctx.insert(user)
+
+        let text = GroupPromptBuilder.buildMessageText(
+            conversation: convo,
+            targetSession: session,
+            latestUserMessageText: "Hello",
+            participants: convo.participants
+        )
+        XCTAssertFalse(text.contains("Group Communication Protocol"))
+    }
+
+    func testPeerNotifyPromptIncludesGuidelines() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let agent = Agent(name: "Beta")
+        ctx.insert(agent)
+        let session = Session(agent: agent, workingDirectory: "/tmp")
+        ctx.insert(session)
+
+        let prompt = GroupPromptBuilder.buildPeerNotifyPrompt(
+            senderLabel: "Alpha",
+            peerMessageText: "Hello group",
+            recipientSession: session,
+            teamMembers: [.init(name: "Alpha", description: "Lead", role: .coordinator)]
+        )
+        XCTAssertTrue(prompt.contains("Group Communication Protocol"))
+        XCTAssertTrue(prompt.contains("[Your Team]"))
+    }
+
+    // MARK: - wasMentioned Tests
+
+    func testPeerNotifyWasMentionedTrue() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let agent = Agent(name: "Target")
+        ctx.insert(agent)
+        let session = Session(agent: agent, workingDirectory: "/tmp")
+        ctx.insert(session)
+
+        let prompt = GroupPromptBuilder.buildPeerNotifyPrompt(
+            senderLabel: "Sender",
+            peerMessageText: "@Target check this",
+            recipientSession: session,
+            wasMentioned: true
+        )
+        XCTAssertTrue(prompt.contains("directly @mentioned"))
+        XCTAssertTrue(prompt.contains("MUST respond substantively"))
+    }
+
+    func testPeerNotifyWasMentionedFalse() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let agent = Agent(name: "Target")
+        ctx.insert(agent)
+        let session = Session(agent: agent, workingDirectory: "/tmp")
+        ctx.insert(session)
+
+        let prompt = GroupPromptBuilder.buildPeerNotifyPrompt(
+            senderLabel: "Sender",
+            peerMessageText: "General message",
+            recipientSession: session,
+            wasMentioned: false
+        )
+        XCTAssertFalse(prompt.contains("directly @mentioned"))
+    }
+
+    func testPeerNotifyMentionOverrideWithObserverRole() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let agent = Agent(name: "Watcher")
+        ctx.insert(agent)
+        let session = Session(agent: agent, workingDirectory: "/tmp")
+        ctx.insert(session)
+
+        let prompt = GroupPromptBuilder.buildPeerNotifyPrompt(
+            senderLabel: "Sender",
+            peerMessageText: "@Watcher need your input",
+            recipientSession: session,
+            role: .observer,
+            wasMentioned: true
+        )
+        // Both should be present — mention override takes precedence but observer context is still there
+        XCTAssertTrue(prompt.contains("directly @mentioned"))
+        XCTAssertTrue(prompt.contains("MUST respond substantively"))
+        XCTAssertTrue(prompt.contains("observer"))
+    }
+
+    // MARK: - Fan-Out Context Mention Delivery Tests
+
+    func testMentionDeliveryNoBudgetCost() {
+        let t1 = UUID()
+        let t2 = UUID()
+        let msg = UUID()
+
+        let ctx = GroupPeerFanOutContext(maxAdditionalSidecarTurns: 1)
+        // Mention deliveries don't consume budget
+        XCTAssertTrue(ctx.tryScheduleMentionDelivery(targetSessionId: t1, triggerMessageId: msg))
+        XCTAssertTrue(ctx.tryScheduleMentionDelivery(targetSessionId: t2, triggerMessageId: msg))
+        // Budget of 1 is still available for generic fan-out
+        let t3 = UUID()
+        XCTAssertTrue(ctx.trySchedulePeerDelivery(targetSessionId: t3, triggerMessageId: msg))
+        // Now budget is exhausted
+        let t4 = UUID()
+        XCTAssertFalse(ctx.trySchedulePeerDelivery(targetSessionId: t4, triggerMessageId: msg))
+    }
+
+    func testMentionDeliveryDeduplicates() {
+        let target = UUID()
+        let msg = UUID()
+
+        let ctx = GroupPeerFanOutContext(maxAdditionalSidecarTurns: 5)
+        XCTAssertTrue(ctx.tryScheduleMentionDelivery(targetSessionId: target, triggerMessageId: msg))
+        XCTAssertFalse(ctx.tryScheduleMentionDelivery(targetSessionId: target, triggerMessageId: msg))
+    }
+
+    func testMentionDeliveryBlocksSubsequentPeerDelivery() {
+        let target = UUID()
+        let msg = UUID()
+
+        let ctx = GroupPeerFanOutContext(maxAdditionalSidecarTurns: 5)
+        // Mention delivery first
+        XCTAssertTrue(ctx.tryScheduleMentionDelivery(targetSessionId: target, triggerMessageId: msg))
+        // Same pair via peer delivery should be blocked (dedup)
+        XCTAssertFalse(ctx.trySchedulePeerDelivery(targetSessionId: target, triggerMessageId: msg))
     }
 
     func testHighlightedMentionMultipleAgentNames() throws {

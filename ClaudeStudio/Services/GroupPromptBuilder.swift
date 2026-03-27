@@ -10,6 +10,55 @@ enum GroupPromptBuilder {
     /// Rough cap for injected transcript (characters) to avoid huge prompts.
     static let maxInjectedCharacters = 120_000
 
+    // MARK: - Team Roster
+
+    struct TeamMemberInfo {
+        let name: String
+        let description: String
+        let role: GroupRole
+    }
+
+    static func buildTeamRoster(
+        targetAgentName: String,
+        teamMembers: [TeamMemberInfo]
+    ) -> String {
+        guard !teamMembers.isEmpty else { return "" }
+        let lines = teamMembers.map { member in
+            let roleLabel = member.role == .participant ? "" : " (\(member.role.displayName))"
+            let desc = member.description.isEmpty ? "" : " — \(member.description)"
+            return "- @\(member.name)\(roleLabel)\(desc)"
+        }
+        return "[Your Team]\nYou are @\(targetAgentName). The other agents in this group:\n\(lines.joined(separator: "\n"))\n---\n"
+    }
+
+    // MARK: - Communication Guidelines
+
+    static let communicationGuidelines = """
+    [Group Communication Protocol]
+    Follow these rules:
+
+    **Mentions**
+    - Use @Name to address a specific agent. Use @all to address everyone.
+    - When someone @mentions you by name: you MUST respond substantively. This is a direct request.
+    - When @all is used: respond if you have relevant input.
+
+    **When to speak**
+    - If mentioned: always respond.
+    - If not mentioned but you have relevant expertise: contribute briefly, stating why.
+    - If not mentioned and the topic is outside your expertise: stay silent.
+
+    **How to reply**
+    - Keep replies focused and concise. One clear point per reply.
+    - Use @Name when directing a question or request to a specific agent.
+    - Do not repeat what another agent already said.
+
+    **Deferring**
+    - If another agent is better suited: "@OtherAgent this is more your area — can you handle this?"
+    - Do not monopolize the conversation. Make your point and yield.
+    ---
+
+    """
+
     /// When only one agent session exists, send raw user text (legacy single-chat behavior).
     static func shouldUseGroupInjection(sessionCount: Int) -> Bool {
         sessionCount > 1
@@ -22,7 +71,8 @@ enum GroupPromptBuilder {
         participants: [Participant],
         highlightedMentionAgentNames: [String] = [],
         groupInstruction: String? = nil,
-        role: GroupRole? = nil
+        role: GroupRole? = nil,
+        teamMembers: [TeamMemberInfo] = []
     ) -> String {
         let sessionCount = conversation.sessions.count
         guard shouldUseGroupInjection(sessionCount: sessionCount) else {
@@ -57,6 +107,8 @@ enum GroupPromptBuilder {
         }()
 
         let agentName = targetSession.agent?.name ?? "Assistant"
+        let rosterBlock = buildTeamRoster(targetAgentName: agentName, teamMembers: teamMembers)
+
         let mentionNote: String = {
             let names = highlightedMentionAgentNames
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -66,11 +118,11 @@ enum GroupPromptBuilder {
             return "\nThe user specifically mentioned by name: \(joined). Address them directly when appropriate.\n"
         }()
         return """
-        \(instructionBlock)\(roleBlock)--- Group thread (new since your last reply) ---
+        \(instructionBlock)\(roleBlock)\(rosterBlock)\(communicationGuidelines)--- Group thread (new since your last reply) ---
         \(clipped)
         --- End ---
         \(mentionNote)
-        You are \(agentName). Respond to the latest user message in this group.
+        You are @\(agentName). Respond to the latest user message in this group.
         Latest user message:
         \"\"\"
         \(latestUserMessageText)
@@ -83,30 +135,41 @@ enum GroupPromptBuilder {
         senderLabel: String,
         peerMessageText: String,
         recipientSession: Session,
-        role: GroupRole? = nil
+        role: GroupRole? = nil,
+        teamMembers: [TeamMemberInfo] = [],
+        wasMentioned: Bool = false
     ) -> String {
         let name = recipientSession.agent?.name ?? "Assistant"
         let body = peerMessageText.trimmingCharacters(in: .whitespacesAndNewlines)
         let shown = body.isEmpty ? "(empty)" : body
 
+        let rosterBlock = buildTeamRoster(targetAgentName: name, teamMembers: teamMembers)
+
+        let mentionOverride: String
+        if wasMentioned {
+            mentionOverride = "**You were directly @mentioned in the above message. You MUST respond substantively.**\n\n"
+        } else {
+            mentionOverride = ""
+        }
+
         let roleInstruction: String
         switch role {
         case .observer:
-            roleInstruction = "You are \(name) (observer). Only reply if you are directly addressed by name or have critical information. Otherwise reply very briefly that you have nothing to add."
+            roleInstruction = "You are @\(name) (observer). Only reply if you are directly addressed by name or have critical information. Otherwise reply very briefly that you have nothing to add."
         case .scribe:
-            roleInstruction = "You are \(name) (scribe). If this exchange contains a decision or outcome, record it to the blackboard. You may also reply briefly to the group."
+            roleInstruction = "You are @\(name) (scribe). If this exchange contains a decision or outcome, record it to the blackboard. You may also reply briefly to the group."
         case .coordinator:
-            roleInstruction = "You are \(name) (coordinator). Consider whether this changes the plan or requires redirecting the group. Reply if you have guidance."
+            roleInstruction = "You are @\(name) (coordinator). Consider whether this changes the plan or requires redirecting the group. Reply if you have guidance."
         default:
-            roleInstruction = "You are \(name). Another participant posted the above in this shared group. You may reply to the whole group if you have something substantive to add; stay concise. If you have nothing useful to add, reply very briefly (e.g. that you have nothing to add)."
+            roleInstruction = "You are @\(name). Another participant posted the above in this shared group. You may reply to the whole group if you have something substantive to add; stay concise. If you have nothing useful to add, reply very briefly (e.g. that you have nothing to add)."
         }
 
         return """
-        --- Group chat: peer message ---
+        \(rosterBlock)\(communicationGuidelines)--- Group chat: peer message ---
         \(senderLabel): \(shown)
         --- End ---
 
-        \(roleInstruction)
+        \(mentionOverride)\(roleInstruction)
         """
     }
 
