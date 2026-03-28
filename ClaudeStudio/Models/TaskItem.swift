@@ -20,6 +20,7 @@ enum TaskPriority: String, Codable, Sendable {
 @Model
 final class TaskItem {
     var id: UUID
+    var projectId: UUID?
     var title: String
     var taskDescription: String
     var status: TaskStatus
@@ -28,6 +29,7 @@ final class TaskItem {
     var result: String?
     var parentTaskId: UUID?
     var assignedAgentId: UUID?
+    var assignedAgentName: String?
     var assignedGroupId: UUID?
     var conversationId: UUID?
     var createdAt: Date
@@ -42,6 +44,7 @@ final class TaskItem {
         status: TaskStatus = .backlog
     ) {
         self.id = UUID()
+        self.projectId = nil
         self.title = title
         self.taskDescription = taskDescription
         self.status = status

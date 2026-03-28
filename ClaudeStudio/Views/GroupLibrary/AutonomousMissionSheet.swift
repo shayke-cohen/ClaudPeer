@@ -65,7 +65,13 @@ struct AutonomousMissionSheet: View {
                     .accessibilityIdentifier("autonomousMission.cancelButton")
                 Spacer()
                 Button {
-                    if let convoId = appState.startAutonomousGroupChat(group: group, mission: mission, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+                    if let convoId = appState.startAutonomousGroupChat(
+                        group: group,
+                        mission: mission,
+                        projectDirectory: windowState.projectDirectory,
+                        projectId: windowState.selectedProjectId,
+                        modelContext: modelContext
+                    ) {
                         windowState.selectedConversationId = convoId
                     }
                     dismiss()

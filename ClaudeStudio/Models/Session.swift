@@ -4,6 +4,7 @@ import SwiftData
 enum SessionStatus: String, Codable, Sendable {
     case active
     case paused
+    case interrupted
     case completed
     case failed
 }

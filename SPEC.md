@@ -2,14 +2,14 @@
 
 Living specification tracking implemented features, user flows, and requirements.
 
-**Version:** 0.13.0
-**Status:** Phase 13 — Scheduled missions, recurring automation, schedule management UI
+**Version:** 0.14.0
+**Status:** Phase 14 — Project-first shell, project-scoped threads/tasks/schedules, documentation reset
 
 ---
 
 ## 1. Product Summary
 
-ClaudeStudio is a native macOS developer tool for managing multiple Claude AI agent sessions. Users define reusable agent templates with skills, MCP servers, and permissions, then launch interactive sessions that stream AI responses in real-time through a chat interface.
+ClaudeStudio is a native macOS developer tool for managing Claude AI agent sessions around **projects**. Users define reusable agent templates with skills, MCP servers, and permissions, then launch direct or team threads that stream AI responses in real time inside a project-owned workspace.
 
 ### Target Users
 - Developers using Claude for coding tasks who want persistent, configurable agent sessions
@@ -19,8 +19,9 @@ ClaudeStudio is a native macOS developer tool for managing multiple Claude AI ag
 - **Multi-agent orchestration** — run multiple Claude sessions simultaneously with different configurations
 - **Composable agents** — build agents from reusable skills, MCP servers, and permission presets
 - **Curated catalog** — browse and install from 30 agents, 101 skills, and 100 MCP servers with cascading dependency resolution
-- **Persistent conversations** — conversations survive app restarts, resumable via Claude session IDs
-- **Recurring missions** — save agent, group, or conversation missions and run them on hourly or daily schedules
+- **Project-first shell** — each project owns its threads, tasks, schedules, and working context
+- **Persistent threads** — thread history survives app restarts, resumable via Claude session IDs
+- **Recurring missions** — save agent, group, or thread missions and run them on hourly or daily schedules
 - **Native macOS experience** — SwiftUI three-panel layout optimized for developer workflows
 
 ---
@@ -178,23 +179,23 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 | Requirement | Status |
 |---|---|
 | FR-6.1: Two-column NavigationSplitView (sidebar + detail HStack with chat + optional inspector) | Done |
-| FR-6.2: Sidebar with conversation list | Done |
-| FR-6.3: Sidebar with agent list section | Done |
+| FR-6.2: Sidebar is project-first, with global utilities above project disclosures | Done |
+| FR-6.3: Each project disclosure contains Threads, Tasks, Team, and Schedules subsections | Done |
 | FR-6.4: Detail area showing ChatView (expands to full width when inspector hidden) | Done |
 | FR-6.5: Inspector panel with session metadata (toggleable) | Done |
 | FR-6.6: Toolbar: new session, quick chat, sidecar status pill, inspector toggle | Done |
 | FR-6.7: Default window size 1200x800 | Done |
-| FR-6.8: Sidebar rows show relative timestamps, message preview, and agent icon | Done |
-| FR-6.9: Sidebar has Pinned section above Active | Done |
-| FR-6.9a: Sidebar has collapsible Archived section below Recent | Done |
-| FR-6.10: Sidebar conversation context menu (rename, pin, archive, close, delete, duplicate) | Done |
-| FR-6.11: Sidebar empty state when no conversations exist | Done |
+| FR-6.8: Thread rows show relative timestamps, message preview, and context icon inside the owning project | Done |
+| FR-6.9: Project thread lists use Pinned, Active, History, and Archived buckets | Done |
+| FR-6.9a: Archived threads remain collapsible within each project | Done |
+| FR-6.10: Sidebar thread context menu supports rename, pin, archive, close, delete, and duplicate | Done |
+| FR-6.11: Sidebar empty state handles the no-project case | Done |
 | FR-6.12: Inspector with usage section (tokens, cost, turns progress bar) and workspace section | Done |
 | FR-6.13: Agent card Start button launches session and dismisses library | Done |
 | FR-6.14: Inspector toggle button in toolbar (sidebar.trailing icon, ⌘⌥0) | Done |
 | FR-6.15: Chat area expands to fill inspector space when inspector is hidden | Done |
 | FR-6.16: Sidecar status pill in toolbar center with popover (status, URL, connect/stop/reconnect) | Done |
-| FR-6.17: Sidebar bottom bar with Catalog, Agents, and New Session buttons | Done |
+| FR-6.17: Global utility rows expose New Thread, Plugins, Automations, and Settings above projects | Done |
 | FR-6.18: Chat header with tappable agent icon, mission preview, Fork/Rename in overflow menu | Done |
 | FR-6.19: Settings reorganized: General / Connection (with live sidecar status) / Developer tabs | Done |
 | FR-6.20: New Session sheet with recent agents row, collapsible options, mode tooltips | Done |

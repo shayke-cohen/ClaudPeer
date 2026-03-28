@@ -1,6 +1,6 @@
 # ClaudeStudio
 
-A native macOS developer tool for orchestrating multiple Claude AI agent sessions. Agents chat with users and with each other, share knowledge through a blackboard, collaborate on files through shared workspaces, and discover each other across the local network.
+A native macOS developer tool for orchestrating Claude AI agent sessions around **projects**. Each project owns its threads, tasks, schedules, and working context, while agents can still chat with users and with each other, share knowledge through a blackboard, collaborate on files through worktrees, and discover peers across the local network.
 
 ![ClaudeStudio](docs/welcome-screen.png)
 
@@ -15,7 +15,7 @@ ClaudeStudio is a **two-process** app:
 │  • SwiftUI + SwiftData          │                          │  • Bun runtime                   │
 │  • UI, persistence, P2P         │                          │  • Claude Agent SDK sessions     │
 │  • Agent provisioning           │                          │  • Blackboard (HTTP + disk)      │
-│  • Conversation model           │                          │  • PeerBus tools + Task Board    │
+│  • Project + thread model       │                          │  • PeerBus tools + Task Board    │
 └─────────────────────────────────┘                          └─────────────────────────────────┘
 ```
 
@@ -41,13 +41,13 @@ ClaudeStudio/
 │
 ├── ClaudeStudio/                    # Swift macOS App
 │   ├── App/
-│   │   ├── ClaudeStudioApp.swift    # @main, WindowGroup, model container
+│   │   ├── ClaudeStudioApp.swift    # @main, model container, project reset/bootstrap
 │   │   ├── AppState.swift        # Global state: sidecar status, selections, streaming
 │   │   └── Log.swift             # Centralized OSLog logger with categories
 │   ├── Models/                   # SwiftData @Model types
 │   │   ├── Agent.swift           # Agent template (skills, MCPs, permissions, instance policy)
 │   │   ├── Session.swift         # Running agent instance (status, mode, workspace)
-│   │   ├── Conversation.swift    # Unified conversation (user↔agent and agent↔agent)
+│   │   ├── Conversation.swift    # Project, thread kind, and conversation persistence
 │   │   ├── ConversationMessage.swift
 │   │   ├── Participant.swift     # .user or .agentSession
 │   │   ├── Skill.swift           # Managed skill in pool
@@ -68,7 +68,7 @@ ClaudeStudio/
 │   │   ├── ConfigFileManager.swift # Bundle resource loading for defaults
 │   │   └── ConfigSyncService.swift # Config synchronization service
 │   ├── Views/
-│   │   ├── MainWindow/           # NavigationSplitView: sidebar, chat, inspector, new session sheet
+│   │   ├── MainWindow/           # Project-first shell: utilities, projects, threads, inspector
 │   │   │   ├── TaskCreationSheet.swift
 │   │   │   └── TaskEditSheet.swift
 │   │   ├── AgentLibrary/         # Agent grid + editor
@@ -304,9 +304,10 @@ curl -X POST http://localhost:9850/api/v1/tasks/TASK_ID/claim \
 
 The app uses SwiftData with these core entities:
 
+- **Project** — first-class workspace container: root path, canonical path, pinned team roster, last-opened metadata
 - **Agent** — reusable template (like a class): skills, MCPs, permissions, model, instance policy
 - **Session** — running instance (like an object): status, mode, workspace, cost tracking
-- **Conversation** — unified communication primitive for user↔agent and agent↔agent; supports `planModeEnabled` for interactive planning; **group chats** attach multiple `Session`s, send each user message to every agent, and **fan out** each assistant reply to other agents via extra `session.message` calls (see `SPEC.md` FR-4.9)
+- **Conversation** — persisted thread record. The UI calls these **threads** and scopes them to a `Project`; thread kinds include direct, group, freeform, autonomous, delegation, and scheduled
 - **Participant** — member of a conversation (`.user` or `.agentSession`)
 - **Skill / MCPServer / PermissionSet** — composable building blocks for agents
 - **BlackboardEntry** — shared structured knowledge (key-value + metadata)
@@ -357,7 +358,7 @@ See [`system-plan-vision.md` Section 11](system-plan-vision.md#11-built-in-ecosy
 - WebSocket communication (commands + streaming events)
 - SidecarManager with process lifecycle and auto-reconnect
 - AgentProvisioner composing configs from SwiftData models
-- Main window with NavigationSplitView (sidebar, chat, inspector)
+- Main window with project-first NavigationSplitView (global utilities + projects + threads + inspector)
 - Agent library with editor (Start button launches sessions)
 - Blackboard with HTTP REST API and disk persistence
 - Working directory resolution (explicit, GitHub clone, agent default, ephemeral)
@@ -377,7 +378,7 @@ See [`system-plan-vision.md` Section 11](system-plan-vision.md#11-built-in-ecosy
 - Catalog system: 30 agents, 101 skills, 100 MCPs with cascading install
 - Full accessibility coverage (347+ identifiers)
 - Rich display tools: ask_user (form/options/toggle/rating), render_content, show_progress, suggest_actions
-- Task board: task lifecycle management, PeerBus tools, REST API, sidebar integration
+- Task board: project-scoped task lifecycle management, PeerBus tools, REST API, sidebar integration
 - Plan mode: interactive planning with Opus, requirement gathering, visual plan presentation
 - Structured logging: sidecar JSON logger + Swift OSLog + unified DebugLogView
 

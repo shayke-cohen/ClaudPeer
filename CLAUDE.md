@@ -4,7 +4,7 @@ Project-specific rules and context for AI coding agents working on ClaudeStudio.
 
 ## Project Overview
 
-ClaudeStudio is a native macOS app (Swift 6 / SwiftUI / SwiftData) with a TypeScript sidecar (Bun + Claude Agent SDK). The two processes communicate over a local WebSocket. See `system-plan-vision.md` for the full architecture vision.
+ClaudeStudio is a native macOS app (Swift 6 / SwiftUI / SwiftData) with a TypeScript sidecar (Bun + Claude Agent SDK). The two processes communicate over a local WebSocket. The current shell is **project-first**: projects own threads, tasks, schedules, and workspace context. See `system-plan-vision.md` for the full architecture vision.
 
 ## Architecture Rules
 
@@ -50,7 +50,7 @@ Note: recent wire additions include `stream.image`, `stream.fileCard`, `stream.t
 
 ## File System Rules
 
-- **Never modify** `system-plan-vision.md` without explicit request — it's the architecture source of truth
+- **Never modify** `system-plan-vision.md` unless the current task explicitly includes architecture doc updates
 - **Swift sources** go under `ClaudeStudio/` following the existing directory structure
 - **Sidecar sources** go under `sidecar/src/`
 - **Tests** go under `sidecar/test/`
@@ -79,7 +79,8 @@ Core entities (all in `ClaudeStudio/Models/`):
 
 - `Agent` — template with skills, MCPs, permissions, instance policy, optional GitHub repo
 - `Session` — running instance with status, mode, workspace type, cost tracking
-- `Conversation` — unified model for user↔agent and agent↔agent communication
+- `Project` — top-level workspace container with root path, canonical path, pinned team roster, and last-opened state
+- `Conversation` — persisted thread record scoped to a `Project`; the UI calls these **threads**
 - `Participant` — `.user` or `.agentSession(sessionId)`
 - `ConversationMessage` — message with type enum (text, toolCall, toolResult, delegation, blackboard)
 - `Skill`, `MCPServer`, `PermissionSet` — composable building blocks
@@ -95,7 +96,7 @@ Core entities (all in `ClaudeStudio/Models/`):
 - AgentProvisioner (resolves skills, MCPs, permissions, working directory → AgentConfig)
 - SessionManager in sidecar (Agent SDK `query()`, streaming, resume, fork, pause)
 - Blackboard store (in-memory + disk + HTTP REST API)
-- Main UI (NavigationSplitView with sidebar, chat, inspector)
+- Main UI (project-first NavigationSplitView with utilities, projects, threads, chat, inspector)
 - Agent library, editor, and catalog browser views
 - PeerBus SDK tools (peer_chat_*, peer_send_*, blackboard_*, workspace_*) with stores
 - Agent-to-agent messaging, blocking chats, delegation routing
@@ -117,10 +118,10 @@ Core entities (all in `ClaudeStudio/Models/`):
 - Full accessibility coverage (347+ identifiers)
 - Rich display tools (ask_user with form/options/toggle/rating input types, render_content, show_progress, suggest_actions) as in-process MCP
 - Auto-expanding chat input with Shift+Enter newlines
-- Task board system (TaskItem model, TaskBoardStore, PeerBus tools, REST API, sidebar integration)
+- Task board system (project-scoped TaskItem model, TaskBoardStore, PeerBus tools, REST API, sidebar integration)
 - Plan mode (custom system prompt injection, Opus override, interactive planning workflow)
 - Structured logging infrastructure (sidecar JSON logger, Swift OSLog with categories, UnifiedLogEntry, LogAggregator, DebugLogView)
-- Sidebar bottom bar refactoring (SidebarBottomBarItem enum, adaptive layout)
+- Project-first shell reset (clean break for legacy conversations/tasks/schedules, project-backed sidebar, project-scoped threads/tasks/schedules)
 - group_invite_agent chat tool for dynamic agent invitation to conversations
 - Config file management and sync services
 

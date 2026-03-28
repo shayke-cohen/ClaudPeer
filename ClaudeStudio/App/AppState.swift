@@ -5,6 +5,10 @@ import OSLog
 
 @MainActor
 final class AppState: ObservableObject {
+    enum SidecarCommandError: Error {
+        case unavailable
+    }
+
     enum SidecarStatus: Equatable {
         case disconnected
         case connecting
@@ -183,11 +187,24 @@ final class AppState: ObservableObject {
     var modelContext: ModelContext?
     private(set) var scheduleEngine: ScheduleEngine?
     private(set) var scheduleRunCoordinator: ScheduleRunCoordinator?
+    #if DEBUG
+    var commandCaptureForTesting: ((SidecarCommand) -> Void)?
+    var commandSendOverrideForTesting: ((SidecarCommand) async -> Void)?
+    #endif
 
     // instanceWorkingDirectory, loadInstanceWorkingDirectory, setInstanceWorkingDirectory
     // moved to WindowState.projectDirectory (per-window)
 
     // MARK: - Launch Intent
+
+    private func configureConversation(
+        _ conversation: Conversation,
+        projectId: UUID?,
+        threadKind: ThreadKind
+    ) {
+        conversation.projectId = projectId
+        conversation.threadKind = threadKind
+    }
 
     /// Executes a parsed launch intent (from CLI args or URL scheme).
     /// Must be called after `modelContext` is set.
@@ -197,7 +214,11 @@ final class AppState: ObservableObject {
 
         switch intent.mode {
         case .chat:
-            let conversation = Conversation(topic: "New Chat")
+            let conversation = Conversation(
+                topic: "New Thread",
+                projectId: windowState.selectedProjectId,
+                threadKind: .freeform
+            )
             let userParticipant = Participant(type: .user, displayName: "You")
             userParticipant.conversation = conversation
             conversation.participants.append(userParticipant)
@@ -237,7 +258,11 @@ final class AppState: ObservableObject {
             let (_, session) = provisioner.provision(agent: agent, mission: nil, workingDirOverride: projectDir)
             if intent.autonomous { session.mode = .autonomous }
 
-            let conversation = Conversation(topic: agent.name)
+            let conversation = Conversation(
+                topic: agent.name,
+                projectId: windowState.selectedProjectId,
+                threadKind: .direct
+            )
             let userParticipant = Participant(type: .user, displayName: "You")
             let agentParticipant = Participant(
                 type: .agentSession(sessionId: session.id),
@@ -268,10 +293,21 @@ final class AppState: ObservableObject {
             }
 
             if intent.autonomous, let prompt = intent.prompt {
-                let convoId = startAutonomousGroupChat(group: group, mission: prompt, projectDirectory: projectDir, modelContext: modelContext)
+                let convoId = startAutonomousGroupChat(
+                    group: group,
+                    mission: prompt,
+                    projectDirectory: projectDir,
+                    projectId: windowState.selectedProjectId,
+                    modelContext: modelContext
+                )
                 windowState.selectedConversationId = convoId
             } else {
-                let convoId = startGroupChat(group: group, projectDirectory: projectDir, modelContext: modelContext)
+                let convoId = startGroupChat(
+                    group: group,
+                    projectDirectory: projectDir,
+                    projectId: windowState.selectedProjectId,
+                    modelContext: modelContext
+                )
                 windowState.selectedConversationId = convoId
                 if intent.prompt != nil {
                     windowState.autoSendText = intent.prompt
@@ -318,7 +354,12 @@ final class AppState: ObservableObject {
     // MARK: - Group Chat
 
     @discardableResult
-    func startGroupChat(group: AgentGroup, projectDirectory: String, modelContext: ModelContext) -> UUID? {
+    func startGroupChat(
+        group: AgentGroup,
+        projectDirectory: String,
+        projectId: UUID?,
+        modelContext: ModelContext
+    ) -> UUID? {
         guard !group.agentIds.isEmpty else { return nil }
 
         let allAgents = (try? modelContext.fetch(FetchDescriptor<Agent>())) ?? []
@@ -326,7 +367,7 @@ final class AppState: ObservableObject {
         let resolvedAgents = group.agentIds.compactMap { agentById[$0] }
         guard !resolvedAgents.isEmpty else { return nil }
 
-        let conversation = Conversation(topic: group.name)
+        let conversation = Conversation(topic: group.name, projectId: projectId, threadKind: .group)
         conversation.sourceGroupId = group.id
 
         let userParticipant = Participant(type: .user, displayName: "You")
@@ -367,7 +408,13 @@ final class AppState: ObservableObject {
     }
 
     @discardableResult
-    func startAutonomousGroupChat(group: AgentGroup, mission: String, projectDirectory: String, modelContext: ModelContext) -> UUID? {
+    func startAutonomousGroupChat(
+        group: AgentGroup,
+        mission: String,
+        projectDirectory: String,
+        projectId: UUID?,
+        modelContext: ModelContext
+    ) -> UUID? {
         guard group.autonomousCapable, !group.agentIds.isEmpty else { return nil }
 
         let allAgents = (try? modelContext.fetch(FetchDescriptor<Agent>())) ?? []
@@ -375,7 +422,11 @@ final class AppState: ObservableObject {
         let resolvedAgents = group.agentIds.compactMap { agentById[$0] }
         guard !resolvedAgents.isEmpty else { return nil }
 
-        let conversation = Conversation(topic: "\(group.name) — Autonomous")
+        let conversation = Conversation(
+            topic: "\(group.name) — Autonomous",
+            projectId: projectId,
+            threadKind: .autonomous
+        )
         conversation.sourceGroupId = group.id
         conversation.isAutonomous = true
 
@@ -465,10 +516,31 @@ final class AppState: ObservableObject {
     }
 
     func sendToSidecar(_ command: SidecarCommand) {
-        guard let manager = sidecarManager else { return }
         Task {
-            try? await manager.send(command)
+            try? await sendToSidecarAwait(command)
         }
+    }
+
+    func restoreSessionContext(sessionId: String, claudeSessionId: String) {
+        sendToSidecar(.sessionResume(sessionId: sessionId, claudeSessionId: claudeSessionId))
+    }
+
+    func sendToSidecarAwait(_ command: SidecarCommand) async throws {
+        #if DEBUG
+        commandCaptureForTesting?(command)
+        if let override = commandSendOverrideForTesting {
+            await override(command)
+            return
+        }
+        #endif
+        guard let manager = sidecarManager else {
+            throw SidecarCommandError.unavailable
+        }
+        try await manager.send(command)
+    }
+
+    func restoreSessionContextAwait(sessionId: String, claudeSessionId: String) async throws {
+        try await sendToSidecarAwait(.sessionResume(sessionId: sessionId, claudeSessionId: claudeSessionId))
     }
 
     func delegateTask(sourceSessionId: UUID, toAgent: String, task: String, context: String?, waitForResult: Bool) {
@@ -623,6 +695,21 @@ final class AppState: ObservableObject {
         Log.appState.info("Registered \(defs.count) agent definitions with sidecar")
     }
 
+    private func registerAgentDefinitionsAwait() async {
+        guard let ctx = modelContext else { return }
+        let descriptor = FetchDescriptor<Agent>()
+        guard let agents = try? ctx.fetch(descriptor), !agents.isEmpty else { return }
+
+        let provisioner = AgentProvisioner(modelContext: ctx)
+        let defs: [AgentDefinitionWire] = agents.compactMap { agent in
+            let (config, _) = provisioner.provision(agent: agent, mission: nil)
+            return AgentDefinitionWire(name: agent.name, config: config)
+        }
+
+        try? await sendToSidecarAwait(.agentRegister(agents: defs))
+        Log.appState.info("Registered \(defs.count) agent definitions with sidecar")
+    }
+
     // MARK: - Conversation Activity
 
     func conversationActivity(for conversation: Conversation) -> ConversationActivitySummary {
@@ -730,6 +817,7 @@ final class AppState: ObservableObject {
             notifyIfNeeded(sessionId: sessionId) { name, topic in
                 ChatNotificationManager.shared.notifySessionCompleted(agentName: name, conversationTopic: topic)
             }
+            updatePersistedSessionStatus(sessionId: sessionId, status: .completed)
             persistSessionUsage(sessionId: sessionId, tokenCount: tokenCount, cost: cost, toolCallCount: toolCallCount)
             cleanupWorktreeIfNeeded(sessionId: sessionId)
 
@@ -744,6 +832,7 @@ final class AppState: ObservableObject {
                 ChatNotificationManager.shared.notifySessionError(agentName: name, error: error)
             }
             Log.appState.error("Session \(sessionId, privacy: .public) error: \(error, privacy: .public)")
+            updatePersistedSessionStatus(sessionId: sessionId, status: .failed)
             cleanupWorktreeIfNeeded(sessionId: sessionId)
 
         case .peerChat(let sessionId, let channelId, let from, let message):
@@ -845,15 +934,15 @@ final class AppState: ObservableObject {
             persistAgentInvite(sessionId: sessionId, invitedAgent: agentName, invitedBy: "Group")
 
         case .taskCreated(let sessionId, let task):
-            persistTask(task)
+            persistTask(task, sessionId: sessionId)
             persistTaskEvent(sessionId: sessionId, task: task, action: "created")
 
         case .taskUpdated(let sessionId, let task):
-            persistTask(task)
+            persistTask(task, sessionId: sessionId)
             persistTaskEvent(sessionId: sessionId, task: task, action: task.status)
 
         case .taskListResult(let tasks):
-            for task in tasks { persistTask(task) }
+            for task in tasks { persistTask(task, sessionId: nil) }
 
         case .workspaceCreated(let sessionId, let workspaceName, let agentName):
             persistWorkspaceEvent(sessionId: sessionId, workspaceName: workspaceName, agentName: agentName, action: "created")
@@ -917,6 +1006,7 @@ final class AppState: ObservableObject {
 
         newSession.conversations = [conversation]
         conversation.sessions.append(newSession)
+        conversation.threadKind = .group
 
         let participant = Participant(type: .agentSession(sessionId: newSession.id), displayName: agent.name)
         participant.conversation = conversation
@@ -937,15 +1027,19 @@ final class AppState: ObservableObject {
 
     // MARK: - Task Board
 
-    private func persistTask(_ wire: TaskWireSwift) {
+    private func persistTask(_ wire: TaskWireSwift, sessionId: String?) {
         guard let ctx = modelContext else { return }
         guard let taskId = UUID(uuidString: wire.id) else { return }
+        let projectId = wire.projectId.flatMap(UUID.init) ?? inferredProjectId(for: wire, sessionId: sessionId, in: ctx)
         let assignedAgentUUID = wire.assignedAgentId.flatMap(UUID.init)
         let assignedAgentName = wire.assignedAgentName ?? (assignedAgentUUID == nil ? wire.assignedAgentId : nil)
 
         let descriptor = FetchDescriptor<TaskItem>(predicate: #Predicate { t in t.id == taskId })
 
         if let existing = try? ctx.fetch(descriptor).first {
+            if let projectId {
+                existing.projectId = projectId
+            }
             existing.title = wire.title
             existing.taskDescription = wire.description
             existing.status = TaskStatus(rawValue: wire.status) ?? .ready
@@ -968,6 +1062,7 @@ final class AppState: ObservableObject {
                 status: TaskStatus(rawValue: wire.status) ?? .backlog
             )
             item.id = taskId
+            item.projectId = projectId
             item.parentTaskId = wire.parentTaskId.flatMap(UUID.init)
             item.assignedAgentId = assignedAgentUUID
             item.assignedAgentName = assignedAgentName
@@ -981,13 +1076,43 @@ final class AppState: ObservableObject {
         try? ctx.save()
     }
 
-    func createTask(title: String, description: String, priority: TaskPriority, labels: [String], markReady: Bool) {
+    private func inferredProjectId(
+        for wire: TaskWireSwift,
+        sessionId: String?,
+        in modelContext: ModelContext
+    ) -> UUID? {
+        if let conversationId = wire.conversationId.flatMap(UUID.init) {
+            let descriptor = FetchDescriptor<Conversation>(predicate: #Predicate { $0.id == conversationId })
+            if let conversation = try? modelContext.fetch(descriptor).first {
+                return conversation.projectId
+            }
+        }
+
+        if let sessionId, let sessionUUID = UUID(uuidString: sessionId) {
+            let descriptor = FetchDescriptor<Session>(predicate: #Predicate { $0.id == sessionUUID })
+            if let session = try? modelContext.fetch(descriptor).first {
+                return session.conversations.first?.projectId
+            }
+        }
+
+        return nil
+    }
+
+    func createTask(
+        title: String,
+        description: String,
+        priority: TaskPriority,
+        labels: [String],
+        markReady: Bool,
+        projectId: UUID?
+    ) {
         let id = UUID()
         let status: TaskStatus = markReady ? .ready : .backlog
         let now = ISO8601DateFormatter().string(from: Date())
 
         let wire = TaskWireSwift(
             id: id.uuidString,
+            projectId: projectId?.uuidString,
             title: title,
             description: description,
             status: status.rawValue,
@@ -1004,12 +1129,13 @@ final class AppState: ObservableObject {
             completedAt: nil
         )
         sendToSidecar(.taskCreate(task: wire))
-        persistTask(wire)
+        persistTask(wire, sessionId: nil)
     }
 
     func updateTaskStatus(_ task: TaskItem, status: TaskStatus) {
         let wire = TaskWireSwift(
             id: task.id.uuidString,
+            projectId: task.projectId?.uuidString,
             title: task.title,
             description: task.taskDescription,
             status: status.rawValue,
@@ -1061,7 +1187,11 @@ final class AppState: ObservableObject {
         let (_, session) = provisioner.provision(agent: orchestrator, mission: task.title)
 
         // Create conversation
-        let conversation = Conversation(topic: "Task: \(task.title)")
+        let conversation = Conversation(
+            topic: "Task: \(task.title)",
+            projectId: task.projectId ?? windowState.selectedProjectId,
+            threadKind: .direct
+        )
         let userParticipant = Participant(type: .user, displayName: "You")
         let agentParticipant = Participant(
             type: .agentSession(sessionId: session.id),
@@ -1098,24 +1228,32 @@ final class AppState: ObservableObject {
     func handleEventForTesting(_ event: SidecarEvent) {
         handleEvent(event)
     }
+
+    func recoverSessionsForTesting() async {
+        await recoverSessions()
+    }
+
+    func markSessionsStaleForTesting() {
+        markSessionsStale()
+    }
     #endif
 
     // MARK: - Session crash recovery
 
     private var disconnectTimer: Timer?
 
-    /// After sidecar reconnects, re-register agents and resume active sessions with their Claude SDK session IDs.
+    /// After sidecar reconnects, re-register agents and restore Claude context for recoverable sessions.
     private func recoverSessions() async {
-        guard let ctx = modelContext, let manager = sidecarManager else { return }
+        guard let ctx = modelContext, canSendCommands else { return }
 
         // 1. Re-register agent definitions so sidecar knows about them
-        registerAgentDefinitions()
+        await registerAgentDefinitionsAwait()
 
         // 2. Find sessions that were active and have a Claude SDK session ID
         let descriptor = FetchDescriptor<Session>()
         guard let allSessions = try? ctx.fetch(descriptor) else { return }
         let resumable = allSessions.filter {
-            ($0.status == .active || $0.status == .paused) && $0.claudeSessionId != nil
+            ($0.status == .active || $0.status == .paused || $0.status == .interrupted) && $0.claudeSessionId != nil
         }
         guard !resumable.isEmpty else { return }
 
@@ -1129,19 +1267,23 @@ final class AppState: ObservableObject {
                 claudeSessionId: claudeId,
                 agentConfig: config
             ))
-            // Ensure session is marked active again if it was paused by disconnect
-            if session.status == .paused {
-                session.status = .active
+            createdSessions.insert(session.id.uuidString)
+            sessionActivity[session.id.uuidString] = .idle
+
+            // A previously active session was interrupted by losing the sidecar;
+            // restore Claude context, but do not claim the run is still live.
+            if session.status == .active {
+                session.status = .interrupted
             }
         }
 
         guard !entries.isEmpty else { return }
         try? ctx.save()
-        try? await manager.send(.sessionBulkResume(sessions: entries))
+        try? await sendToSidecarAwait(.sessionBulkResume(sessions: entries))
         Log.appState.info("Recovered \(entries.count) sessions after reconnect")
     }
 
-    /// Mark active sessions as paused after prolonged sidecar disconnect (60s).
+    /// Mark active sessions as interrupted after prolonged sidecar disconnect (60s).
     private func startDisconnectTimer() {
         disconnectTimer?.invalidate()
         disconnectTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: false) { [weak self] _ in
@@ -1156,10 +1298,20 @@ final class AppState: ObservableObject {
         let descriptor = FetchDescriptor<Session>()
         guard let sessions = try? ctx.fetch(descriptor) else { return }
         for session in sessions where session.status == .active {
-            session.status = .paused
+            session.status = .interrupted
+            sessionActivity[session.id.uuidString] = .idle
         }
         try? ctx.save()
-        Log.appState.warning("Marked active sessions as paused after prolonged disconnect")
+        Log.appState.warning("Marked active sessions as interrupted after prolonged disconnect")
+    }
+
+    private var canSendCommands: Bool {
+        if sidecarManager != nil { return true }
+        #if DEBUG
+        return commandSendOverrideForTesting != nil || commandCaptureForTesting != nil
+        #else
+        return false
+        #endif
     }
 
     // MARK: - Worktree cleanup
@@ -1167,6 +1319,15 @@ final class AppState: ObservableObject {
     private func cleanupWorktreeIfNeeded(sessionId: String) {
         // Session-level worktrees have been removed.
         // Per-conversation worktrees are managed by WorktreeManager.
+    }
+
+    private func updatePersistedSessionStatus(sessionId: String, status: SessionStatus) {
+        guard let ctx = modelContext, let uuid = UUID(uuidString: sessionId) else { return }
+        let descriptor = FetchDescriptor<Session>(predicate: #Predicate { $0.id == uuid })
+        guard let session = try? ctx.fetch(descriptor).first else { return }
+        session.status = status
+        session.lastActiveAt = Date()
+        try? ctx.save()
     }
 
     // MARK: - Unread state

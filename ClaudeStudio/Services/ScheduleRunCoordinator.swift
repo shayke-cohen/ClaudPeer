@@ -244,7 +244,11 @@ final class ScheduleRunCoordinator {
                 guard let targetAgentId = schedule.targetAgentId else { return nil }
                 let descriptor = FetchDescriptor<Agent>(predicate: #Predicate { $0.id == targetAgentId })
                 guard let agent = try? modelContext.fetch(descriptor).first else { return nil }
-                conversation = createAgentConversation(agent: agent, projectDirectory: schedule.projectDirectory)
+                conversation = createAgentConversation(
+                    agent: agent,
+                    projectDirectory: schedule.projectDirectory,
+                    projectId: schedule.projectId
+                )
 
             case .group:
                 guard let targetGroupId = schedule.targetGroupId else { return nil }
@@ -256,12 +260,14 @@ final class ScheduleRunCoordinator {
                         group: group,
                         mission: prompt,
                         projectDirectory: schedule.projectDirectory,
+                        projectId: schedule.projectId,
                         modelContext: modelContext
                     )
                 } else {
                     conversationId = appState.startGroupChat(
                         group: group,
                         projectDirectory: schedule.projectDirectory,
+                        projectId: schedule.projectId,
                         modelContext: modelContext
                     )
                 }
@@ -280,6 +286,10 @@ final class ScheduleRunCoordinator {
         }
 
         guard let conversation else { return nil }
+        if conversation.projectId == nil {
+            conversation.projectId = schedule.projectId
+        }
+        conversation.threadKind = .scheduled
         run.conversationId = conversation.id
         if let windowState {
             windowState.selectedConversationId = conversation.id
@@ -323,7 +333,7 @@ final class ScheduleRunCoordinator {
         return conversation
     }
 
-    private func createAgentConversation(agent: Agent, projectDirectory: String) -> Conversation {
+    private func createAgentConversation(agent: Agent, projectDirectory: String, projectId: UUID? = nil) -> Conversation {
         let provisioner = AgentProvisioner(modelContext: modelContext)
         let (_, session) = provisioner.provision(
             agent: agent,
@@ -331,7 +341,11 @@ final class ScheduleRunCoordinator {
             workingDirOverride: projectDirectory
         )
 
-        let conversation = Conversation(topic: agent.name)
+        let conversation = Conversation(
+            topic: agent.name,
+            projectId: projectId,
+            threadKind: .scheduled
+        )
         let userParticipant = Participant(type: .user, displayName: "You")
         let agentParticipant = Participant(
             type: .agentSession(sessionId: session.id),

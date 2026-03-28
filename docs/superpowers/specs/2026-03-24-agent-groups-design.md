@@ -1,5 +1,7 @@
 # Agent Groups — Design Spec
 
+> Stale note (2026-03-29): this design predates the project-first shell. Groups still exist as reusable team templates, but they are no longer a primary top-level sidebar section; they now surface inside each project's Team subsection and start project-owned threads.
+
 **Date:** 2026-03-24
 **Status:** Approved
 

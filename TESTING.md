@@ -93,7 +93,7 @@ Test files in `sidecar/test/`:
 ### Architecture
 
 ```
-ClaudeStudio (DEBUG) ──WebSocket──> MCP Relay (127.0.0.1:19400) <──stdio── AppXray MCP Server <── AI Agent (Cursor)
+ClaudeStudio (DEBUG, server mode on 19480) ──WebSocket──> AppXray MCP/CLI relay (default 127.0.0.1:19400) <──stdio── AI Agent
 ```
 
 ### Prerequisites
@@ -101,6 +101,7 @@ ClaudeStudio (DEBUG) ──WebSocket──> MCP Relay (127.0.0.1:19400) <──s
 1. The AppXray SDK is integrated as a local SPM package at `Dependencies/appxray/packages/sdk-ios` (DEBUG builds only).
 2. The AppXray MCP server must be configured in Cursor's MCP settings.
 3. The relay starts automatically with the MCP server.
+4. ClaudeStudio's DEBUG build pins AppXray server mode to port `19480` to avoid the relay's default `19400` port.
 
 ### Connecting
 
@@ -200,24 +201,26 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 ### 5.2 SidebarView
 
 **File:** `Views/MainWindow/SidebarView.swift`
-**Access:** Left column of `NavigationSplitView`.
+**Access:** Left column of the project-first `NavigationSplitView`.
 
 | Control | Identifier | Label | Selector |
 |---------|-----------|-------|----------|
-| Conversation list | `sidebar.conversationList` | — | `@testId("sidebar.conversationList")` |
-| Bottom bar | `sidebar.bottomBar` | — | `@testId("sidebar.bottomBar")` |
-| Catalog button | `sidebar.catalogButton` | — | `@testId("sidebar.catalogButton")` |
-| Schedules button | `sidebar.schedulesButton` | — | `@testId("sidebar.schedulesButton")` |
-| Agents button | `sidebar.agentsButton` | — | `@testId("sidebar.agentsButton")` |
-| New session (+) | `sidebar.newSessionButton` | — | `@testId("sidebar.newSessionButton")` |
+| Sidebar list | `sidebar.conversationList` | — | `@testId("sidebar.conversationList")` |
+| Utility: New Thread | `sidebar.utility.newThread` | — | `@testId("sidebar.utility.newThread")` |
+| Utility: Plugins | `sidebar.utility.plugins` | — | `@testId("sidebar.utility.plugins")` |
+| Utility: Automations | `sidebar.utility.automations` | — | `@testId("sidebar.utility.automations")` |
+| Utility: Settings | `sidebar.utility.settings` | — | `@testId("sidebar.utility.settings")` |
+| Project row | `sidebar.projectRow.{uuid}` | — | `@testId("sidebar.projectRow.{uuid}")` |
+| Project tasks add | `sidebar.projectTasksAdd.{uuid}` | — | `@testId("sidebar.projectTasksAdd.{uuid}")` |
 | Empty state: New Session | `sidebar.emptyState.newSessionButton` | — | `@testId("sidebar.emptyState.newSessionButton")` |
-| Agent row | `sidebar.agentRow.{uuid}` | — | `@testId("sidebar.agentRow.{uuid}")` |
-| Agent row: Start Session | `sidebar.agentRow.startSession.{uuid}` | — | `@testId("sidebar.agentRow.startSession.{uuid}")` |
-| Conversation row | `sidebar.conversationRow.{uuid}` | — | `@testId("sidebar.conversationRow.{uuid}")` |
-| Active dot | — | `Active` | `@label("Active")` |
-| Archived section | `sidebar.archivedSection` | — | `@testId("sidebar.archivedSection")` |
+| Agent roster row | `sidebar.agentRow.{uuid}` | — | `@testId("sidebar.agentRow.{uuid}")` |
+| Group roster row | `sidebar.groupRow.{uuid}` | — | `@testId("sidebar.groupRow.{uuid}")` |
+| Thread row | `sidebar.conversationRow.{uuid}` | — | `@testId("sidebar.conversationRow.{uuid}")` |
+| Archived threads section | `sidebar.archivedSection` | — | `@testId("sidebar.archivedSection")` |
 
-**Context menu on conversation rows** (Rename, Pin/Unpin, Close, Duplicate, Archive/Unarchive, Delete) and **swipe actions** do not have explicit identifiers.
+The sidebar is now **project-first**: utilities live above projects, and each project disclosure contains Threads, Tasks, Team, and Schedules subsections. Legacy bottom-bar references should not be used for new tests.
+
+**Context menu on thread rows** (Rename, Pin/Unpin, Close, Duplicate, Archive/Unarchive, Delete) and **swipe actions** do not have explicit identifiers.
 
 ---
 

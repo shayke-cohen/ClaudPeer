@@ -58,6 +58,45 @@ final class SidecarProtocolTests: XCTestCase {
         XCTAssertEqual(json["text"] as? String, "Hello agent")
     }
 
+    func testSessionBulkResumeEncoding() throws {
+        let config = AgentConfig(
+            name: "RecoveryBot",
+            systemPrompt: "Resume safely",
+            allowedTools: ["Read"],
+            mcpServers: [],
+            model: "claude-sonnet-4-6",
+            maxTurns: 5,
+            maxBudget: 1.5,
+            maxThinkingTokens: 8000,
+            workingDirectory: "/tmp/recovery",
+            skills: []
+        )
+        let command = SidecarCommand.sessionBulkResume(sessions: [
+            SessionBulkResumeEntry(
+                sessionId: "session-a",
+                claudeSessionId: "claude-a",
+                agentConfig: config
+            ),
+            SessionBulkResumeEntry(
+                sessionId: "session-b",
+                claudeSessionId: "claude-b",
+                agentConfig: config
+            ),
+        ])
+
+        let data = try command.encodeToJSON()
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+
+        XCTAssertEqual(json["type"] as? String, "session.bulkResume")
+        let sessions = try XCTUnwrap(json["sessions"] as? [[String: Any]])
+        XCTAssertEqual(sessions.count, 2)
+        XCTAssertEqual(sessions[0]["sessionId"] as? String, "session-a")
+        XCTAssertEqual(sessions[0]["claudeSessionId"] as? String, "claude-a")
+        let firstConfig = try XCTUnwrap(sessions[0]["agentConfig"] as? [String: Any])
+        XCTAssertEqual(firstConfig["name"] as? String, "RecoveryBot")
+        XCTAssertEqual(firstConfig["workingDirectory"] as? String, "/tmp/recovery")
+    }
+
     func testSessionForkEncoding() throws {
         let command = SidecarCommand.sessionFork(parentSessionId: "parent-1", childSessionId: "child-2")
         let data = try command.encodeToJSON()
@@ -154,6 +193,7 @@ final class SidecarProtocolTests: XCTestCase {
     func testTaskCreateEncoding() throws {
         let task = TaskWireSwift(
             id: "task-1",
+            projectId: nil,
             title: "Fix bug",
             description: "Login broken",
             status: "ready",
@@ -162,6 +202,7 @@ final class SidecarProtocolTests: XCTestCase {
             result: nil,
             parentTaskId: nil,
             assignedAgentId: nil,
+            assignedAgentName: nil,
             assignedGroupId: nil,
             conversationId: nil,
             createdAt: "2026-03-25T00:00:00Z",
@@ -219,7 +260,7 @@ final class SidecarProtocolTests: XCTestCase {
         let wire = try JSONDecoder().decode(IncomingWireMessage.self, from: data)
         let event = wire.toEvent()
 
-        if case .taskCreated(let task) = event {
+        if case .taskCreated(_, let task) = event {
             XCTAssertEqual(task.id, "t-1")
             XCTAssertEqual(task.title, "Fix bug")
             XCTAssertEqual(task.status, "ready")
@@ -238,7 +279,7 @@ final class SidecarProtocolTests: XCTestCase {
         let wire = try JSONDecoder().decode(IncomingWireMessage.self, from: data)
         let event = wire.toEvent()
 
-        if case .taskUpdated(let task) = event {
+        if case .taskUpdated(_, let task) = event {
             XCTAssertEqual(task.id, "t-2")
             XCTAssertEqual(task.status, "done")
             XCTAssertEqual(task.result, "Deployed v2.1")

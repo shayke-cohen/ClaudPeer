@@ -12,6 +12,16 @@ export function createWorkspaceTools(ctx: ToolContext, callingSessionId: string)
       },
       async (args) => {
         const workspace = ctx.workspaces.create(args.name, callingSessionId);
+        const senderState = ctx.sessions.get(callingSessionId);
+
+        ctx.broadcast({
+          type: "workspace.created",
+          sessionId: callingSessionId,
+          workspaceName: workspace.name,
+          workspaceId: workspace.id,
+          agentName: senderState?.agentName ?? callingSessionId,
+        });
+
         return {
           content: [{
             type: "text" as const,
@@ -41,6 +51,16 @@ export function createWorkspaceTools(ctx: ToolContext, callingSessionId: string)
             }],
           };
         }
+
+        const senderState = ctx.sessions.get(callingSessionId);
+        ctx.broadcast({
+          type: "workspace.joined",
+          sessionId: callingSessionId,
+          workspaceName: workspace.name,
+          workspaceId: workspace.id,
+          agentName: senderState?.agentName ?? callingSessionId,
+        });
+
         return {
           content: [{
             type: "text" as const,

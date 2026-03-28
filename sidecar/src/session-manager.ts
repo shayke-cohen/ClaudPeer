@@ -1,8 +1,8 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { randomUUID } from "crypto";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
-import { join } from "path";
-import { homedir } from "os";
+import { basename, join } from "path";
+import { homedir, userInfo } from "os";
 import type { AgentConfig, BulkResumeEntry, FileAttachment, SidecarEvent } from "./types.js";
 import type { SessionRegistry } from "./stores/session-registry.js";
 import type { ToolContext } from "./tools/tool-context.js";
@@ -36,6 +36,40 @@ function extensionToMediaType(filePath: string): string {
     gif: "image/gif", webp: "image/webp", svg: "image/svg+xml", ico: "image/x-icon",
   };
   return map[ext] ?? "image/png";
+}
+
+function normalizeClaudeEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (typeof value === "string") {
+      env[key] = value;
+    }
+  }
+
+  delete env.CLAUDECODE;
+
+  const home = env.HOME?.trim() || homedir();
+  const fallbackUser = (() => {
+    try {
+      const username = userInfo().username?.trim();
+      if (username && username !== "unknown") {
+        return username;
+      }
+    } catch {
+      // Fall through to home-directory inference below.
+    }
+    const homeLeaf = basename(home);
+    return homeLeaf && homeLeaf !== "/" ? homeLeaf : "unknown";
+  })();
+  const user = env.USER?.trim() || env.LOGNAME?.trim() || fallbackUser;
+
+  env.HOME = home;
+  env.USER = user;
+  env.LOGNAME = env.LOGNAME?.trim() || user;
+  env.SHELL = env.SHELL?.trim() || "/bin/zsh";
+  env.PATH = env.PATH?.trim() || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+
+  return env;
 }
 
 type EventEmitter = (event: SidecarEvent) => void;
@@ -202,11 +236,6 @@ export class SessionManager {
 
   async resumeSession(sessionId: string, claudeSessionId: string): Promise<void> {
     this.registry.update(sessionId, { claudeSessionId, status: "active" });
-    this.emit({
-      type: "stream.token",
-      sessionId,
-      text: "Session context restored. Send a message to continue.\n",
-    });
   }
 
   async bulkResume(sessions: BulkResumeEntry[]): Promise<void> {
@@ -265,6 +294,31 @@ export class SessionManager {
     return this.registry.list();
   }
 
+  /**
+   * Test-only seam for asserting whether a session would resume an existing
+   * Claude context or start a fresh one on the next sendMessage call.
+   */
+  buildQueryOptionsForTesting(
+    sessionId: string,
+    attachmentCount = 0,
+    planMode?: boolean,
+  ): Record<string, any> {
+    const config = this.registry.getConfig(sessionId);
+    const state = this.registry.get(sessionId);
+    if (!config || !state) {
+      throw new Error(`Session ${sessionId} not found`);
+    }
+
+    return this.buildQueryOptions(
+      sessionId,
+      config,
+      state.claudeSessionId,
+      new AbortController(),
+      attachmentCount,
+      planMode,
+    );
+  }
+
   private static readonly MODEL_ALIASES: Record<string, string> = {
     sonnet: "claude-sonnet-4-6",
     opus: "claude-opus-4-6",
@@ -296,8 +350,7 @@ export class SessionManager {
       if (maxTurns < 30) maxTurns = 30;
     }
     logger.debug("session", `[${sessionId}] buildQueryOptions: planMode=${usePlanMode}, maxTurns=${maxTurns}`);
-    const env = { ...process.env };
-    delete env.CLAUDECODE;
+    const env = normalizeClaudeEnv();
     const options: Record<string, any> = {
       model: resolvedModel,
       maxTurns,
@@ -664,6 +717,9 @@ Before using \`gh\` commands, verify auth: \`gh auth status\`. If not authentica
           usageAccum.inputTokens = usage.input_tokens ?? usage.inputTokens ?? 0;
           usageAccum.outputTokens = usage.output_tokens ?? usage.outputTokens ?? 0;
           usageAccum.numTurns = message.num_turns ?? 0;
+          this.registry.update(sessionId, {
+            tokenCount: usageAccum.inputTokens + usageAccum.outputTokens,
+          });
         }
         if (message.session_id) {
           this.registry.update(sessionId, { claudeSessionId: message.session_id });

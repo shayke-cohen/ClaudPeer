@@ -124,8 +124,8 @@ export type SidecarEvent =
   | { type: "stream.suggestions"; sessionId: string; suggestions: SuggestionItem[] }
   | { type: "conversation.inviteAgent"; sessionId: string; agentName: string }
   | { type: "session.planComplete"; sessionId: string; plan: string | null; allowedPrompts?: { tool: string; prompt: string }[] }
-  | { type: "task.created"; task: TaskWire }
-  | { type: "task.updated"; task: TaskWire }
+  | { type: "task.created"; sessionId?: string; task: TaskWire }
+  | { type: "task.updated"; sessionId?: string; task: TaskWire }
   | { type: "task.list.result"; tasks: TaskWire[] };
 
 export interface QuestionOption {
@@ -191,6 +191,7 @@ export interface BlackboardEntry {
 // Task board entry
 export interface TaskWire {
   id: string;
+  projectId?: string;
   title: string;
   description: string;
   status: "backlog" | "ready" | "inProgress" | "done" | "failed" | "blocked";
@@ -199,6 +200,7 @@ export interface TaskWire {
   result?: string;
   parentTaskId?: string;
   assignedAgentId?: string;
+  assignedAgentName?: string;
   assignedGroupId?: string;
   conversationId?: string;
   createdAt: string;

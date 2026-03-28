@@ -134,7 +134,12 @@ struct AutoAssembleSheet: View {
         )
         modelContext.insert(group)
         try? modelContext.save()
-        if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+        if let convoId = appState.startGroupChat(
+            group: group,
+            projectDirectory: windowState.projectDirectory,
+            projectId: windowState.selectedProjectId,
+            modelContext: modelContext
+        ) {
             windowState.selectedConversationId = convoId
         }
         dismiss()

@@ -126,7 +126,7 @@ describe("S: Session Lifecycle", () => {
     }
   }, 120000);
 
-  test("S-3: resume restores session context", async () => {
+  test("S-3: resume restores session context without synthetic output", async () => {
     const ws = await wsConnect(WS_PORT);
     try {
       await ws.waitFor((m) => m.type === "sidecar.ready");
@@ -139,11 +139,10 @@ describe("S: Session Lifecycle", () => {
       await new Promise((r) => setTimeout(r, 300));
 
       ws.send({ type: "session.resume", sessionId: sid, claudeSessionId: "fake-claude-id" });
-      const msg = await ws.waitFor(
-        (m) => m.type === "stream.token" && m.sessionId === sid && m.text?.includes("context restored"),
-        5000,
-      );
-      expect(msg.text).toContain("context restored");
+      await new Promise((r) => setTimeout(r, 500));
+      const resumeEvents = ws.buffer.filter((m) => m.sessionId === sid);
+      expect(resumeEvents.some((m) => m.type === "stream.token")).toBe(false);
+      expect(resumeEvents.some((m) => m.type === "session.error")).toBe(false);
     } finally {
       ws.close();
     }

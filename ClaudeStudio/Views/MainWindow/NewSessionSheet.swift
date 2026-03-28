@@ -99,7 +99,7 @@ struct NewSessionSheet: View {
     @ViewBuilder
     private var header: some View {
         HStack {
-            Text("New Session")
+            Text("New Thread")
                 .font(.title2)
                 .fontWeight(.semibold)
                 .xrayId("newSession.title")
@@ -451,9 +451,9 @@ struct NewSessionSheet: View {
             }
             .keyboardShortcut("n", modifiers: [.command, .shift])
             .xrayId("newSession.quickChatButton")
-            Button("Start Session") {
-                Task { await createSessionAsync() }
-            }
+                Button("Start Thread") {
+                    Task { await createSessionAsync() }
+                }
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.return)
             .disabled(!canStartSession)
@@ -470,7 +470,11 @@ struct NewSessionSheet: View {
 
         // Freeform chat
         if isFreeformChat || selectedAgentIds.isEmpty {
-            let conversation = Conversation(topic: "New Chat")
+            let conversation = Conversation(
+                topic: "New Thread",
+                projectId: windowState.selectedProjectId,
+                threadKind: .freeform
+            )
             let userParticipant = Participant(type: .user, displayName: "You")
             userParticipant.conversation = conversation
             conversation.participants.append(userParticipant)
@@ -494,7 +498,11 @@ struct NewSessionSheet: View {
             topic = selectedList.map(\.name).joined(separator: ", ")
         }
 
-        let conversation = Conversation(topic: topic)
+        let conversation = Conversation(
+            topic: topic,
+            projectId: windowState.selectedProjectId,
+            threadKind: selectedList.count > 1 ? .group : .direct
+        )
         let userParticipant = Participant(type: .user, displayName: "You")
         userParticipant.conversation = conversation
         conversation.participants.append(userParticipant)
@@ -527,7 +535,11 @@ struct NewSessionSheet: View {
     }
 
     private func createQuickChat() {
-        let conversation = Conversation(topic: "New Chat")
+        let conversation = Conversation(
+            topic: "New Thread",
+            projectId: windowState.selectedProjectId,
+            threadKind: .freeform
+        )
         let userParticipant = Participant(type: .user, displayName: "You")
         userParticipant.conversation = conversation
         conversation.participants.append(userParticipant)

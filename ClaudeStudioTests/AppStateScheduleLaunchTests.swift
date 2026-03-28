@@ -11,7 +11,8 @@ final class AppStateScheduleLaunchTests: XCTestCase {
     override func setUp() async throws {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         container = try ModelContainer(
-            for: ScheduledMission.self,
+            for: Project.self,
+            ScheduledMission.self,
             ScheduledMissionRun.self,
             Agent.self,
             Session.self,
@@ -38,12 +39,19 @@ final class AppStateScheduleLaunchTests: XCTestCase {
 
     func testExecuteLaunchIntentRunsScheduledOccurrence() async throws {
         let expectation = expectation(description: "schedule launched")
+        let project = Project(
+            name: "Repo",
+            rootPath: "/tmp/repo",
+            canonicalRootPath: "/tmp/repo"
+        )
+        context.insert(project)
         let schedule = ScheduledMission(
             name: "CLI schedule",
             targetKind: .agent,
             projectDirectory: "/tmp/repo",
             promptTemplate: "Prompt"
         )
+        schedule.projectId = project.id
         context.insert(schedule)
         try context.save()
 
@@ -68,7 +76,7 @@ final class AppStateScheduleLaunchTests: XCTestCase {
             "--schedule", schedule.id.uuidString,
             "--occurrence", "1970-01-01T02:00:00Z"
         ]))
-        let windowState = WindowState(projectDirectory: "/tmp/repo")
+        let windowState = WindowState(project: project)
 
         appState.executeLaunchIntent(intent, modelContext: context, windowState: windowState)
         await fulfillment(of: [expectation], timeout: 1.0)

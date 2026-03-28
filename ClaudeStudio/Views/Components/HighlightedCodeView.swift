@@ -7,6 +7,7 @@ struct HighlightedCodeView: NSViewRepresentable {
     var language: String?
     var showLineNumbers: Bool = true
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appTextScale) private var appTextScale
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
@@ -43,7 +44,8 @@ struct HighlightedCodeView: NSViewRepresentable {
 
         let isDark = colorScheme == .dark
         if code == coord.lastCode && language == coord.lastLanguage
-            && showLineNumbers == coord.lastShowLineNumbers && isDark == coord.lastIsDark {
+            && showLineNumbers == coord.lastShowLineNumbers && isDark == coord.lastIsDark
+            && appTextScale == coord.lastTextScale {
             return
         }
 
@@ -59,7 +61,7 @@ struct HighlightedCodeView: NSViewRepresentable {
         let highlightr = coordinator.highlightr
         let themeName = isDark ? "github-dark" : "github"
         highlightr.setTheme(to: themeName)
-        highlightr.theme.codeFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        highlightr.theme.codeFont = NSFont.monospacedSystemFont(ofSize: 12 * appTextScale, weight: .regular)
 
         let lang = language?.lowercased()
         let attributed = highlightr.highlight(code, as: lang) ?? NSAttributedString(string: code)
@@ -75,6 +77,7 @@ struct HighlightedCodeView: NSViewRepresentable {
         coordinator.lastLanguage = language
         coordinator.lastShowLineNumbers = showLineNumbers
         coordinator.lastIsDark = isDark
+        coordinator.lastTextScale = appTextScale
     }
 
     private func addLineNumbers(to text: NSAttributedString) -> NSAttributedString {
@@ -84,11 +87,11 @@ struct HighlightedCodeView: NSViewRepresentable {
         let result = NSMutableAttributedString()
 
         let gutterAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular),
+            .font: NSFont.monospacedSystemFont(ofSize: 11 * appTextScale, weight: .regular),
             .foregroundColor: NSColor.secondaryLabelColor
         ]
         let separatorAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular),
+            .font: NSFont.monospacedSystemFont(ofSize: 11 * appTextScale, weight: .regular),
             .foregroundColor: NSColor.separatorColor
         ]
 
@@ -120,5 +123,6 @@ struct HighlightedCodeView: NSViewRepresentable {
         var lastLanguage: String?
         var lastShowLineNumbers: Bool?
         var lastIsDark: Bool?
+        var lastTextScale: CGFloat?
     }
 }

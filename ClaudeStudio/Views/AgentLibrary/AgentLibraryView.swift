@@ -221,7 +221,12 @@ struct AgentLibraryView: View {
         if session.workingDirectory.isEmpty, !windowState.projectDirectory.isEmpty {
             session.workingDirectory = windowState.projectDirectory
         }
-        let conversation = Conversation(topic: agent.name, sessions: [session])
+        let conversation = Conversation(
+            topic: agent.name,
+            sessions: [session],
+            projectId: windowState.selectedProjectId,
+            threadKind: .direct
+        )
         let userParticipant = Participant(type: .user, displayName: "You")
         let agentParticipant = Participant(
             type: .agentSession(sessionId: session.id),

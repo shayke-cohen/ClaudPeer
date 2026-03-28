@@ -112,7 +112,12 @@ struct GroupLibraryView: View {
                                 group: group,
                                 agents: agents,
                                 onStart: {
-                                    if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+                                    if let convoId = appState.startGroupChat(
+                                        group: group,
+                                        projectDirectory: windowState.projectDirectory,
+                                        projectId: windowState.selectedProjectId,
+                                        modelContext: modelContext
+                                    ) {
                                         windowState.selectedConversationId = convoId
                                     }
                                     dismiss()
@@ -123,9 +128,12 @@ struct GroupLibraryView: View {
                             )
                             .contextMenu {
                                 Button("Edit") { editingGroup = group }
+                                    .xrayId("groupLibrary.context.edit.\(group.id.uuidString)")
                                 Button("Duplicate") { duplicateGroup(group) }
+                                    .xrayId("groupLibrary.context.duplicate.\(group.id.uuidString)")
                                 Divider()
                                 Button("Delete", role: .destructive) { deleteGroup(group) }
+                                    .xrayId("groupLibrary.context.delete.\(group.id.uuidString)")
                             }
                         }
                     }

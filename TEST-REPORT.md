@@ -1,5 +1,7 @@
 # ClaudeStudio Test Report
 
+> Historical note: this report predates the project-first shell reset. References to sidebar agent sections or global chat lists describe the old layout, not the current project-scoped navigation.
+
 **Date:** 2026-03-21
 **Platform:** macOS (darwin 24.6.0)
 **Build:** Debug (Xcode)

@@ -234,6 +234,7 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
         }
 
         const senderState = ctx.sessions.get(callingSessionId);
+        const targetState = ctx.sessions.get(targetId);
         ctx.messages.push(targetId, {
           id: randomUUID(),
           from: callingSessionId,
@@ -244,6 +245,14 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
           priority: "urgent",
           timestamp: new Date().toISOString(),
           read: false,
+        });
+
+        ctx.broadcast({
+          type: "agent.invited",
+          sessionId: callingSessionId,
+          invitedAgent: targetState?.agentName ?? args.agent,
+          invitedBy: senderState?.agentName ?? callingSessionId,
+          channelId: args.channel_id,
         });
 
         return {

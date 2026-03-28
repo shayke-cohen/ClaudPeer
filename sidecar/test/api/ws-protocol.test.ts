@@ -24,6 +24,7 @@ let ctx: ToolContext;
 let sessionCreateCalls: Array<{ id: string; config: any }>;
 let sessionMessageCalls: Array<{ id: string; text: string }>;
 let forkSessionCalls: Array<{ parent: string; child: string }>;
+let sessionBulkResumeCalls: Array<{ sessions: any[] }>;
 
 const mockSessionManager = {
   createSession: async (id: string, config: any) => {
@@ -33,6 +34,9 @@ const mockSessionManager = {
     sessionMessageCalls.push({ id, text });
   },
   resumeSession: async () => {},
+  bulkResume: async (sessions: any[]) => {
+    sessionBulkResumeCalls.push({ sessions });
+  },
   forkSession: async (parent: string, child: string) => {
     forkSessionCalls.push({ parent, child });
   },
@@ -43,6 +47,7 @@ beforeAll(() => {
   sessionCreateCalls = [];
   sessionMessageCalls = [];
   forkSessionCalls = [];
+  sessionBulkResumeCalls = [];
 
   ctx = {
     blackboard: new BlackboardStore(`ws-test-${Date.now()}`),
@@ -497,6 +502,135 @@ describe("WebSocket Delegation Policy Routing", () => {
       expect(errors).toHaveLength(0);
     } finally {
       ws.close();
+    }
+  });
+
+  test("session.bulkResume dispatches the exact recovery payload to SessionManager", async () => {
+    const ws = await wsConnect();
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+      const prevCount = sessionBulkResumeCalls.length;
+
+      ws.send({
+        type: "session.bulkResume",
+        sessions: [
+          {
+            sessionId: "recover-a",
+            claudeSessionId: "claude-a",
+            agentConfig: {
+              name: "RecoverA",
+              systemPrompt: "test",
+              allowedTools: [],
+              mcpServers: [],
+              model: "claude-sonnet-4-6",
+              maxTurns: 2,
+              workingDirectory: "/tmp/recover-a",
+              skills: [],
+            },
+          },
+          {
+            sessionId: "recover-b",
+            claudeSessionId: "claude-b",
+            agentConfig: {
+              name: "RecoverB",
+              systemPrompt: "test",
+              allowedTools: [],
+              mcpServers: [],
+              model: "claude-sonnet-4-6",
+              maxTurns: 3,
+              workingDirectory: "/tmp/recover-b",
+              skills: [],
+            },
+          },
+        ],
+      });
+
+      await new Promise((r) => setTimeout(r, 200));
+      expect(sessionBulkResumeCalls.length).toBe(prevCount + 1);
+      expect(sessionBulkResumeCalls[prevCount].sessions).toEqual([
+        {
+          sessionId: "recover-a",
+          claudeSessionId: "claude-a",
+          agentConfig: {
+            name: "RecoverA",
+            systemPrompt: "test",
+            allowedTools: [],
+            mcpServers: [],
+            model: "claude-sonnet-4-6",
+            maxTurns: 2,
+            workingDirectory: "/tmp/recover-a",
+            skills: [],
+          },
+        },
+        {
+          sessionId: "recover-b",
+          claudeSessionId: "claude-b",
+          agentConfig: {
+            name: "RecoverB",
+            systemPrompt: "test",
+            allowedTools: [],
+            mcpServers: [],
+            model: "claude-sonnet-4-6",
+            maxTurns: 3,
+            workingDirectory: "/tmp/recover-b",
+            skills: [],
+          },
+        },
+      ]);
+    } finally {
+      ws.close();
+    }
+  });
+
+  test("session.bulkResume does not disrupt multi-client broadcasting", async () => {
+    const ws1 = await wsConnect();
+    const ws2 = await wsConnect();
+    try {
+      await ws1.waitFor((m) => m.type === "sidecar.ready");
+      await ws2.waitFor((m) => m.type === "sidecar.ready");
+
+      ws1.send({
+        type: "session.bulkResume",
+        sessions: [
+          {
+            sessionId: "broadcast-recover",
+            claudeSessionId: "claude-broadcast",
+            agentConfig: {
+              name: "BroadcastRecover",
+              systemPrompt: "test",
+              allowedTools: [],
+              mcpServers: [],
+              model: "claude-sonnet-4-6",
+              workingDirectory: "/tmp/broadcast-recover",
+              skills: [],
+            },
+          },
+        ],
+      });
+
+      await new Promise((r) => setTimeout(r, 200));
+      const errors1 = ws1.buffer.filter((m) => m.type === "session.error");
+      const errors2 = ws2.buffer.filter((m) => m.type === "session.error");
+      expect(errors1).toHaveLength(0);
+      expect(errors2).toHaveLength(0);
+
+      const collect1 = ws1.collectNew(1, 2000);
+      const collect2 = ws2.collectNew(1, 2000);
+      wsServer.broadcast({
+        type: "blackboard.update",
+        key: "recovery.broadcast",
+        value: "ok",
+        writtenBy: "test",
+      });
+
+      const [msgs1, msgs2] = await Promise.all([collect1, collect2]);
+      expect(msgs1).toHaveLength(1);
+      expect(msgs2).toHaveLength(1);
+      expect(msgs1[0].type).toBe("blackboard.update");
+      expect(msgs2[0].type).toBe("blackboard.update");
+    } finally {
+      ws1.close();
+      ws2.close();
     }
   });
 

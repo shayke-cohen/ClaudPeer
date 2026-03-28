@@ -2,6 +2,8 @@
 
 Rerunnable sanity test plan for the ClaudeStudio sidecar. Covers unit, integration, API, protocol, and E2E layers.
 
+> Project-first shell note: the product now organizes UI around Projects → Threads/Tasks/Team/Schedules. Any older sidebar references in this file should be treated as legacy until the matching sanity scripts are refreshed.
+
 ---
 
 ## Prerequisites

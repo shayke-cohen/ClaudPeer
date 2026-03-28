@@ -73,6 +73,7 @@ final class CatalogService {
     private var mcpCatalog: [CatalogMCP] = []
     private var skillCatalog: [CatalogSkill] = []
     private var agentCatalog: [CatalogAgent] = []
+    private var fallbackSkillCatalog: [String: CatalogSkill] = [:]
 
     private init() {
         loadCatalogs()
@@ -82,6 +83,7 @@ final class CatalogService {
         agentCatalog = loadAgentItems()
         skillCatalog = loadSkillItems()
         mcpCatalog = loadCatalogItems(directory: "mcps")
+        fallbackSkillCatalog = loadFallbackSkillItems()
     }
 
     private func loadCatalogItems<T: Decodable>(directory: String) -> [T] {
@@ -104,6 +106,39 @@ final class CatalogService {
             guard var skill: CatalogSkill = loadJSON(directory: "skills", name: id) else { return nil }
             skill.content = loadMarkdown(directory: "skills", name: id) ?? ""
             return skill
+        }
+    }
+
+    private func loadFallbackSkillItems() -> [String: CatalogSkill] {
+        let fallbackIds = ["github-workflow"]
+        var skills: [String: CatalogSkill] = [:]
+
+        for id in fallbackIds {
+            guard let skill = loadFallbackSkill(id: id) else { continue }
+            skills[id] = skill
+        }
+
+        return skills
+    }
+
+    private func loadFallbackSkill(id: String) -> CatalogSkill? {
+        guard let content = loadDefaultSkillMarkdown(name: id) else { return nil }
+
+        switch id {
+        case "github-workflow":
+            return CatalogSkill(
+                catalogId: id,
+                name: "GitHub Workflow",
+                description: "Guidelines for using GitHub issues, PRs, reviews, releases, and projects via gh CLI.",
+                category: "ClaudeStudio Collaboration",
+                icon: "point.3.connected.trianglepath.dotted",
+                requiredMCPs: [],
+                triggers: ["github", "gh cli", "pull request", "code review", "release"],
+                tags: ["github", "workflow", "collaboration"],
+                content: content
+            )
+        default:
+            return nil
         }
     }
 
@@ -132,6 +167,23 @@ final class CatalogService {
                 return try? String(contentsOf: URL(fileURLWithPath: path), encoding: .utf8)
             }
         }
+        return nil
+    }
+
+    private func loadDefaultSkillMarkdown(name: String) -> String? {
+        if let url = Bundle.main.url(forResource: "SKILL", withExtension: "md", subdirectory: "DefaultSkills/\(name)") {
+            return try? String(contentsOf: url, encoding: .utf8)
+        }
+
+        let fallbackPaths = [
+            "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/DefaultSkills/\(name)/SKILL.md",
+            Bundle.main.bundlePath + "/Contents/Resources/DefaultSkills/\(name)/SKILL.md"
+        ]
+
+        for path in fallbackPaths where FileManager.default.fileExists(atPath: path) {
+            return try? String(contentsOf: URL(fileURLWithPath: path), encoding: .utf8)
+        }
+
         return nil
     }
 
@@ -170,7 +222,7 @@ final class CatalogService {
     }
 
     func findSkill(_ catalogId: String) -> CatalogSkill? {
-        skillCatalog.first { $0.catalogId == catalogId }
+        skillCatalog.first { $0.catalogId == catalogId } ?? fallbackSkillCatalog[catalogId]
     }
 
     func findAgent(_ catalogId: String) -> CatalogAgent? {

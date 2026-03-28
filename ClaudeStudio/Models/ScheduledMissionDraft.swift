@@ -2,6 +2,7 @@ import Foundation
 
 struct ScheduledMissionDraft: Identifiable, Sendable {
     var id: UUID?
+    var projectId: UUID?
     var name: String
     var isEnabled: Bool
     var targetKind: ScheduledMissionTargetKind
@@ -28,6 +29,7 @@ struct ScheduledMissionDraft: Identifiable, Sendable {
         promptTemplate: String = ""
     ) {
         self.name = name
+        self.projectId = nil
         self.isEnabled = true
         self.targetKind = targetKind
         self.projectDirectory = projectDirectory
@@ -44,6 +46,7 @@ struct ScheduledMissionDraft: Identifiable, Sendable {
 
     init(schedule: ScheduledMission) {
         self.id = schedule.id
+        self.projectId = schedule.projectId
         self.name = schedule.name
         self.isEnabled = schedule.isEnabled
         self.targetKind = schedule.targetKind
@@ -105,4 +108,3 @@ struct ScheduledMissionDraft: Identifiable, Sendable {
         return nil
     }
 }
-
