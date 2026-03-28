@@ -36,6 +36,7 @@ struct SettingsView: View {
 
 private struct GeneralSettingsTab: View {
     @AppStorage(AppSettings.appearanceKey, store: AppSettings.store) private var appearance = AppAppearance.system.rawValue
+    @AppStorage(AppSettings.textSizeKey, store: AppSettings.store) private var textSize = AppSettings.defaultTextSize
     @AppStorage(AppSettings.defaultModelKey, store: AppSettings.store) private var defaultModel = AppSettings.defaultModel
     @AppStorage(AppSettings.defaultMaxTurnsKey, store: AppSettings.store) private var defaultMaxTurns = AppSettings.defaultMaxTurns
     @AppStorage(AppSettings.defaultMaxBudgetKey, store: AppSettings.store) private var defaultMaxBudget = AppSettings.defaultMaxBudget
@@ -55,6 +56,13 @@ private struct GeneralSettingsTab: View {
         )
     }
 
+    private var selectedTextSize: Binding<AppTextSize> {
+        Binding(
+            get: { AppTextSize(rawValue: textSize) ?? .standard },
+            set: { textSize = $0.rawValue }
+        )
+    }
+
     var body: some View {
         Form {
             Section("Appearance") {
@@ -65,6 +73,17 @@ private struct GeneralSettingsTab: View {
                 }
                 .pickerStyle(.segmented)
                 .xrayId("settings.general.appearancePicker")
+
+                Picker("Text Size", selection: selectedTextSize) {
+                    ForEach(AppTextSize.allCases) { option in
+                        Text(option.label).tag(option)
+                    }
+                }
+                .xrayId("settings.general.textSizePicker")
+
+                Text("Use View > Increase Text Size or the shortcuts ⌘+ / ⌘- to adjust it anytime.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Defaults") {

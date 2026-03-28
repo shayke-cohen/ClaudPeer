@@ -11,6 +11,7 @@ struct ClaudeStudioApp: App {
     @StateObject private var p2pNetworkManager = P2PNetworkManager()
     @State private var configSyncService = ConfigSyncService()
     @AppStorage(AppSettings.appearanceKey, store: AppSettings.store) private var appearance = AppAppearance.system.rawValue
+    @AppStorage(AppSettings.textSizeKey, store: AppSettings.store) private var textSize = AppSettings.defaultTextSize
     @AppStorage(AppSettings.autoConnectSidecarKey, store: AppSettings.store) private var autoConnectSidecar = true
 
     @Environment(\.openWindow) private var openWindow
@@ -22,6 +23,8 @@ struct ClaudeStudioApp: App {
         #if DEBUG
         AppXray.shared.start(appName: "ClaudeStudio")
         #endif
+
+        AppTextSizeShortcutMonitor.shared.start()
 
         InstanceConfig.ensureDirectories()
 
@@ -60,6 +63,10 @@ struct ClaudeStudioApp: App {
         (AppAppearance(rawValue: appearance) ?? .system).colorScheme
     }
 
+    private var resolvedTextSize: AppTextSize {
+        AppTextSize(rawValue: textSize) ?? .standard
+    }
+
     var body: some Scene {
         WindowGroup("ClaudeStudio", for: String.self) { $projectDir in
             ProjectWindowContent(
@@ -73,6 +80,7 @@ struct ClaudeStudioApp: App {
                 resolvedColorScheme: resolvedColorScheme,
                 lastProjectDirectory: lastProjectDirectory
             )
+            .environment(\.appTextScale, resolvedTextSize.scaleFactor)
         }
         .modelContainer(modelContainer)
         .defaultSize(width: 1200, height: 800)
@@ -84,6 +92,25 @@ struct ClaudeStudioApp: App {
                     openWindow(value: "" as String)
                 }
                 .keyboardShortcut("o")
+            }
+            CommandGroup(after: .sidebar) {
+                Button("Increase Text Size") {
+                    increaseTextSize()
+                }
+                .keyboardShortcut("=", modifiers: .command)
+                .disabled(!resolvedTextSize.canIncrease)
+
+                Button("Decrease Text Size") {
+                    decreaseTextSize()
+                }
+                .keyboardShortcut("-", modifiers: .command)
+                .disabled(!resolvedTextSize.canDecrease)
+
+                Button("Actual Size") {
+                    resetTextSize()
+                }
+                .keyboardShortcut("0", modifiers: .command)
+                .disabled(resolvedTextSize == .standard)
             }
             CommandMenu("Debug") {
                 Button("Send Test Message") {
@@ -103,6 +130,7 @@ struct ClaudeStudioApp: App {
         Window("Debug Log", id: "debug-log") {
             DebugLogView()
                 .environmentObject(appState)
+                .environment(\.appTextScale, resolvedTextSize.scaleFactor)
                 .preferredColorScheme(resolvedColorScheme)
         }
         .defaultSize(width: 900, height: 600)
@@ -111,6 +139,7 @@ struct ClaudeStudioApp: App {
         Settings {
             SettingsView()
                 .environmentObject(appState)
+                .environment(\.appTextScale, resolvedTextSize.scaleFactor)
                 .preferredColorScheme(resolvedColorScheme)
         }
     }
@@ -123,6 +152,18 @@ struct ClaudeStudioApp: App {
 
     private func saveLastProjectDirectory(_ path: String) {
         InstanceConfig.userDefaults.set(path, forKey: AppSettings.instanceWorkingDirectoryKey)
+    }
+
+    private func increaseTextSize() {
+        textSize = resolvedTextSize.increased().rawValue
+    }
+
+    private func decreaseTextSize() {
+        textSize = resolvedTextSize.decreased().rawValue
+    }
+
+    private func resetTextSize() {
+        textSize = AppTextSize.standard.rawValue
     }
 
     // MARK: - Test

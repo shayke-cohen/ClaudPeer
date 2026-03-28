@@ -15,6 +15,7 @@ struct MessageBubble: View {
     /// When set, shows “Fork from here” in the context menu (chat bubbles only).
     var onForkFromHere: (() -> Void)?
     var onScheduleFromMessage: (() -> Void)?
+    @Environment(\.appTextScale) private var appTextScale
     @State private var isHovered = false
     @State private var isCopied = false
     @State private var isThinkingExpanded = false
@@ -32,6 +33,22 @@ struct MessageBubble: View {
     private var senderAppearance: AgentAppearance? {
         guard let senderId = message.senderParticipantId else { return nil }
         return agentAppearances?[senderId]
+    }
+
+    private var captionFont: Font {
+        .system(size: 12 * appTextScale)
+    }
+
+    private var captionMediumFont: Font {
+        .system(size: 12 * appTextScale, weight: .medium)
+    }
+
+    private var caption2Font: Font {
+        .system(size: 11 * appTextScale)
+    }
+
+    private var bodyFont: Font {
+        .system(size: 14 * appTextScale)
     }
 
     var body: some View {
@@ -77,9 +94,9 @@ struct MessageBubble: View {
                 HStack(spacing: 6) {
                     Image(systemName: "diagram.below.topbar")
                         .foregroundStyle(.purple)
-                        .font(.caption)
+                        .font(captionFont)
                     Text(title ?? "Diagram")
-                        .font(.caption)
+                        .font(captionFont)
                         .fontWeight(.medium)
                         .lineLimit(1)
                     Spacer()
@@ -87,7 +104,7 @@ struct MessageBubble: View {
                         RichContentOpener.openMermaid(content, title: title)
                     } label: {
                         Image(systemName: "arrow.up.right.square")
-                            .font(.caption)
+                            .font(captionFont)
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
@@ -109,7 +126,7 @@ struct MessageBubble: View {
             VStack(alignment: .leading, spacing: 4) {
                 if let title, !title.isEmpty {
                     Text(title)
-                        .font(.caption)
+                        .font(captionFont)
                         .fontWeight(.medium)
                         .foregroundStyle(.secondary)
                 }
@@ -131,11 +148,11 @@ struct MessageBubble: View {
                 HStack(spacing: 4) {
                     if !isUser {
                         Image(systemName: senderAppearance?.icon ?? "cpu")
-                            .font(.caption2)
+                            .font(caption2Font)
                             .foregroundStyle(senderAppearance?.color ?? .purple)
                     }
                     Text(sender?.displayName ?? "Unknown")
-                        .font(.caption)
+                        .font(captionFont)
                         .foregroundStyle(senderAppearance?.color ?? .secondary)
                         .xrayId("messageBubble.senderLabel.\(message.id.uuidString)")
                 }
@@ -159,14 +176,14 @@ struct MessageBubble: View {
                     if isHovered {
                         HStack(spacing: 4) {
                             Text(message.timestamp.formatted(.dateTime.hour().minute()))
-                                .font(.caption2)
+                                .font(caption2Font)
                                 .foregroundStyle(.tertiary)
 
                             Button {
                                 copyMessage()
                             } label: {
                                 Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                                    .font(.caption2)
+                                    .font(caption2Font)
                                     .foregroundStyle(isCopied ? .green : .secondary)
                                     .frame(width: 20, height: 20)
                             }
@@ -245,6 +262,7 @@ struct MessageBubble: View {
     private var messageContent: some View {
         if isUser {
             Text(message.text)
+                .font(bodyFont)
                 .textSelection(.enabled)
         } else {
             MarkdownContent(text: message.text)
@@ -261,16 +279,16 @@ struct MessageBubble: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "brain")
-                        .font(.caption2)
+                        .font(caption2Font)
                         .foregroundStyle(.indigo)
                     Text("Thinking")
-                        .font(.caption)
+                        .font(captionMediumFont)
                         .fontWeight(.medium)
                         .foregroundStyle(.indigo)
                     Spacer()
                     Image(systemName: "chevron.right")
                         .rotationEffect(.degrees(isThinkingExpanded ? 90 : 0))
-                        .font(.caption2)
+                        .font(caption2Font)
                         .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 8)
@@ -283,7 +301,7 @@ struct MessageBubble: View {
             if isThinkingExpanded {
                 Divider()
                 Text(thinking)
-                    .font(.caption)
+                    .font(captionFont)
                     .foregroundStyle(.secondary)
                     .italic()
                     .textSelection(.enabled)
@@ -318,7 +336,7 @@ struct MessageBubble: View {
         HStack {
             Spacer()
             Text(message.text)
-                .font(.caption)
+                .font(captionFont)
                 .foregroundStyle(.secondary)
                 .italic()
                 .padding(.horizontal, 12)
@@ -336,10 +354,10 @@ struct MessageBubble: View {
                 .foregroundStyle(.blue)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Peer Message")
-                    .font(.caption)
+                    .font(captionMediumFont)
                     .fontWeight(.medium)
                 Text(message.text)
-                    .font(.caption)
+                    .font(captionFont)
                     .foregroundStyle(.secondary)
             }
         }
@@ -355,10 +373,10 @@ struct MessageBubble: View {
                 .foregroundStyle(.orange)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Delegated Task")
-                    .font(.caption)
+                    .font(captionMediumFont)
                     .fontWeight(.medium)
                 Text(message.text)
-                    .font(.caption)
+                    .font(captionFont)
                     .foregroundStyle(.secondary)
             }
         }
@@ -374,10 +392,10 @@ struct MessageBubble: View {
                 .foregroundStyle(.teal)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Blackboard Update")
-                    .font(.caption)
+                    .font(captionMediumFont)
                     .fontWeight(.medium)
                 Text(message.text)
-                    .font(.caption)
+                    .font(captionFont)
                     .foregroundStyle(.secondary)
             }
         }
@@ -393,10 +411,10 @@ struct MessageBubble: View {
                 .foregroundStyle(.purple)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Task")
-                    .font(.caption)
+                    .font(captionMediumFont)
                     .fontWeight(.medium)
                 Text(message.text)
-                    .font(.caption)
+                    .font(captionFont)
                     .foregroundStyle(.secondary)
             }
         }
@@ -412,10 +430,10 @@ struct MessageBubble: View {
                 .foregroundStyle(.indigo)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Workspace")
-                    .font(.caption)
+                    .font(captionMediumFont)
                     .fontWeight(.medium)
                 Text(message.text)
-                    .font(.caption)
+                    .font(captionFont)
                     .foregroundStyle(.secondary)
             }
         }
@@ -431,10 +449,10 @@ struct MessageBubble: View {
                 .foregroundStyle(.green)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Agent Invited")
-                    .font(.caption)
+                    .font(captionMediumFont)
                     .fontWeight(.medium)
                 Text(message.text)
-                    .font(.caption)
+                    .font(captionFont)
                     .foregroundStyle(.secondary)
             }
         }

@@ -109,4 +109,16 @@ final class InstanceConfigTests: XCTestCase {
         XCTAssertNil(defaults.string(forKey: AppSettings.appearanceKey),
                      "resetAll should clear from the per-instance suite")
     }
+
+    func testAppTextSizeIncreaseStopsAtMaximum() {
+        XCTAssertEqual(AppTextSize.standard.increased(), .large)
+        XCTAssertEqual(AppTextSize.maximum.increased(), .maximum)
+        XCTAssertFalse(AppTextSize.maximum.canIncrease)
+    }
+
+    func testAppTextSizeDecreaseStopsAtMinimum() {
+        XCTAssertEqual(AppTextSize.standard.decreased(), .small)
+        XCTAssertEqual(AppTextSize.minimum.decreased(), .minimum)
+        XCTAssertFalse(AppTextSize.minimum.canDecrease)
+    }
 }

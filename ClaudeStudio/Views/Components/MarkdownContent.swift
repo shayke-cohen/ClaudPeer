@@ -4,13 +4,14 @@ import MarkdownUI
 struct MarkdownContent: View {
     let text: String
     @AppStorage(AppSettings.renderAdmonitionsKey, store: AppSettings.store) private var renderAdmonitions = true
+    @Environment(\.appTextScale) private var appTextScale
 
     var body: some View {
         if renderAdmonitions, let blocks = AdmonitionParser.extractBlocks(from: text), !blocks.isEmpty {
             admonitionAwareContent(blocks: blocks)
         } else {
             Markdown(text)
-                .markdownTheme(.claudPeer)
+                .markdownTheme(.claudPeer(scale: appTextScale))
                 .textSelection(.enabled)
                 .xrayId("markdownContent")
         }
@@ -23,7 +24,7 @@ struct MarkdownContent: View {
                 switch block {
                 case .markdown(let md):
                     Markdown(md)
-                        .markdownTheme(.claudPeer)
+                        .markdownTheme(.claudPeer(scale: appTextScale))
                         .textSelection(.enabled)
                 case .admonition(let kind, let title, let body):
                     AdmonitionCardView(kind: kind, title: title, content: body)
@@ -145,24 +146,25 @@ struct AdmonitionCardView: View {
     let kind: AdmonitionKind
     let title: String
     let content: String
+    @Environment(\.appTextScale) private var appTextScale
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: kind.icon)
                 .foregroundStyle(kind.color)
-                .font(.system(size: 14))
+                .font(.system(size: 14 * appTextScale))
                 .frame(width: 18, alignment: .center)
                 .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title.isEmpty ? kind.defaultTitle : title)
-                    .font(.caption)
+                    .font(.system(size: 12 * appTextScale, weight: .semibold))
                     .fontWeight(.semibold)
                     .foregroundStyle(kind.color)
 
                 if !content.isEmpty {
                     Markdown(content)
-                        .markdownTheme(.claudPeer)
+                        .markdownTheme(.claudPeer(scale: appTextScale))
                         .textSelection(.enabled)
                 }
             }
@@ -182,10 +184,11 @@ struct AdmonitionCardView: View {
 
 extension Theme {
     @MainActor
-    static let claudPeer = Theme()
+    static func claudPeer(scale: CGFloat) -> Theme {
+        Theme()
         .text {
             ForegroundColor(.primary)
-            FontSize(14)
+            FontSize(14 * scale)
         }
         .code {
             FontFamilyVariant(.monospaced)
@@ -200,7 +203,7 @@ extension Theme {
             configuration.label
                 .markdownTextStyle {
                     FontWeight(.bold)
-                    FontSize(24)
+                    FontSize(24 * scale)
                 }
                 .markdownMargin(top: 16, bottom: 8)
         }
@@ -208,7 +211,7 @@ extension Theme {
             configuration.label
                 .markdownTextStyle {
                     FontWeight(.bold)
-                    FontSize(20)
+                    FontSize(20 * scale)
                 }
                 .markdownMargin(top: 14, bottom: 6)
         }
@@ -216,7 +219,7 @@ extension Theme {
             configuration.label
                 .markdownTextStyle {
                     FontWeight(.semibold)
-                    FontSize(17)
+                    FontSize(17 * scale)
                 }
                 .markdownMargin(top: 12, bottom: 4)
         }
@@ -271,4 +274,5 @@ extension Theme {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
         }
+    }
 }

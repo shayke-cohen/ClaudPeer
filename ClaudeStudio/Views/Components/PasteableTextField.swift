@@ -9,18 +9,31 @@ struct PasteableTextField: NSViewRepresentable {
     var onSubmit: () -> Void
     /// When plain Return should submit (Shift+Return always inserts a newline).
     var canSubmitOnReturn: () -> Bool = { true }
+    @Environment(\.appTextScale) private var appTextScale
 
-    private static let lineHeight: CGFloat = 17
+    private static let baseLineHeight: CGFloat = 17
     static let minLines: CGFloat = 2
     static let maxLines: CGFloat = 10
-    static var minHeight: CGFloat { lineHeight * minLines }
-    static var maxHeight: CGFloat { lineHeight * maxLines }
+    static var minHeight: CGFloat { baseLineHeight * minLines }
+    static var maxHeight: CGFloat { baseLineHeight * maxLines }
+
+    private var fontSize: CGFloat {
+        NSFont.systemFontSize * appTextScale
+    }
+
+    private var scaledMinHeight: CGFloat {
+        Self.baseLineHeight * appTextScale * Self.minLines
+    }
+
+    private var scaledMaxHeight: CGFloat {
+        Self.baseLineHeight * appTextScale * Self.maxLines
+    }
 
     func makeNSView(context: Context) -> NSScrollView {
         let textView = ImagePasteTextView()
         textView.onImagePaste = onImagePaste
         textView.delegate = context.coordinator
-        textView.font = .systemFont(ofSize: NSFont.systemFontSize)
+        textView.font = .systemFont(ofSize: fontSize)
         textView.isRichText = false
         textView.allowsUndo = true
         textView.isVerticallyResizable = true
@@ -51,11 +64,13 @@ struct PasteableTextField: NSViewRepresentable {
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         context.coordinator.parent = self
         guard let textView = nsView.documentView as? NSTextView else { return }
+        textView.font = .systemFont(ofSize: fontSize)
         if textView.string != text {
             textView.string = text
             context.coordinator.recalcHeight(textView)
-            context.coordinator.updatePlaceholder()
         }
+        context.coordinator.recalcHeight(textView)
+        context.coordinator.updatePlaceholder()
     }
 
     func makeCoordinator() -> Coordinator {
@@ -77,6 +92,7 @@ struct PasteableTextField: NSViewRepresentable {
             updatePlaceholder()
         }
 
+        @MainActor
         func recalcHeight(_ textView: NSTextView) {
             guard let container = textView.textContainer,
                   let layoutManager = textView.layoutManager else { return }
@@ -84,7 +100,7 @@ struct PasteableTextField: NSViewRepresentable {
             let usedRect = layoutManager.usedRect(for: container)
             let inset = textView.textContainerInset
             let newHeight = usedRect.height + inset.height * 2
-            let clamped = min(PasteableTextField.maxHeight, max(PasteableTextField.minHeight, newHeight))
+            let clamped = min(parent.scaledMaxHeight, max(parent.scaledMinHeight, newHeight))
             if abs(parent.desiredHeight - clamped) > 0.5 {
                 let binding = parent.$desiredHeight
                 DispatchQueue.main.async {
@@ -93,6 +109,7 @@ struct PasteableTextField: NSViewRepresentable {
             }
         }
 
+        @MainActor
         func updatePlaceholder() {
             guard let textView = textView else { return }
             // Remove existing placeholder layer
@@ -103,13 +120,18 @@ struct PasteableTextField: NSViewRepresentable {
                 let placeholder = CATextLayer()
                 placeholder.name = "placeholder"
                 placeholder.string = "Message… (↩ send, ⇧↩ newline)"
-                placeholder.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
-                placeholder.fontSize = NSFont.systemFontSize
+                placeholder.font = NSFont.systemFont(ofSize: parent.fontSize)
+                placeholder.fontSize = parent.fontSize
                 placeholder.foregroundColor = NSColor.placeholderTextColor.cgColor
                 placeholder.contentsScale = textView.window?.backingScaleFactor ?? 2.0
                 let inset = textView.textContainerInset
                 let originX = inset.width + (textView.textContainer?.lineFragmentPadding ?? 5)
-                placeholder.frame = CGRect(x: originX, y: inset.height, width: textView.bounds.width - originX * 2, height: 20)
+                placeholder.frame = CGRect(
+                    x: originX,
+                    y: inset.height,
+                    width: textView.bounds.width - originX * 2,
+                    height: max(20, parent.fontSize * 1.5)
+                )
                 textView.layer?.addSublayer(placeholder)
             }
         }

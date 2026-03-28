@@ -5,6 +5,7 @@ import WebKit
 struct CodeBlockView: View {
     let configuration: CodeBlockConfiguration
     @AppStorage(AppSettings.renderMermaidKey, store: AppSettings.store) private var renderMermaid = true
+    @Environment(\.appTextScale) private var appTextScale
     @State private var isCopied = false
     @State private var showMermaidSource = false
     @State private var mermaidHeight: CGFloat = 150
@@ -37,7 +38,7 @@ struct CodeBlockView: View {
         HStack(spacing: 6) {
             if let language = configuration.language, !language.isEmpty {
                 Text(language)
-                    .font(.caption2)
+                    .font(.system(size: 11 * appTextScale, weight: .medium))
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
                     .textCase(.lowercase)
@@ -52,9 +53,9 @@ struct CodeBlockView: View {
                 } label: {
                     HStack(spacing: 3) {
                         Image(systemName: showMermaidSource ? "wand.and.stars" : "chevron.left.forwardslash.chevron.right")
-                            .font(.caption2)
+                            .font(.system(size: 11 * appTextScale))
                         Text(showMermaidSource ? "Diagram" : "Source")
-                            .font(.caption2)
+                            .font(.system(size: 11 * appTextScale))
                     }
                     .foregroundStyle(.secondary)
                 }
@@ -68,9 +69,9 @@ struct CodeBlockView: View {
             } label: {
                 HStack(spacing: 3) {
                     Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                        .font(.caption2)
+                        .font(.system(size: 11 * appTextScale))
                     Text(isCopied ? "Copied" : "Copy")
-                        .font(.caption2)
+                        .font(.system(size: 11 * appTextScale))
                 }
                 .foregroundStyle(isCopied ? .green : .secondary)
             }
