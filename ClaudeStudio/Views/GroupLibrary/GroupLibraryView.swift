@@ -112,7 +112,12 @@ struct GroupLibraryView: View {
                                 group: group,
                                 agents: agents,
                                 onStart: {
-                                    if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+                                    if let convoId = appState.startGroupChat(
+                                        group: group,
+                                        projectDirectory: windowState.projectDirectory,
+                                        projectId: windowState.selectedProjectId,
+                                        modelContext: modelContext
+                                    ) {
                                         windowState.selectedConversationId = convoId
                                     }
                                     dismiss()

@@ -32,6 +32,8 @@ struct PasteableTextField: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let textView = ImagePasteTextView()
         textView.onImagePaste = onImagePaste
+        textView.onSubmit = onSubmit
+        textView.canSubmitOnReturn = canSubmitOnReturn
         textView.delegate = context.coordinator
         textView.font = .systemFont(ofSize: fontSize)
         textView.isRichText = false
@@ -65,6 +67,10 @@ struct PasteableTextField: NSViewRepresentable {
         context.coordinator.parent = self
         guard let textView = nsView.documentView as? NSTextView else { return }
         textView.font = .systemFont(ofSize: fontSize)
+        if let imagePasteTextView = textView as? ImagePasteTextView {
+            imagePasteTextView.onSubmit = onSubmit
+            imagePasteTextView.canSubmitOnReturn = canSubmitOnReturn
+        }
         if textView.string != text {
             textView.string = text
             context.coordinator.recalcHeight(textView)
@@ -135,34 +141,36 @@ struct PasteableTextField: NSViewRepresentable {
                 textView.layer?.addSublayer(placeholder)
             }
         }
-
-        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
-                if textView.hasMarkedText() {
-                    return false
-                }
-                let flags = NSApp.currentEvent?.modifierFlags ?? []
-                if flags.contains(.shift) {
-                    textView.insertNewlineIgnoringFieldEditor(nil)
-                    return true
-                }
-                if flags.contains(.command) {
-                    parent.onSubmit()
-                    return true
-                }
-                if parent.canSubmitOnReturn() {
-                    parent.onSubmit()
-                    return true
-                }
-                return false
-            }
-            return false
-        }
     }
 }
 
 private class ImagePasteTextView: NSTextView {
     var onImagePaste: ((Data, String) -> Void)?
+    var onSubmit: (() -> Void)?
+    var canSubmitOnReturn: (() -> Bool)?
+
+    override func keyDown(with event: NSEvent) {
+        let isReturnKey = event.keyCode == 36 || event.keyCode == 76
+        if isReturnKey {
+            if hasMarkedText() {
+                super.keyDown(with: event)
+                return
+            }
+
+            let flags = event.modifierFlags.intersection([.shift, .command])
+            if flags.contains(.shift) {
+                insertNewlineIgnoringFieldEditor(nil)
+                return
+            }
+
+            if flags.contains(.command) || (canSubmitOnReturn?() ?? true) {
+                onSubmit?()
+                return
+            }
+        }
+
+        super.keyDown(with: event)
+    }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if event.modifierFlags.contains(.command),

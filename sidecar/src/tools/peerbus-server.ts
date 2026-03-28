@@ -30,7 +30,7 @@ export function createPeerBusServer(
     ...createMessagingTools(ctx, callingSessionId),
     ...createChatTools(ctx, callingSessionId),
     ...createWorkspaceTools(ctx, callingSessionId),
-    ...createTaskBoardTools(ctx),
+    ...createTaskBoardTools(ctx, callingSessionId),
   ];
 
   if (includeAskUser) {

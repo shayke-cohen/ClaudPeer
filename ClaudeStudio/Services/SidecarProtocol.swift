@@ -247,6 +247,7 @@ struct GeneratedAgentSpec: Codable, Sendable {
 
 struct TaskWireSwift: Codable, Sendable {
     let id: String
+    let projectId: String?
     let title: String
     let description: String
     let status: String
@@ -255,6 +256,7 @@ struct TaskWireSwift: Codable, Sendable {
     let result: String?
     let parentTaskId: String?
     let assignedAgentId: String?
+    let assignedAgentName: String?
     let assignedGroupId: String?
     let conversationId: String?
     let createdAt: String
@@ -343,9 +345,12 @@ enum SidecarEvent: Sendable {
     case streamSuggestions(sessionId: String, suggestions: [SuggestionItem])
     case conversationInviteAgent(sessionId: String, agentName: String)
     case planComplete(sessionId: String, plan: String?, allowedPrompts: [PlanAllowedPrompt]?)
-    case taskCreated(task: TaskWireSwift)
-    case taskUpdated(task: TaskWireSwift)
+    case taskCreated(sessionId: String?, task: TaskWireSwift)
+    case taskUpdated(sessionId: String?, task: TaskWireSwift)
     case taskListResult(tasks: [TaskWireSwift])
+    case workspaceCreated(sessionId: String, workspaceName: String, agentName: String)
+    case workspaceJoined(sessionId: String, workspaceName: String, agentName: String)
+    case agentInvited(sessionId: String, invitedAgent: String, invitedBy: String)
     case connected
     case disconnected
 }
@@ -450,6 +455,10 @@ struct IncomingWireMessage: Codable, Sendable {
     let taskWire: TaskWireSwift?
     let tasks: [TaskWireSwift]?
     let agentName: String?
+    let workspaceName: String?
+    let workspaceId: String?
+    let invitedAgent: String?
+    let invitedBy: String?
 
     enum CodingKeys: String, CodingKey {
         case type, sessionId, text, tool, input, output, result, cost
@@ -464,7 +473,8 @@ struct IncomingWireMessage: Codable, Sendable {
         case plan, allowedPrompts
         case taskWire = "task"
         case tasks
-        case agentName
+        case agentName, workspaceName, workspaceId
+        case invitedAgent, invitedBy
     }
 
     func toEvent() -> SidecarEvent? {
@@ -539,12 +549,21 @@ struct IncomingWireMessage: Codable, Sendable {
             return .conversationInviteAgent(sessionId: sid, agentName: name)
         case "task.created":
             guard let t = taskWire else { return nil }
-            return .taskCreated(task: t)
+            return .taskCreated(sessionId: sessionId, task: t)
         case "task.updated":
             guard let t = taskWire else { return nil }
-            return .taskUpdated(task: t)
+            return .taskUpdated(sessionId: sessionId, task: t)
         case "task.list.result":
             return .taskListResult(tasks: tasks ?? [])
+        case "workspace.created":
+            guard let sid = sessionId, let name = workspaceName, let agent = agentName else { return nil }
+            return .workspaceCreated(sessionId: sid, workspaceName: name, agentName: agent)
+        case "workspace.joined":
+            guard let sid = sessionId, let name = workspaceName, let agent = agentName else { return nil }
+            return .workspaceJoined(sessionId: sid, workspaceName: name, agentName: agent)
+        case "agent.invited":
+            guard let sid = sessionId, let invited = invitedAgent, let by = invitedBy else { return nil }
+            return .agentInvited(sessionId: sid, invitedAgent: invited, invitedBy: by)
         default:
             return nil
         }

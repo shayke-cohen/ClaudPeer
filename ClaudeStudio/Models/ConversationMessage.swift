@@ -9,13 +9,51 @@ enum MessageType: String, Codable, Sendable {
     case delegation
     case blackboardUpdate
     case peerMessage
+    case taskEvent
+    case workspaceEvent
+    case agentInvite
     case question
     case richContent
 
     var isPeerChannel: Bool {
         switch self {
-        case .peerMessage, .delegation, .blackboardUpdate: return true
-        default: return false
+        case .peerMessage, .delegation, .blackboardUpdate,
+             .taskEvent, .workspaceEvent, .agentInvite:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var peerChannelCategory: PeerChannelCategory? {
+        switch self {
+        case .peerMessage: return .messages
+        case .delegation: return .delegations
+        case .blackboardUpdate: return .blackboard
+        case .taskEvent: return .tasks
+        case .workspaceEvent: return .workspace
+        case .agentInvite: return .invites
+        default: return nil
+        }
+    }
+}
+
+enum PeerChannelCategory: String, CaseIterable, Sendable {
+    case messages = "Messages"
+    case delegations = "Delegations"
+    case blackboard = "Blackboard"
+    case tasks = "Tasks"
+    case workspace = "Workspace"
+    case invites = "Invites"
+
+    var icon: String {
+        switch self {
+        case .messages: return "bubble.left.and.bubble.right.fill"
+        case .delegations: return "arrow.right.circle.fill"
+        case .blackboard: return "square.grid.2x2.fill"
+        case .tasks: return "checklist"
+        case .workspace: return "folder.fill"
+        case .invites: return "person.badge.plus"
         }
     }
 }

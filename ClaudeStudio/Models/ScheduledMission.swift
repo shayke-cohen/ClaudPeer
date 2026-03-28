@@ -79,6 +79,7 @@ enum ScheduledMissionWeekday: Int, CaseIterable, Codable, Sendable, Identifiable
 @Model
 final class ScheduledMission {
     var id: UUID
+    var projectId: UUID?
     var name: String
     var isEnabled: Bool
     var createdAt: Date
@@ -140,6 +141,7 @@ final class ScheduledMission {
     ) {
         let now = Date()
         self.id = UUID()
+        self.projectId = nil
         self.name = name
         self.isEnabled = true
         self.createdAt = now

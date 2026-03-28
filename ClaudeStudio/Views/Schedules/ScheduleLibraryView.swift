@@ -21,11 +21,12 @@ struct ScheduleLibraryView: View {
 
     private var filteredSchedules: [ScheduledMission] {
         schedules.filter { schedule in
+            let matchesProject = schedule.projectId == windowState.selectedProjectId
             let matchesSearch = searchText.isEmpty
                 || schedule.name.localizedCaseInsensitiveContains(searchText)
                 || schedule.promptTemplate.localizedCaseInsensitiveContains(searchText)
             let matchesFilter = !filterEnabledOnly || schedule.isEnabled
-            return matchesSearch && matchesFilter
+            return matchesProject && matchesSearch && matchesFilter
         }
     }
 
@@ -35,7 +36,7 @@ struct ScheduleLibraryView: View {
                 header
                 Divider()
                 if filteredSchedules.isEmpty {
-                    ContentUnavailableView("No schedules", systemImage: "clock.badge")
+                    ContentUnavailableView("No schedules for this project", systemImage: "clock.badge")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .accessibilityIdentifier("scheduleLibrary.emptyState")
                 } else {
@@ -109,6 +110,7 @@ struct ScheduleLibraryView: View {
                 Button {
                     editingSchedule = nil
                     editorDraft = ScheduledMissionDraft(projectDirectory: windowState.projectDirectory)
+                    editorDraft.projectId = windowState.selectedProjectId
                     showingEditor = true
                 } label: {
                     Label("New Schedule", systemImage: "plus")
@@ -175,6 +177,7 @@ struct ScheduleLibraryView: View {
             projectDirectory: schedule.projectDirectory,
             promptTemplate: schedule.promptTemplate
         )
+        copy.projectId = schedule.projectId
         copy.isEnabled = false
         copy.targetAgentId = schedule.targetAgentId
         copy.targetGroupId = schedule.targetGroupId
@@ -222,4 +225,3 @@ struct ScheduleLibraryView: View {
         }
     }
 }
-

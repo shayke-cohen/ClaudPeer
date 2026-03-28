@@ -1,5 +1,7 @@
 # Workshop View Implementation Plan
 
+> Stale note (2026-03-29): this plan references the pre-project-first shell, including the old sidebar bottom-bar placement. Workshop still exists, but shell placement should now be interpreted relative to the project-first utilities area rather than the deprecated bottom-bar layout.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a dedicated "Workshop" view — a single place to browse, inspect, and AI-edit all ClaudeStudio entities (agents, groups, skills, MCPs, permissions) with an embedded Config Agent chat pane.

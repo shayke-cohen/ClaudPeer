@@ -109,6 +109,27 @@ enum ChatTranscriptExport {
                     timestampISO: ts,
                     text: message.text
                 )))
+            case .taskEvent:
+                rows.append(ChatTranscriptSnapshot.Row(kind: .labeled(
+                    kindLabel: "Task",
+                    sender: sender,
+                    timestampISO: ts,
+                    text: message.text
+                )))
+            case .workspaceEvent:
+                rows.append(ChatTranscriptSnapshot.Row(kind: .labeled(
+                    kindLabel: "Workspace",
+                    sender: sender,
+                    timestampISO: ts,
+                    text: message.text
+                )))
+            case .agentInvite:
+                rows.append(ChatTranscriptSnapshot.Row(kind: .labeled(
+                    kindLabel: "Agent Invite",
+                    sender: sender,
+                    timestampISO: ts,
+                    text: message.text
+                )))
             case .question:
                 let answerText = message.toolInput ?? ""
                 rows.append(ChatTranscriptSnapshot.Row(kind: .labeled(

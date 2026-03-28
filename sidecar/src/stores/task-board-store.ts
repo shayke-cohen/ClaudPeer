@@ -22,6 +22,7 @@ export class TaskBoardStore {
     const now = new Date().toISOString();
     const entry: TaskWire = {
       id: task.id ?? crypto.randomUUID(),
+      projectId: task.projectId,
       title: task.title,
       description: task.description ?? "",
       status: task.status ?? "backlog",
@@ -30,6 +31,7 @@ export class TaskBoardStore {
       result: task.result,
       parentTaskId: task.parentTaskId,
       assignedAgentId: task.assignedAgentId,
+      assignedAgentName: task.assignedAgentName,
       assignedGroupId: task.assignedGroupId,
       conversationId: task.conversationId,
       createdAt: task.createdAt ?? now,
@@ -64,6 +66,7 @@ export class TaskBoardStore {
       updated.completedAt = undefined;
       updated.startedAt = undefined;
       updated.assignedAgentId = undefined;
+      updated.assignedAgentName = undefined;
       updated.assignedGroupId = undefined;
     }
 
@@ -82,7 +85,8 @@ export class TaskBoardStore {
     const claimed: TaskWire = {
       ...existing,
       status: "inProgress",
-      assignedAgentId: agentName,
+      assignedAgentId: undefined,
+      assignedAgentName: agentName,
       startedAt: now,
     };
     this.tasks.set(taskId, claimed);
@@ -95,7 +99,7 @@ export class TaskBoardStore {
     const results: TaskWire[] = [];
     for (const task of this.tasks.values()) {
       if (filter?.status && task.status !== filter.status) continue;
-      if (filter?.assignedTo && task.assignedAgentId !== filter.assignedTo) continue;
+      if (filter?.assignedTo && task.assignedAgentName !== filter.assignedTo && task.assignedAgentId !== filter.assignedTo) continue;
       results.push(task);
     }
     return results;

@@ -109,7 +109,7 @@ final class SidecarManager: ObservableObject, Sendable {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: bunPath)
         process.arguments = ["run", sidecarPath]
-        process.environment = ProcessInfo.processInfo.environment
+        process.environment = normalizedEnvironment()
         process.environment?["CLAUDESTUDIO_WS_PORT"] = "\(config.wsPort)"
         process.environment?["CLAUDESTUDIO_HTTP_PORT"] = "\(config.httpPort)"
         if let dataDir = config.dataDirectory {
@@ -136,6 +136,34 @@ final class SidecarManager: ObservableObject, Sendable {
         try process.run()
         self.process = process
         Log.sidecar.info("Launched PID \(process.processIdentifier)")
+    }
+
+    private func normalizedEnvironment() -> [String: String] {
+        var environment = ProcessInfo.processInfo.environment
+
+        let home = environment["HOME"]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? environment["HOME"]!
+            : NSHomeDirectory()
+        let user = environment["USER"]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? environment["USER"]!
+            : NSUserName()
+        let logname = environment["LOGNAME"]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? environment["LOGNAME"]!
+            : user
+        let shell = environment["SHELL"]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? environment["SHELL"]!
+            : "/bin/zsh"
+
+        let defaultPath = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        let currentPath = environment["PATH"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        environment["HOME"] = home
+        environment["USER"] = user
+        environment["LOGNAME"] = logname
+        environment["SHELL"] = shell
+        environment["PATH"] = currentPath.isEmpty ? defaultPath : [defaultPath, currentPath]
+            .joined(separator: ":")
+
+        return environment
     }
 
     private func connectWebSocket() async throws {

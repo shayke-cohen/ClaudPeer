@@ -458,7 +458,12 @@ struct InspectorView: View {
                 // Actions
                 HStack(spacing: 6) {
                     Button {
-                        if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+                        if let convoId = appState.startGroupChat(
+                            group: group,
+                            projectDirectory: windowState.projectDirectory,
+                            projectId: windowState.selectedProjectId,
+                            modelContext: modelContext
+                        ) {
                             windowState.selectedConversationId = convoId
                         }
                     } label: {

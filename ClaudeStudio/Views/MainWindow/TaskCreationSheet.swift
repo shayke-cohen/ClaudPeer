@@ -77,7 +77,8 @@ struct TaskCreationSheet: View {
                         description: taskDescription,
                         priority: priority,
                         labels: labels,
-                        markReady: startImmediately
+                        markReady: startImmediately,
+                        projectId: windowState.selectedProjectId
                     )
 
                     if startImmediately {

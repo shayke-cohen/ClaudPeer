@@ -5,7 +5,6 @@ struct WelcomeView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(WindowState.self) private var windowState: WindowState
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.openWindow) private var openWindow
     @Query(sort: \Agent.name) private var allAgents: [Agent]
     @Query(sort: \AgentGroup.sortOrder) private var allGroups: [AgentGroup]
     @Query(sort: \Session.startedAt, order: .reverse) private var recentSessions: [Session]
@@ -80,7 +79,7 @@ struct WelcomeView: View {
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .xrayId("welcome.heading")
-            Text("Start a conversation with an AI agent, or launch a team of specialists.")
+            Text("Pick a project, start a thread, and bring in the agents or teams you need.")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -128,19 +127,20 @@ struct WelcomeView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.blue.opacity(0.3), lineWidth: 1))
             .xrayId("welcome.currentProject")
 
-            Text("All chats in this window work on this project. Each chat gets its own branch.")
+            Text("Threads in this project share the root folder, and active ones can spin up their own worktrees.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 420)
         }
         .frame(maxWidth: 520)
-        .sheet(isPresented: $showProjectPicker) {
-            ChangeProjectSheet { path in
-                showProjectPicker = false
-                openWindow(value: path)
+            .sheet(isPresented: $showProjectPicker) {
+                ChangeProjectSheet { path in
+                    let project = ProjectRecords.upsertProject(at: path, in: modelContext)
+                    showProjectPicker = false
+                    windowState.selectProject(project)
+                }
             }
-        }
     }
 
     // MARK: - Quick Actions

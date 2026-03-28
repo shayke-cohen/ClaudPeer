@@ -63,7 +63,7 @@ describe("Task Board Tools (integration)", () => {
 
   beforeEach(() => {
     ({ ctx, events } = createTestContext());
-    tools = createTaskBoardTools(ctx);
+    tools = createTaskBoardTools(ctx, "sess-1");
     // Create a mock session so claim can find the agent name
     ctx.sessions.create("sess-1", { name: "Orchestrator", systemPrompt: "", allowedTools: [], mcpServers: [], model: "sonnet", workingDirectory: "/tmp", skills: [] });
   });
@@ -148,7 +148,8 @@ describe("Task Board Tools (integration)", () => {
 
     expect(result.success).toBe(true);
     expect(result.task.status).toBe("inProgress");
-    expect(result.task.assignedAgentId).toBe("Orchestrator");
+    expect(result.task.assignedAgentId).toBeUndefined();
+    expect(result.task.assignedAgentName).toBe("Orchestrator");
     expect(result.task.startedAt).toBeTruthy();
   });
 

@@ -6,6 +6,7 @@ struct ScheduleEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var appState: AppState
+    @Environment(WindowState.self) private var windowState: WindowState
     @Query(sort: \Agent.name) private var agents: [Agent]
     @Query(sort: \AgentGroup.sortOrder) private var groups: [AgentGroup]
     @Query(sort: \Conversation.startedAt, order: .reverse) private var conversations: [Conversation]
@@ -24,7 +25,10 @@ struct ScheduleEditorView: View {
     private var isEditing: Bool { schedule != nil }
 
     private var filteredConversations: [Conversation] {
-        conversations.filter { !$0.sessions.isEmpty }
+        conversations.filter {
+            !$0.sessions.isEmpty
+                && ($0.projectId == draft.projectId || $0.id == draft.targetConversationId)
+        }
     }
 
     var body: some View {
@@ -527,6 +531,7 @@ struct ScheduleEditorView: View {
     private func save() {
         guard draft.validationError == nil else { return }
         let now = Date()
+        let project = ProjectRecords.upsertProject(at: draft.projectDirectory, in: modelContext)
 
         let schedule = schedule ?? ScheduledMission(
             name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -536,6 +541,7 @@ struct ScheduleEditorView: View {
         )
 
         schedule.name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        schedule.projectId = draft.projectId ?? project.id
         schedule.isEnabled = draft.isEnabled
         schedule.targetKind = draft.targetKind
         schedule.targetAgentId = draft.targetKind == .agent ? draft.targetAgentId : nil
@@ -561,6 +567,7 @@ struct ScheduleEditorView: View {
             modelContext.insert(schedule)
         }
         try? modelContext.save()
+        windowState.selectProject(project, preserveSelection: true)
         appState.syncScheduledMission(schedule)
         dismiss()
     }

@@ -17,6 +17,7 @@
 		0D6A05221E84C2B40CBE074A /* ScheduleRunCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E48B0CDFA77CE7CAF026D4C7 /* ScheduleRunCoordinatorTests.swift */; };
 		0DA4F2406824442B650AC1F6 /* SessionSummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27A77CB71DC55C984BD75B5 /* SessionSummaryCard.swift */; };
 		0E7074D54B45CE45D1554759 /* WorktreeCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 629F192CA86986D8270F8C0A /* WorktreeCleanup.swift */; };
+		109EFEF14BCB7C79540B3D41 /* AppStateRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52544C1D3A6B3969735BABE0 /* AppStateRecoveryTests.swift */; };
 		1101FB0C06B965F8062DDD04 /* GroupPromptBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87D14A4F3EBCC6481FA1FEA /* GroupPromptBuilderTests.swift */; };
 		1423EB9A576658E499D28A1E /* GitServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63E8E238841060B86C5DF672 /* GitServiceTests.swift */; };
 		165412A9C2CB8F0BAE3C9069 /* AgentProvisioner.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE02D06AD241ACD3AB418C5B /* AgentProvisioner.swift */; };
@@ -240,6 +241,7 @@
 		4D107A75EEC2EF1F7347D96F /* BlackboardEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlackboardEntry.swift; sourceTree = "<group>"; };
 		5019C3026A3D60E830C019F8 /* PeerAgentImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerAgentImporter.swift; sourceTree = "<group>"; };
 		50B903CD44A15BC2F543CEF5 /* GroupRoleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupRoleTests.swift; sourceTree = "<group>"; };
+		52544C1D3A6B3969735BABE0 /* AppStateRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateRecoveryTests.swift; sourceTree = "<group>"; };
 		54A0E28ED67784AF384F447A /* PeerCatalogServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerCatalogServer.swift; sourceTree = "<group>"; };
 		55A4EB0B8E05FE08E6C2630E /* ClaudeStudio.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClaudeStudio.entitlements; sourceTree = "<group>"; };
 		569D03E280A73E426BDDF07A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -504,6 +506,7 @@
 			isa = PBXGroup;
 			children = (
 				D0A3418A524838EF1870B22D /* AppStateEventTests.swift */,
+				52544C1D3A6B3969735BABE0 /* AppStateRecoveryTests.swift */,
 				F63B0D507D663FF6C80C3394 /* AppStateScheduleLaunchTests.swift */,
 				AFFA7F1626CA66C65D8C0F93 /* CatalogModelTests.swift */,
 				191774AC8192001CCB79A2F1 /* CatalogServiceTests.swift */,
@@ -824,6 +827,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5B38D78C3642339A601C2FFC /* AppStateEventTests.swift in Sources */,
+				109EFEF14BCB7C79540B3D41 /* AppStateRecoveryTests.swift in Sources */,
 				04A4495BAF0458CB42E75026 /* AppStateScheduleLaunchTests.swift in Sources */,
 				04A5F64EBD4A7EAF058E7077 /* CatalogModelTests.swift in Sources */,
 				3C66CEA6CB563598D63DC26C /* CatalogServiceTests.swift in Sources */,

@@ -217,6 +217,7 @@ private struct QuickActionsRow: View {
 struct ChatView: View {
     let conversationId: UUID
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.appTextScale) private var appTextScale
     @EnvironmentObject private var appState: AppState
     @Environment(WindowState.self) private var windowState: WindowState
     @StateObject private var quickActionTracker = QuickActionUsageTracker()
@@ -242,6 +243,8 @@ struct ChatView: View {
     @State private var showMentionError = false
     @State private var enabledPeerCategories: Set<PeerChannelCategory> = Set(PeerChannelCategory.allCases)
     @State private var mentionErrorDetail = ""
+    @State private var showRecoveryError = false
+    @State private var recoveryErrorDetail = ""
     @State private var showAddAgentsSheet = false
     @State private var showingScheduleEditor = false
     @State private var scheduleDraft = ScheduledMissionDraft()
@@ -263,6 +266,22 @@ struct ChatView: View {
 
     private var conversation: Conversation? {
         allConversations.first { $0.id == conversationId }
+    }
+
+    private var captionFont: Font {
+        .system(size: 12 * appTextScale)
+    }
+
+    private var caption2Font: Font {
+        .system(size: 11 * appTextScale)
+    }
+
+    private var title3Font: Font {
+        .system(size: 20 * appTextScale, weight: .semibold)
+    }
+
+    private var interruptedSessions: [Session] {
+        conversationSessions.filter { $0.status == .interrupted }
     }
 
     /// Sessions for this conversation — relationship first, manual query fallback.
@@ -293,6 +312,10 @@ struct ChatView: View {
 
     private var primarySession: Session? {
         conversationSessions.min { $0.startedAt < $1.startedAt }
+    }
+
+    private var hasRecoverableInterruption: Bool {
+        interruptedSessions.contains { $0.claudeSessionId != nil }
     }
 
     private var currentModel: String? {
@@ -522,6 +545,11 @@ struct ChatView: View {
         } message: {
             Text(mentionErrorDetail)
         }
+        .alert("Recovery", isPresented: $showRecoveryError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(recoveryErrorDetail)
+        }
     }
 
     // MARK: - Chat Header
@@ -645,10 +673,70 @@ struct ChatView: View {
                     Spacer()
                 }
             }
+
+            if hasRecoverableInterruption {
+                recoveryBanner
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(.bar)
+    }
+
+    private var recoveryBanner: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90")
+                    .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Interrupted during restart")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text("Context can be restored, but any in-flight work may need to be retried explicitly.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button("Restore Context") {
+                    restoreInterruptedSessions()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .xrayId("chat.recoveryBanner.restoreButton")
+                .accessibilityLabel("Restore context")
+
+                Button("Retry Last Turn") {
+                    retryLastInterruptedTurn()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(latestUserChatMessage == nil || isProcessing)
+                .xrayId("chat.recoveryBanner.retryButton")
+                .accessibilityLabel("Retry last turn")
+
+                Button("Continue From Interruption") {
+                    continueFromInterruption()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(isProcessing)
+                .xrayId("chat.recoveryBanner.continueButton")
+                .accessibilityLabel("Continue from interruption")
+
+                Spacer()
+            }
+        }
+        .padding(12)
+        .background(Color.orange.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.orange.opacity(0.18), lineWidth: 0.8)
+        )
+        .xrayId("chat.recoveryBanner")
+        .accessibilityLabel("Interrupted session recovery options")
     }
 
     @ViewBuilder
@@ -694,30 +782,24 @@ struct ChatView: View {
     @ViewBuilder
     private func headerActions(_ convo: Conversation) -> some View {
         HStack(spacing: 6) {
-            if convo.status == .active {
-                let allSessionsPaused = !convo.sessions.isEmpty && convo.sessions.allSatisfy { $0.status == .paused }
-                if allSessionsPaused {
-                    Button { resumeSession() } label: {
-                        Image(systemName: "play.fill")
-                    }
-                    .help("Resume agent")
-                    .xrayId("chat.resumeButton")
-                    .accessibilityLabel("Resume agent")
-                } else if !convo.sessions.isEmpty {
-                    Button { pauseSession() } label: {
-                        Image(systemName: "stop.fill")
-                    }
-                    .help("Stop agent")
-                    .xrayId("chat.stopButton")
-                    .accessibilityLabel("Stop agent")
+            let sessionKeys = convo.sessions.map(\.id.uuidString)
+            let hasLiveActivity = sessionKeys.contains { appState.sessionActivity[$0]?.isActive == true }
+            let hasInterruptedSessions = convo.sessions.contains { $0.status == .interrupted }
+
+            if hasLiveActivity {
+                Button { pauseSession() } label: {
+                    Image(systemName: "stop.fill")
                 }
-            } else if convo.sessions.contains(where: { $0.status == .paused }) {
-                Button { resumeSession() } label: {
-                    Image(systemName: "play.fill")
+                .help("Stop agent")
+                .xrayId("chat.stopButton")
+                .accessibilityLabel("Stop agent")
+            } else if hasInterruptedSessions {
+                Button { restoreInterruptedSessions() } label: {
+                    Image(systemName: "arrow.clockwise")
                 }
-                .help("Resume agent")
-                .xrayId("chat.resumeButton")
-                .accessibilityLabel("Resume agent")
+                .help("Restore agent context")
+                .xrayId("chat.restoreContextButton")
+                .accessibilityLabel("Restore agent context")
             }
 
             Menu {
@@ -949,7 +1031,7 @@ struct ChatView: View {
 
             if let sub = sendingToSubtitle {
                 Text(sub)
-                    .font(.caption2)
+                    .font(caption2Font)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12)
@@ -966,9 +1048,9 @@ struct ChatView: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(agent.name)
-                                        .font(.caption)
+                                        .font(captionFont)
                                     Text(agentMentionHint(for: agent))
-                                        .font(.caption2)
+                                        .font(caption2Font)
                                         .foregroundStyle(.secondary)
                                 }
                                 .padding(.horizontal, 8)
@@ -1018,10 +1100,22 @@ struct ChatView: View {
             // Row 2: Input tools + Send
             HStack(spacing: 6) {
                 Button {
+                    showAddAgentsSheet = true
+                } label: {
+                    Label("Add", systemImage: "plus.circle")
+                        .font(captionFont)
+                }
+                .buttonStyle(.borderless)
+                .xrayId("chat.addParticipantsButton")
+                .accessibilityLabel("Add agents or groups")
+                .help("Add agents or groups to this thread")
+                .disabled(isProcessing)
+
+                Button {
                     showFileImporter = true
                 } label: {
                     Label("Attach", systemImage: "paperclip")
-                        .font(.caption)
+                        .font(captionFont)
                 }
                 .buttonStyle(.borderless)
                 .xrayId("chat.attachButton")
@@ -1034,7 +1128,7 @@ struct ChatView: View {
                     try? modelContext.save()
                 } label: {
                     Label("Plan", systemImage: "doc.text.magnifyingglass")
-                        .font(.caption)
+                        .font(captionFont)
                         .foregroundStyle(planModeEnabled ? .orange : .secondary)
                 }
                 .buttonStyle(.borderless)
@@ -1049,7 +1143,7 @@ struct ChatView: View {
                     sendMessage()
                 } label: {
                     Text("Send ↵")
-                        .font(.caption.weight(.semibold))
+                        .font(.system(size: 12 * appTextScale, weight: .semibold))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 5)
                         .background(Color.accentColor)
@@ -1088,14 +1182,14 @@ struct ChatView: View {
                 DisclosureGroup {
                     ScrollView {
                         Text(LocalizedStringKey(planText))
-                            .font(.caption)
+                            .font(captionFont)
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .frame(maxHeight: 200)
                 } label: {
                     Label("Plan", systemImage: "doc.text")
-                        .font(.caption)
+                        .font(captionFont)
                         .fontWeight(.medium)
                 }
                 .padding(.horizontal, 12)
@@ -1108,11 +1202,11 @@ struct ChatView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
                         Text("Needs:")
-                            .font(.caption2)
+                            .font(caption2Font)
                             .foregroundStyle(.secondary)
                         ForEach(prompts) { prompt in
                             Text(prompt.prompt)
-                                .font(.caption2)
+                                .font(caption2Font)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
                                 .background(.orange.opacity(0.15))
@@ -1131,7 +1225,7 @@ struct ChatView: View {
                     executePlan()
                 } label: {
                     Label("Execute Plan", systemImage: "play.fill")
-                        .font(.caption)
+                        .font(captionFont)
                         .fontWeight(.medium)
                 }
                 .buttonStyle(.borderedProminent)
@@ -1143,7 +1237,7 @@ struct ChatView: View {
                     lastPlanResponseMessageId = nil
                 } label: {
                     Label("Refine Plan", systemImage: "pencil")
-                        .font(.caption)
+                        .font(captionFont)
                 }
                 .buttonStyle(.bordered)
                 .xrayId("chat.refinePlanButton")
@@ -1152,7 +1246,7 @@ struct ChatView: View {
                     discardPlan()
                 } label: {
                     Label("Discard", systemImage: "trash")
-                        .font(.caption)
+                        .font(captionFont)
                 }
                 .buttonStyle(.bordered)
                 .foregroundStyle(.secondary)
@@ -1199,8 +1293,8 @@ struct ChatView: View {
                         Button {
                             pendingAttachments.removeAll { $0.id == item.id }
                         } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.caption)
+                                Image(systemName: "xmark.circle.fill")
+                                .font(captionFont)
                                 .foregroundStyle(.white)
                                 .background(Circle().fill(.black.opacity(0.6)))
                         }
@@ -1258,12 +1352,12 @@ struct ChatView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16))
 
                     Text(agent.name)
-                        .font(.title3)
+                        .font(title3Font)
                         .fontWeight(.semibold)
 
                     if !agent.agentDescription.isEmpty {
                         Text(agent.agentDescription)
-                            .font(.caption)
+                            .font(captionFont)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                             .lineLimit(3)
@@ -1280,10 +1374,10 @@ struct ChatView: View {
                         .background(Color.blue.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                     Text("Quick Chat")
-                        .font(.title3)
+                        .font(title3Font)
                         .fontWeight(.semibold)
                     Text("Ask anything \u{2014} no agent profile attached.")
-                        .font(.caption)
+                        .font(captionFont)
                         .foregroundStyle(.secondary)
                 }
                 .xrayId("chat.emptyState.freeformInfo")
@@ -1293,7 +1387,7 @@ struct ChatView: View {
 
             VStack(spacing: 8) {
                 Text("Try asking")
-                    .font(.caption)
+                    .font(captionFont)
                     .fontWeight(.medium)
                     .foregroundStyle(.tertiary)
 
@@ -1309,7 +1403,7 @@ struct ChatView: View {
                                     .lineLimit(1)
                                 Spacer()
                                 Image(systemName: "arrow.up.right")
-                                    .font(.caption)
+                                    .font(captionFont)
                                     .foregroundStyle(.tertiary)
                             }
                             .padding(.horizontal, 12)
@@ -1342,12 +1436,12 @@ struct ChatView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16))
 
             Text(group.name)
-                .font(.title3)
+                .font(title3Font)
                 .fontWeight(.semibold)
 
             if !group.groupDescription.isEmpty {
                 Text(group.groupDescription)
-                    .font(.caption)
+                    .font(captionFont)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
@@ -1360,10 +1454,10 @@ struct ChatView: View {
             if !agentNames.isEmpty {
                 HStack(spacing: 4) {
                     Image(systemName: "person.3")
-                        .font(.caption2)
+                        .font(caption2Font)
                         .foregroundStyle(.tertiary)
                     Text(agentNames.joined(separator: ", "))
-                        .font(.caption2)
+                        .font(caption2Font)
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
                 }
@@ -1385,7 +1479,7 @@ struct ChatView: View {
                         inputText = chip
                     } label: {
                         Text(chip)
-                            .font(.caption)
+                            .font(captionFont)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
                             .background(Color.accentColor.opacity(0.1))
@@ -1469,15 +1563,15 @@ struct ChatView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 4) {
                     Image(systemName: appearance?.icon ?? "cpu")
-                        .font(.caption2)
+                        .font(caption2Font)
                         .foregroundStyle(appearance?.color ?? .purple)
                     Text(streamingDisplayName)
-                        .font(.caption)
+                        .font(captionFont)
                         .foregroundStyle(appearance?.color ?? .secondary)
                     if let key = activeStreamSessionKey,
                        let state = appState.sessionActivity[key] {
                         Text(state.displayLabel)
-                            .font(.caption2)
+                            .font(caption2Font)
                             .foregroundStyle(state.displayColor.opacity(0.8))
                     }
                 }
@@ -1512,16 +1606,16 @@ struct ChatView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "brain")
-                        .font(.caption2)
+                        .font(caption2Font)
                         .foregroundStyle(.indigo)
                     Text("Thinking...")
-                        .font(.caption)
+                        .font(captionFont)
                         .fontWeight(.medium)
                         .foregroundStyle(.indigo)
                     Spacer()
                     Image(systemName: "chevron.right")
                         .rotationEffect(.degrees(isStreamingThinkingExpanded ? 90 : 0))
-                        .font(.caption2)
+                        .font(caption2Font)
                         .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 8)
@@ -1535,7 +1629,7 @@ struct ChatView: View {
                 Divider()
                 ScrollView {
                     Text(thinking)
-                        .font(.caption)
+                        .font(captionFont)
                         .foregroundStyle(.secondary)
                         .italic()
                         .textSelection(.enabled)
@@ -2041,6 +2135,7 @@ struct ChatView: View {
             )
 
             do {
+                session.status = .active
                 if let config = createConfig {
                     try await manager.send(.sessionCreate(
                         conversationId: sidecarKey,
@@ -2526,7 +2621,11 @@ struct ChatView: View {
     private func cloneConversationForFork(from source: Conversation?, throughMessage: ConversationMessage?) -> Conversation? {
         guard let source else { return nil }
         let topicBase = source.topic ?? "Chat"
-        let newConvo = Conversation(topic: topicBase + " (fork)")
+        let newConvo = Conversation(
+            topic: topicBase + " (fork)",
+            projectId: source.projectId,
+            threadKind: source.threadKind
+        )
         newConvo.parentConversationId = source.id
 
         let userParticipant = Participant(type: .user, displayName: "You")
@@ -2595,15 +2694,83 @@ struct ChatView: View {
         try? modelContext.save()
     }
 
-    private func resumeSession() {
-        guard let convo = conversation,
-              let session = convo.primarySession,
-              let claudeSessionId = session.claudeSessionId else { return }
-        let sessionId = session.id.uuidString
-        appState.sendToSidecar(.sessionResume(sessionId: sessionId, claudeSessionId: claudeSessionId))
-        session.status = .active
-        convo.status = .active
-        try? modelContext.save()
+    private func restoreInterruptedSessions() {
+        Task { @MainActor in
+            _ = await restoreSessionContexts(
+                interruptedSessions,
+                resultingStatus: .paused,
+                emptySelectionMessage: "No interrupted sessions are available to restore."
+            )
+        }
+    }
+
+    @MainActor
+    private func restoreSessionContexts(
+        _ sessions: [Session],
+        resultingStatus: SessionStatus,
+        emptySelectionMessage: String
+    ) async -> Bool {
+        guard !sessions.isEmpty else {
+            recoveryErrorDetail = emptySelectionMessage
+            showRecoveryError = true
+            return false
+        }
+
+        do {
+            for session in sessions {
+                guard let claudeSessionId = session.claudeSessionId else { continue }
+                try await appState.restoreSessionContextAwait(
+                    sessionId: session.id.uuidString,
+                    claudeSessionId: claudeSessionId
+                )
+                appState.sessionActivity[session.id.uuidString] = .idle
+                session.status = resultingStatus
+            }
+            conversation?.status = .active
+            try? modelContext.save()
+            return true
+        } catch {
+            recoveryErrorDetail = "Couldn't restore the interrupted session context. \(error.localizedDescription)"
+            showRecoveryError = true
+            return false
+        }
+    }
+
+    private func retryLastInterruptedTurn() {
+        guard let lastUserMessage = latestUserChatMessage?.text.trimmingCharacters(in: .whitespacesAndNewlines),
+              !lastUserMessage.isEmpty else {
+            recoveryErrorDetail = "There isn't a previous user turn to retry in this conversation."
+            showRecoveryError = true
+            return
+        }
+
+        Task { @MainActor in
+            guard await restoreSessionContexts(
+                interruptedSessions,
+                resultingStatus: .paused,
+                emptySelectionMessage: "No interrupted sessions are available to retry."
+            ) else { return }
+            inputText = lastUserMessage
+            sendMessage()
+        }
+    }
+
+    private func continueFromInterruption() {
+        Task { @MainActor in
+            guard await restoreSessionContexts(
+                interruptedSessions,
+                resultingStatus: .paused,
+                emptySelectionMessage: "No interrupted sessions are available to continue."
+            ) else { return }
+            inputText = interruptedContinuationPrompt
+            sendMessage()
+        }
+    }
+
+    private var interruptedContinuationPrompt: String {
+        """
+        The app restarted during your previous turn. Continue from the last completed step, avoid repeating side effects, and briefly say what you believe was already finished before you continue.
+        """
     }
 
     private func closeConversation(_ convo: Conversation) {
@@ -2628,7 +2795,11 @@ struct ChatView: View {
     }
 
     private func duplicateConversation(_ convo: Conversation) {
-        let newConvo = Conversation(topic: (convo.topic ?? "Untitled") + " (copy)")
+        let newConvo = Conversation(
+            topic: (convo.topic ?? "Untitled") + " (copy)",
+            projectId: convo.projectId,
+            threadKind: convo.threadKind
+        )
         let userParticipant = Participant(type: .user, displayName: "You")
         userParticipant.conversation = newConvo
         newConvo.participants.append(userParticipant)

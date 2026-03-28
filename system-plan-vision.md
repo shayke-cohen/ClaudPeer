@@ -2,8 +2,9 @@
 
 > A peer-to-peer network of AI agents, orchestrated through a native macOS app.
 > Each agent is a Claude Code session with its own skills, tools, permissions, and personality.
-> Agents chat with users and with each other. They share knowledge through a blackboard,
-> collaborate on files through shared workspaces, and discover each other across the network.
+> Projects anchor the experience. Each project owns its threads, tasks, schedules, and workspace root,
+> while agents still chat with users and with each other, share knowledge through a blackboard,
+> collaborate on files through shared workspaces and worktrees, and discover each other across the network.
 
 ---
 
@@ -561,9 +562,9 @@ Uses SwiftUI `NavigationSplitView` with three columns:
 +-------------------+-----------------------------------+-------------------+
 ```
 
-### 5.2 Sidebar -- Conversation Tree
+### 5.2 Sidebar -- Project-First Shell
 
-The sidebar organizes all conversations as a tree. User conversations are roots, agent-spawned conversations are nested children. Clicking any node opens that conversation in the chat area.
+The sidebar is project-first. Global utilities live at the top, and each project disclosure contains fixed subsections for Threads, Tasks, Team, and Schedules. Threads still support parent-child lineage, but that tree now lives **inside the owning project** instead of being the primary top-level structure.
 
 ```
 ACTIVE

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import AppKit
 
 enum SidebarBottomBarItem: String, CaseIterable, Identifiable {
     case catalog = "Catalog"
@@ -68,11 +69,13 @@ struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(WindowState.self) private var windowState: WindowState
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Project.lastOpenedAt, order: .reverse) private var projects: [Project]
     @Query(sort: \Conversation.startedAt, order: .reverse) private var conversations: [Conversation]
     @Query(sort: \Agent.name) private var agents: [Agent]
     @Query(sort: \AgentGroup.sortOrder) private var groups: [AgentGroup]
     @Query(sort: \Session.startedAt, order: .reverse) private var allSessions: [Session]
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var taskItems: [TaskItem]
+    @Query(sort: \ScheduledMission.updatedAt, order: .reverse) private var schedules: [ScheduledMission]
     @State private var searchText = ""
     @State private var isTasksExpanded = true
     @State private var isCompletedTasksExpanded = false
@@ -93,52 +96,53 @@ struct SidebarView: View {
     @State private var isHistoryExpanded = false
     @State private var isArchivedExpanded = false
     @State private var hoveredConversationId: UUID?
+    @State private var expandedProjectIds: Set<UUID> = []
 
     var body: some View {
         @Bindable var ws = windowState
-        VStack(spacing: 0) {
-            List(selection: $ws.selectedConversationId) {
-                if conversations.isEmpty {
-                    emptyState
-                } else {
-                    Section("Chats") {
-                        pinnedSection
-                        activeSection
-                        historySection
-                        archivedSection
+        List {
+            utilitySection
+
+            if sortedProjects.isEmpty {
+                emptyState
+            } else {
+                Section {
+                    ForEach(sortedProjects) { project in
+                        projectNode(project)
                     }
-                }
-                tasksSection
-                groupsSection
-                agentsSection
-            }
-            .listStyle(.sidebar)
-            .searchable(text: $searchText, prompt: "Search conversations...")
-            .xrayId("sidebar.conversationList")
-            .onChange(of: windowState.selectedConversationId) { _, newValue in
-                guard let selectedId = newValue else { return }
-                // Check if the selected ID is a task ID (not a conversation)
-                if let task = taskItems.first(where: { $0.id == selectedId }) {
-                    if let convId = task.conversationId {
-                        // Redirect to the actual conversation
-                        DispatchQueue.main.async {
-                            windowState.selectedConversationId = convId
-                        }
-                    } else {
-                        // No conversation — open edit sheet, clear selection
-                        DispatchQueue.main.async {
-                            windowState.selectedConversationId = nil
-                            editingTask = task
-                        }
-                    }
+                } header: {
+                    projectsHeader
                 }
             }
-
-            Divider()
-
-            sidebarBottomBar
         }
-        .frame(minWidth: 220)
+        .listStyle(.sidebar)
+        .searchable(text: $searchText, prompt: "Search threads…")
+        .xrayId("sidebar.conversationList")
+        .onAppear {
+            if let selectedProjectId = windowState.selectedProjectId {
+                expandedProjectIds.insert(selectedProjectId)
+            }
+        }
+        .onChange(of: windowState.selectedConversationId) { _, newValue in
+            guard let selectedId = newValue else { return }
+            if let selectedConversation = conversations.first(where: { $0.id == selectedId }),
+               let projectId = selectedConversation.projectId {
+                windowState.selectProject(id: projectId, preserveSelection: true)
+                expandedProjectIds.insert(projectId)
+            } else if let task = taskItems.first(where: { $0.id == selectedId }) {
+                if let convId = task.conversationId {
+                    DispatchQueue.main.async {
+                        windowState.selectedConversationId = convId
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        windowState.selectedConversationId = nil
+                        editingTask = task
+                    }
+                }
+            }
+        }
+        .frame(minWidth: 240)
         .sheet(isPresented: $showCatalog) {
             CatalogBrowserView()
                 .frame(minWidth: 700, minHeight: 550)
@@ -191,6 +195,74 @@ struct SidebarView: View {
             Button("Cancel", role: .cancel) { conversationToDelete = nil }
         } message: {
             Text("This conversation and all its messages will be permanently deleted.")
+        }
+    }
+
+    private var sortedProjects: [Project] {
+        projects.sorted { lhs, rhs in
+            if lhs.id == windowState.selectedProjectId { return true }
+            if rhs.id == windowState.selectedProjectId { return false }
+            return lhs.lastOpenedAt > rhs.lastOpenedAt
+        }
+    }
+
+    // MARK: - Global Utilities
+
+    private var utilitySection: some View {
+        Section {
+            Button {
+                windowState.showNewSessionSheet = true
+            } label: {
+                Label("New Thread", systemImage: "square.and.pencil")
+            }
+            .buttonStyle(.plain)
+            .xrayId("sidebar.utility.newThread")
+
+            Button {
+                showCatalog = true
+            } label: {
+                Label("Plugins", systemImage: "square.grid.2x2")
+            }
+            .buttonStyle(.plain)
+            .xrayId("sidebar.utility.plugins")
+
+            Button {
+                addProjectFolder()
+            } label: {
+                Label("Add Project", systemImage: "folder.badge.plus")
+            }
+            .buttonStyle(.plain)
+            .xrayId("sidebar.utility.addProject")
+
+            Button {
+                windowState.showScheduleLibrary = true
+            } label: {
+                Label("Automations", systemImage: "clock")
+            }
+            .buttonStyle(.plain)
+            .xrayId("sidebar.utility.automations")
+
+            SettingsLink {
+                Label("Settings", systemImage: "gearshape")
+            }
+            .xrayId("sidebar.utility.settings")
+        }
+    }
+
+    private var projectsHeader: some View {
+        HStack {
+            Text("Projects")
+            Spacer()
+            Button {
+                addProjectFolder()
+            } label: {
+                Image(systemName: "plus")
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.plain)
+            .help("Add project folder")
+            .xrayId("sidebar.projectsHeader.addProject")
+            .accessibilityLabel("Add project folder")
         }
     }
 
@@ -318,30 +390,178 @@ struct SidebarView: View {
         }
     }
 
+    // MARK: - Projects
+
+    @ViewBuilder
+    private func projectNode(_ project: Project) -> some View {
+        DisclosureGroup(
+            isExpanded: Binding(
+                get: { expandedProjectIds.contains(project.id) },
+                set: { isExpanded in
+                    if isExpanded { expandedProjectIds.insert(project.id) }
+                    else { expandedProjectIds.remove(project.id) }
+                }
+            )
+        ) {
+            projectThreadsSection(project)
+            projectTasksSection(project)
+            projectSchedulesSection(project)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: project.icon)
+                    .foregroundStyle(Color.fromAgentColor(project.color))
+                Text(project.name)
+                    .font(windowState.selectedProjectId == project.id ? .body.weight(.semibold) : .body)
+                    .lineLimit(1)
+                Spacer()
+                if let activeThread = activeConversations(in: project).first {
+                    Text(relativeTime(activeThread.startedAt))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                Button {
+                    createQuickChat(in: project)
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.caption.weight(.semibold))
+                        .frame(width: 18, height: 18)
+                }
+                .buttonStyle(.plain)
+                .help("New thread in \(project.name)")
+                .xrayId("sidebar.projectNewThread.\(project.id.uuidString)")
+                .accessibilityLabel("New thread in \(project.name)")
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                windowState.selectProject(project)
+                expandedProjectIds.insert(project.id)
+            }
+            .padding(.vertical, 2)
+            .padding(.horizontal, 4)
+            .background(windowState.selectedProjectId == project.id ? Color.accentColor.opacity(0.14) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .xrayId("sidebar.projectRow.\(project.id.uuidString)")
+    }
+
+    @ViewBuilder
+    private func projectThreadsSection(_ project: Project) -> some View {
+        let liveThreads = visibleProjectThreads(for: project)
+        let archivedThreads = filteredConversations(rootConversations(in: project).filter(\.isArchived))
+
+        VStack(alignment: .leading, spacing: 4) {
+            if liveThreads.isEmpty {
+                Text("No threads")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            } else {
+                ForEach(liveThreads) { convo in
+                    conversationTreeNode(
+                        convo,
+                        pinAction: convo.isPinned ? "Unpin" : "Pin"
+                    )
+                }
+            }
+
+            if !archivedThreads.isEmpty {
+                archivedSection(for: project)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func projectTasksSection(_ project: Project) -> some View {
+        let tasks = tasksForProject(project)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Label("Tasks", systemImage: "checklist")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button {
+                    windowState.selectProject(project)
+                    showTaskCreation = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.caption2)
+                }
+                .buttonStyle(.plain)
+                .xrayId("sidebar.projectTasksAdd.\(project.id.uuidString)")
+            }
+
+            if tasks.isEmpty {
+                Text("No tasks")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            } else {
+                ForEach(tasks.prefix(6)) { task in
+                    taskRow(task)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func projectSchedulesSection(_ project: Project) -> some View {
+        let projectSchedules = schedulesForProject(project)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Label("Schedules", systemImage: "clock")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Open") {
+                    windowState.selectProject(project, preserveSelection: true)
+                    windowState.showScheduleLibrary = true
+                }
+                .buttonStyle(.plain)
+                .font(.caption2)
+            }
+
+            if projectSchedules.isEmpty {
+                Text("No schedules")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            } else {
+                ForEach(projectSchedules.prefix(4)) { schedule in
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(schedule.name)
+                            .font(.caption)
+                            .lineLimit(1)
+                        Text(schedule.nextRunAt?.formatted(date: .omitted, time: .shortened) ?? "Not scheduled")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.leading, 20)
+                }
+            }
+        }
+    }
+
     // MARK: - Empty State
 
     @ViewBuilder
     private var emptyState: some View {
         Section {
             VStack(spacing: 12) {
-                Image(systemName: "bubble.left.and.bubble.right")
+                Image(systemName: "folder.badge.plus")
                     .font(.largeTitle)
                     .foregroundStyle(.tertiary)
-                Text("No conversations yet")
+                Text("No projects yet")
                     .font(.headline)
                     .foregroundStyle(.secondary)
-                Text("Start chatting with an agent or create a freeform chat.")
+                Text("Add a folder to create your first project workspace.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
                 Button {
-                    windowState.showNewSessionSheet = true
+                    showCatalog = true
                 } label: {
-                    Label("New Session", systemImage: "plus.bubble")
+                    Label("Open Catalog", systemImage: "square.grid.2x2")
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .help("Start a new session")
+                .help("Browse starter tools")
                 .xrayId("sidebar.emptyState.newSessionButton")
             }
             .frame(maxWidth: .infinity)
@@ -352,8 +572,8 @@ struct SidebarView: View {
     // MARK: - Pinned Section
 
     @ViewBuilder
-    private var pinnedSection: some View {
-        let pinned = rootConversations.filter { $0.isPinned && !$0.isArchived }
+    private func pinnedSection(for project: Project) -> some View {
+        let pinned = rootConversations(in: project).filter { $0.isPinned && !$0.isArchived }
         let filteredPinned = filteredConversations(pinned)
         if !filteredPinned.isEmpty {
             DisclosureGroup(
@@ -376,8 +596,8 @@ struct SidebarView: View {
     // MARK: - Active Section (last 10)
 
     @ViewBuilder
-    private var activeSection: some View {
-        let all = rootConversations.filter { !$0.isPinned && !$0.isArchived }
+    private func activeSection(for project: Project) -> some View {
+        let all = rootConversations(in: project).filter { !$0.isPinned && !$0.isArchived }
         let visible = filteredConversations(Array(all.prefix(10)))
         if !visible.isEmpty {
             DisclosureGroup(
@@ -400,8 +620,8 @@ struct SidebarView: View {
     // MARK: - History Section (overflow, foldable)
 
     @ViewBuilder
-    private var historySection: some View {
-        let all = rootConversations.filter { !$0.isPinned && !$0.isArchived }
+    private func historySection(for project: Project) -> some View {
+        let all = rootConversations(in: project).filter { !$0.isPinned && !$0.isArchived }
         let overflow = Array(all.dropFirst(10))
         let visible = filteredConversations(overflow)
         if !visible.isEmpty {
@@ -425,8 +645,8 @@ struct SidebarView: View {
     // MARK: - Archived Section
 
     @ViewBuilder
-    private var archivedSection: some View {
-        let archived = rootConversations.filter { $0.isArchived }
+    private func archivedSection(for project: Project) -> some View {
+        let archived = rootConversations(in: project).filter { $0.isArchived }
         let visible = filteredConversations(archived)
         if !visible.isEmpty {
             DisclosureGroup(
@@ -438,6 +658,8 @@ struct SidebarView: View {
                 ForEach(visible) { convo in
                     conversationRow(convo)
                         .tag(convo.id)
+                        .contentShape(Rectangle())
+                        .onTapGesture { selectConversation(convo) }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) { promptDelete(convo) } label: {
                                 Label("Delete", systemImage: "trash")
@@ -460,8 +682,14 @@ struct SidebarView: View {
 
     // MARK: - Tree helpers
 
-    private var rootConversations: [Conversation] {
-        conversations.filter { $0.parentConversationId == nil }
+    private func rootConversations(in project: Project) -> [Conversation] {
+        conversations.filter { $0.parentConversationId == nil && $0.projectId == project.id }
+    }
+
+    private func activeConversations(in project: Project) -> [Conversation] {
+        rootConversations(in: project)
+            .filter { !$0.isArchived }
+            .sorted { $0.startedAt > $1.startedAt }
     }
 
     private func childConversations(of parent: Conversation) -> [Conversation] {
@@ -470,12 +698,29 @@ struct SidebarView: View {
             .sorted { $0.startedAt < $1.startedAt }
     }
 
+    private func visibleProjectThreads(for project: Project) -> [Conversation] {
+        let liveThreads = rootConversations(in: project).filter { !$0.isArchived }
+        let sorted = liveThreads.sorted { lhs, rhs in
+            if lhs.isPinned != rhs.isPinned {
+                return lhs.isPinned && !rhs.isPinned
+            }
+            return lhs.startedAt > rhs.startedAt
+        }
+        let filtered = filteredConversations(sorted)
+        if searchText.isEmpty {
+            return Array(filtered.prefix(12))
+        }
+        return filtered
+    }
+
     @ViewBuilder
     private func conversationTreeNode(_ convo: Conversation, pinAction: String) -> some View {
         let children = childConversations(of: convo)
         if children.isEmpty {
             conversationRow(convo)
                 .tag(convo.id)
+                .contentShape(Rectangle())
+                .onTapGesture { selectConversation(convo) }
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button(role: .destructive) { promptDelete(convo) } label: {
                         Label("Delete", systemImage: "trash")
@@ -499,6 +744,8 @@ struct SidebarView: View {
             } label: {
                 conversationRow(convo)
                     .tag(convo.id)
+                    .contentShape(Rectangle())
+                    .onTapGesture { selectConversation(convo) }
             }
             .tag(convo.id)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -523,6 +770,8 @@ struct SidebarView: View {
     private func childConversationRow(_ convo: Conversation) -> some View {
         conversationRow(convo)
             .tag(convo.id)
+            .contentShape(Rectangle())
+            .onTapGesture { selectConversation(convo) }
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) { promptDelete(convo) } label: {
                     Label("Delete", systemImage: "trash")
@@ -777,7 +1026,12 @@ struct SidebarView: View {
                         }
                     ),
                     onNewChat: {
-                        if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+                        if let convoId = appState.startGroupChat(
+                            group: group,
+                            projectDirectory: windowState.projectDirectory,
+                            projectId: windowState.selectedProjectId,
+                            modelContext: modelContext
+                        ) {
                             windowState.selectedConversationId = convoId
                         }
                     },
@@ -797,7 +1051,12 @@ struct SidebarView: View {
                 )
                 .contextMenu {
                     Button("Start Chat") {
-                        if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+                        if let convoId = appState.startGroupChat(
+                            group: group,
+                            projectDirectory: windowState.projectDirectory,
+                            projectId: windowState.selectedProjectId,
+                            modelContext: modelContext
+                        ) {
                             windowState.selectedConversationId = convoId
                         }
                     }
@@ -873,6 +1132,7 @@ struct SidebarView: View {
     private func conversationRow(_ convo: Conversation) -> some View {
         let activity = appState.conversationActivity(for: convo)
         let isHovered = hoveredConversationId == convo.id
+        let isSelected = windowState.selectedConversationId == convo.id
         return HStack(spacing: 8) {
             if convo.isUnread {
                 Circle()
@@ -932,6 +1192,10 @@ struct SidebarView: View {
             )
             .xrayId("sidebar.activityIndicator.\(convo.id.uuidString)")
         }
+        .padding(.vertical, 3)
+        .padding(.horizontal, 6)
+        .background(isSelected ? Color.accentColor.opacity(0.14) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
         .onHover { isHovering in
             hoveredConversationId = isHovering ? convo.id : nil
         }
@@ -1095,8 +1359,8 @@ struct SidebarView: View {
 
     // MARK: - Activity State
 
-    private func agentHasActiveSession(_ agent: Agent) -> Bool {
-        for conversation in conversationsForAgent(agent) {
+    private func agentHasActiveSession(_ agent: Agent, in project: Project? = nil) -> Bool {
+        for conversation in conversationsForAgent(agent, in: project) {
             for session in conversation.sessions where session.agent?.id == agent.id {
                 let key = session.id.uuidString
                 if appState.sessionActivity[key]?.isActive == true {
@@ -1107,8 +1371,8 @@ struct SidebarView: View {
         return false
     }
 
-    private func groupHasActiveSession(_ group: AgentGroup) -> Bool {
-        for conversation in conversationsForGroup(group) {
+    private func groupHasActiveSession(_ group: AgentGroup, in project: Project? = nil) -> Bool {
+        for conversation in conversationsForGroup(group, in: project) {
             for session in conversation.sessions {
                 let key = session.id.uuidString
                 if appState.sessionActivity[key]?.isActive == true {
@@ -1121,16 +1385,31 @@ struct SidebarView: View {
 
     // MARK: - Agent Chat History
 
-    private func conversationsForGroup(_ group: AgentGroup) -> [Conversation] {
-        conversations.filter { $0.sourceGroupId == group.id }
+    private func conversationsForGroup(_ group: AgentGroup, in project: Project? = nil) -> [Conversation] {
+        conversations.filter {
+            $0.sourceGroupId == group.id && (project == nil || $0.projectId == project?.id)
+        }
     }
 
-    private func conversationsForAgent(_ agent: Agent) -> [Conversation] {
+    private func conversationsForAgent(_ agent: Agent, in project: Project? = nil) -> [Conversation] {
         var seen = Set<UUID>()
         return allSessions
             .filter { $0.agent?.id == agent.id }
             .compactMap { $0.conversations.first }
+            .filter { project == nil || $0.projectId == project?.id }
             .filter { seen.insert($0.id).inserted }
+    }
+
+    private func tasksForProject(_ project: Project) -> [TaskItem] {
+        taskItems.filter { $0.projectId == project.id }
+    }
+
+    private func schedulesForProject(_ project: Project) -> [ScheduledMission] {
+        schedules.filter { $0.projectId == project.id }
+    }
+
+    private func conversationsForProject(_ project: Project) -> [Conversation] {
+        conversations.filter { $0.projectId == project.id }
     }
 
     // MARK: - Group Actions
@@ -1196,7 +1475,11 @@ struct SidebarView: View {
     }
 
     private func duplicateConversation(_ convo: Conversation) {
-        let newConvo = Conversation(topic: (convo.topic ?? "Untitled") + " (copy)")
+        let newConvo = Conversation(
+            topic: (convo.topic ?? "Untitled") + " (copy)",
+            projectId: convo.projectId,
+            threadKind: convo.threadKind
+        )
         let userParticipant = Participant(type: .user, displayName: "You")
         userParticipant.conversation = newConvo
         newConvo.participants.append(userParticipant)
@@ -1223,30 +1506,54 @@ struct SidebarView: View {
         windowState.selectedConversationId = newConvo.id
     }
 
-    private func selectOrCreateAgentChat(_ agent: Agent) {
-        if let existing = conversationsForAgent(agent).first(where: { !$0.isArchived }) {
-            windowState.selectedConversationId = existing.id
-        } else {
-            startSession(with: agent)
+    private func selectConversation(_ convo: Conversation) {
+        if let projectId = convo.projectId {
+            windowState.selectProject(id: projectId, preserveSelection: true)
+        }
+        windowState.selectedGroupId = nil
+        windowState.selectedConversationId = convo.id
+        if convo.isUnread {
+            convo.isUnread = false
+            try? modelContext.save()
         }
     }
 
-    private func selectOrCreateGroupChat(_ group: AgentGroup) {
-        if let existing = conversationsForGroup(group).first(where: { !$0.isArchived }) {
+    private func selectOrCreateAgentChat(_ agent: Agent, in project: Project? = nil) {
+        if let existing = conversationsForAgent(agent, in: project).first(where: { !$0.isArchived }) {
             windowState.selectedConversationId = existing.id
         } else {
-            if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+            startSession(with: agent, in: project)
+        }
+    }
+
+    private func selectOrCreateGroupChat(_ group: AgentGroup, in project: Project? = nil) {
+        if let existing = conversationsForGroup(group, in: project).first(where: { !$0.isArchived }) {
+            windowState.selectedConversationId = existing.id
+        } else {
+            let targetProject = project ?? sortedProjects.first(where: { $0.id == windowState.selectedProjectId })
+            if let convoId = appState.startGroupChat(
+                group: group,
+                projectDirectory: targetProject?.rootPath ?? windowState.projectDirectory,
+                projectId: targetProject?.id ?? windowState.selectedProjectId,
+                modelContext: modelContext
+            ) {
                 windowState.selectedConversationId = convoId
             }
         }
     }
 
-    private func startSession(with agent: Agent) {
+    private func startSession(with agent: Agent, in project: Project? = nil) {
+        let targetProject = project ?? sortedProjects.first(where: { $0.id == windowState.selectedProjectId })
         let session = Session(agent: agent, mode: .interactive)
-        if session.workingDirectory.isEmpty, !windowState.projectDirectory.isEmpty {
-            session.workingDirectory = windowState.projectDirectory
+        if session.workingDirectory.isEmpty, !(targetProject?.rootPath ?? windowState.projectDirectory).isEmpty {
+            session.workingDirectory = targetProject?.rootPath ?? windowState.projectDirectory
         }
-        let conversation = Conversation(topic: agent.name, sessions: [session])
+        let conversation = Conversation(
+            topic: agent.name,
+            sessions: [session],
+            projectId: targetProject?.id ?? windowState.selectedProjectId,
+            threadKind: .direct
+        )
         let userParticipant = Participant(type: .user, displayName: "You")
         let agentParticipant = Participant(
             type: .agentSession(sessionId: session.id),
@@ -1261,5 +1568,41 @@ struct SidebarView: View {
         modelContext.insert(conversation)
         try? modelContext.save()
         windowState.selectedConversationId = conversation.id
+    }
+
+    private func createQuickChat(in project: Project) {
+        let conversation = Conversation(
+            topic: "New Thread",
+            projectId: project.id,
+            threadKind: .freeform
+        )
+        let userParticipant = Participant(type: .user, displayName: "You")
+        userParticipant.conversation = conversation
+        conversation.participants.append(userParticipant)
+
+        modelContext.insert(conversation)
+        try? modelContext.save()
+
+        expandedProjectIds.insert(project.id)
+        windowState.selectProject(project, preserveSelection: true)
+        windowState.selectedConversationId = conversation.id
+    }
+
+    private func addProjectFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Add Project"
+        panel.message = "Choose a project folder to add to the sidebar"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            let project = ProjectRecords.upsertProject(at: url.path, in: modelContext)
+            RecentDirectories.add(project.rootPath)
+            InstanceConfig.userDefaults.set(project.rootPath, forKey: AppSettings.instanceWorkingDirectoryKey)
+            expandedProjectIds.insert(project.id)
+            windowState.selectProject(project)
+        }
     }
 }

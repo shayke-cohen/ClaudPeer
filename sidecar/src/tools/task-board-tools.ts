@@ -2,7 +2,18 @@ import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import type { ToolContext } from "./tool-context.js";
 
-export function createTaskBoardTools(ctx: ToolContext) {
+function resolveSessionId(extra: any, callingSessionId?: string): string | undefined {
+  return extra?.sessionId ?? callingSessionId;
+}
+
+function recordToolCall(ctx: ToolContext, sessionId?: string) {
+  if (!sessionId) return;
+  const state = ctx.sessions.get(sessionId);
+  if (!state) return;
+  ctx.sessions.update(sessionId, { toolCallCount: state.toolCallCount + 1 });
+}
+
+export function createTaskBoardTools(ctx: ToolContext, callingSessionId?: string) {
   return [
     tool(
       "task_board_list",
@@ -13,7 +24,8 @@ export function createTaskBoardTools(ctx: ToolContext) {
         assigned_to: z.string().optional()
           .describe("Filter by assigned agent name"),
       },
-      async (args) => {
+      async (args, extra: any) => {
+        recordToolCall(ctx, resolveSessionId(extra, callingSessionId));
         const tasks = ctx.taskBoard.list({
           status: args.status,
           assignedTo: args.assigned_to,
@@ -24,7 +36,7 @@ export function createTaskBoardTools(ctx: ToolContext) {
 
     tool(
       "task_board_create",
-      "Create a new task on the task board. Tasks default to 'backlog' status. Use 'ready' status if the task should be immediately available for claiming.",
+      "Create a new task on the task board. Agent-created tasks default to 'ready' status so they can be claimed immediately. Use 'backlog' to save a draft task for later.",
       {
         title: z.string().describe("Short title for the task"),
         description: z.string().optional().describe("Detailed description of what needs to be done"),
@@ -32,9 +44,11 @@ export function createTaskBoardTools(ctx: ToolContext) {
           .describe("Task priority (default: medium)"),
         labels: z.array(z.string()).optional().describe("Tags for categorization"),
         parent_task_id: z.string().optional().describe("ID of parent task if this is a subtask"),
-        status: z.enum(["backlog", "ready"]).optional().describe("Initial status (default: backlog)"),
+        status: z.enum(["backlog", "ready"]).optional().describe("Initial status (default: ready)"),
       },
-      async (args) => {
+      async (args, extra: any) => {
+        const sessionId = resolveSessionId(extra, callingSessionId);
+        recordToolCall(ctx, sessionId);
         const task = ctx.taskBoard.create({
           title: args.title,
           description: args.description ?? "",
@@ -44,7 +58,7 @@ export function createTaskBoardTools(ctx: ToolContext) {
           status: args.status ?? "ready",
         });
 
-        ctx.broadcast({ type: "task.created", task });
+        ctx.broadcast({ type: "task.created", sessionId, task });
 
         return { content: [{ type: "text" as const, text: JSON.stringify({ success: true, task }) }] };
       },
@@ -57,9 +71,10 @@ export function createTaskBoardTools(ctx: ToolContext) {
         task_id: z.string().describe("ID of the task to claim"),
       },
       async (args, extra: any) => {
-        const sessionId = extra?.sessionId ?? "unknown";
-        const state = ctx.sessions.get(sessionId);
-        const agentName = state?.agentName ?? sessionId;
+        const sessionId = resolveSessionId(extra, callingSessionId);
+        recordToolCall(ctx, sessionId);
+        const state = sessionId ? ctx.sessions.get(sessionId) : undefined;
+        const agentName = state?.agentName ?? sessionId ?? "unknown";
 
         const task = ctx.taskBoard.claim(args.task_id, agentName);
         if (!task) {
@@ -71,7 +86,7 @@ export function createTaskBoardTools(ctx: ToolContext) {
           };
         }
 
-        ctx.broadcast({ type: "task.updated", task });
+        ctx.broadcast({ type: "task.updated", sessionId, task });
 
         return { content: [{ type: "text" as const, text: JSON.stringify({ success: true, task }) }] };
       },
@@ -87,14 +102,18 @@ export function createTaskBoardTools(ctx: ToolContext) {
         result: z.string().optional().describe("Result summary when completing a task"),
         conversation_id: z.string().optional().describe("Link to the conversation where work is happening"),
         assigned_agent_id: z.string().optional().describe("Agent ID to assign"),
+        assigned_agent_name: z.string().optional().describe("Agent name to assign"),
         assigned_group_id: z.string().optional().describe("Group ID to assign"),
       },
-      async (args) => {
+      async (args, extra: any) => {
+        const sessionId = resolveSessionId(extra, callingSessionId);
+        recordToolCall(ctx, sessionId);
         const updates: Record<string, any> = {};
         if (args.status) updates.status = args.status;
         if (args.result) updates.result = args.result;
         if (args.conversation_id) updates.conversationId = args.conversation_id;
         if (args.assigned_agent_id) updates.assignedAgentId = args.assigned_agent_id;
+        if (args.assigned_agent_name) updates.assignedAgentName = args.assigned_agent_name;
         if (args.assigned_group_id) updates.assignedGroupId = args.assigned_group_id;
 
         const task = ctx.taskBoard.update(args.task_id, updates);
@@ -107,7 +126,7 @@ export function createTaskBoardTools(ctx: ToolContext) {
           };
         }
 
-        ctx.broadcast({ type: "task.updated", task });
+        ctx.broadcast({ type: "task.updated", sessionId, task });
 
         return { content: [{ type: "text" as const, text: JSON.stringify({ success: true, task }) }] };
       },

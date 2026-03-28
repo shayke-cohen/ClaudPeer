@@ -42,10 +42,10 @@ struct MainWindowView: View {
                 Button {
                     windowState.showNewSessionSheet = true
                 } label: {
-                    Label("New Session", systemImage: "plus.bubble")
+                    Label("New Thread", systemImage: "plus.bubble")
                 }
                 .keyboardShortcut("n", modifiers: .command)
-                .help("New session (⌘N)")
+                .help("New thread (⌘N)")
                 .xrayId("mainWindow.newSessionButton")
                 .accessibilityIdentifier("mainWindow.newSessionButton")
                 .accessibilityLabel("New Session")
@@ -331,7 +331,11 @@ struct MainWindowView: View {
     // MARK: - Actions
 
     private func createQuickChat() {
-        let conversation = Conversation(topic: "New Chat")
+        let conversation = Conversation(
+            topic: "New Thread",
+            projectId: windowState.selectedProjectId,
+            threadKind: .freeform
+        )
         let userParticipant = Participant(type: .user, displayName: "You")
         userParticipant.conversation = conversation
         conversation.participants.append(userParticipant)
@@ -343,7 +347,12 @@ struct MainWindowView: View {
     private func startSessionWithAgent(_ agent: Agent) {
         let session = Session(agent: agent, mode: .interactive)
         session.workingDirectory = agent.defaultWorkingDirectory ?? windowState.projectDirectory
-        let conversation = Conversation(topic: agent.name, sessions: [session])
+        let conversation = Conversation(
+            topic: agent.name,
+            sessions: [session],
+            projectId: windowState.selectedProjectId,
+            threadKind: .direct
+        )
         let userParticipant = Participant(type: .user, displayName: "You")
         let agentParticipant = Participant(
             type: .agentSession(sessionId: session.id),
@@ -361,7 +370,12 @@ struct MainWindowView: View {
     }
 
     private func startGroupChat(_ group: AgentGroup) {
-        if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+        if let convoId = appState.startGroupChat(
+            group: group,
+            projectDirectory: windowState.projectDirectory,
+            projectId: windowState.selectedProjectId,
+            modelContext: modelContext
+        ) {
             windowState.selectedConversationId = convoId
         }
     }

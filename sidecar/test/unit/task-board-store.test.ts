@@ -103,6 +103,7 @@ describe("TaskBoardStore", () => {
     expect(updated?.startedAt).toBeUndefined();
     expect(updated?.completedAt).toBeUndefined();
     expect(updated?.assignedAgentId).toBeUndefined();
+    expect(updated?.assignedAgentName).toBeUndefined();
     expect(updated?.assignedGroupId).toBeUndefined();
   });
 
@@ -120,7 +121,8 @@ describe("TaskBoardStore", () => {
     const task = store.create({ title: "Test", status: "ready" });
     const claimed = store.claim(task.id, "Orchestrator");
     expect(claimed?.status).toBe("inProgress");
-    expect(claimed?.assignedAgentId).toBe("Orchestrator");
+    expect(claimed?.assignedAgentId).toBeUndefined();
+    expect(claimed?.assignedAgentName).toBe("Orchestrator");
     expect(claimed?.startedAt).toBeTruthy();
   });
 

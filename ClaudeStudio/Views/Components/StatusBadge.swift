@@ -12,6 +12,9 @@ struct StatusBadge: View {
         case .paused:
             self.status = "Paused"
             self.color = .yellow
+        case .interrupted:
+            self.status = "Interrupted"
+            self.color = .orange
         case .completed:
             self.status = "Done"
             self.color = .gray

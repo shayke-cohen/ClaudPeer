@@ -21,7 +21,9 @@ struct ClaudeStudioApp: App {
 
     init() {
         #if DEBUG
-        AppXray.shared.start(appName: "ClaudeStudio")
+        // Avoid the AppXray relay's default port (19400), which can collide with
+        // direct-connect tooling when the SDK app also binds there in server mode.
+        AppXray.shared.start(config: AppXrayConfig(appName: "ClaudeStudio", port: 19480))
         #endif
 
         AppTextSizeShortcutMonitor.shared.start()
@@ -32,6 +34,7 @@ struct ClaudeStudioApp: App {
             let storeURL = InstanceConfig.dataDirectory.appendingPathComponent("ClaudeStudio.store")
             let config = ModelConfiguration(url: storeURL)
             let schema = Schema([
+                Project.self,
                 Agent.self,
                 Session.self,
                 Conversation.self,
@@ -57,6 +60,7 @@ struct ClaudeStudioApp: App {
         }
 
         launchIntent = LaunchIntent.fromCommandLine()
+        Self.performProjectFirstResetIfNeeded(modelContainer: modelContainer)
     }
 
     private var resolvedColorScheme: ColorScheme? {
@@ -171,12 +175,14 @@ struct ClaudeStudioApp: App {
     @MainActor
     private func sendTestMessage() {
         let context = modelContainer.mainContext
-        let conversation = Conversation(topic: "Test Chat")
+        let projectPath = lastProjectDirectory ?? NSHomeDirectory()
+        let project = ProjectRecords.upsertProject(at: projectPath, in: context)
+        let conversation = Conversation(topic: "Test Chat", projectId: project.id)
         let userParticipant = Participant(type: .user, displayName: "You")
         userParticipant.conversation = conversation
         conversation.participants.append(userParticipant)
 
-        let testSession = Session(agent: nil, mode: .interactive, workingDirectory: lastProjectDirectory ?? NSHomeDirectory())
+        let testSession = Session(agent: nil, mode: .interactive, workingDirectory: projectPath)
         testSession.conversations = [conversation]
         conversation.sessions.append(testSession)
         context.insert(testSession)
@@ -215,7 +221,7 @@ struct ClaudeStudioApp: App {
             maxTurns: 1,
             maxBudget: nil,
             maxThinkingTokens: 10000,
-            workingDirectory: lastProjectDirectory ?? NSHomeDirectory(),
+            workingDirectory: projectPath,
             skills: []
         )
 
@@ -233,6 +239,45 @@ struct ClaudeStudioApp: App {
             ))
             Log.general.info("Sent test message for session \(sessionId, privacy: .public)")
         }
+    }
+
+    private static func performProjectFirstResetIfNeeded(modelContainer: ModelContainer) {
+        let defaults = InstanceConfig.userDefaults
+        let resetKey = "projectFirstShell.reset.v1"
+        guard !defaults.bool(forKey: resetKey) else { return }
+
+        let context = modelContainer.mainContext
+
+        let conversations = (try? context.fetch(FetchDescriptor<Conversation>())) ?? []
+        for item in conversations {
+            context.delete(item)
+        }
+
+        let tasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
+        for item in tasks {
+            context.delete(item)
+        }
+
+        let schedules = (try? context.fetch(FetchDescriptor<ScheduledMission>())) ?? []
+        for item in schedules {
+            context.delete(item)
+        }
+
+        let runs = (try? context.fetch(FetchDescriptor<ScheduledMissionRun>())) ?? []
+        for item in runs {
+            context.delete(item)
+        }
+
+        try? context.save()
+
+        let taskboardDir = InstanceConfig.baseDirectory.appendingPathComponent("taskboard")
+        if let paths = try? FileManager.default.contentsOfDirectory(at: taskboardDir, includingPropertiesForKeys: nil) {
+            for path in paths {
+                try? FileManager.default.removeItem(at: path)
+            }
+        }
+
+        defaults.set(true, forKey: resetKey)
     }
 }
 
@@ -267,7 +312,7 @@ private struct ProjectWindowContent: View {
             if let ws = windowState {
                 MainWindowView()
                     .environment(ws)
-            } else if effectiveDirectory != nil {
+            } else if effectiveDirectory != nil || hasExistingProjects {
                 ProgressView("Opening project\u{2026}")
             } else {
                 ProjectPickerView { path in
@@ -309,6 +354,8 @@ private struct ProjectWindowContent: View {
             // If we already have a directory, initialize immediately
             if let dir = effectiveDirectory {
                 initializeWindow(projectDirectory: dir)
+            } else if let project = preferredProject() {
+                initializeWindow(project: project)
             }
         }
         .onOpenURL { url in
@@ -320,16 +367,40 @@ private struct ProjectWindowContent: View {
         .navigationTitle(windowState.map { "ClaudeStudio — \($0.projectName)" } ?? "ClaudeStudio")
     }
 
+    private var hasExistingProjects: Bool {
+        let descriptor = FetchDescriptor<Project>()
+        return ((try? modelContainer.mainContext.fetch(descriptor)) ?? []).isEmpty == false
+    }
+
+    private func preferredProject() -> Project? {
+        let descriptor = FetchDescriptor<Project>()
+        let projects = (try? modelContainer.mainContext.fetch(descriptor)) ?? []
+        if let lastProjectDirectory {
+            let canonical = ProjectRecords.canonicalPath(for: lastProjectDirectory)
+            if let match = projects.first(where: { $0.canonicalRootPath == canonical }) {
+                return match
+            }
+        }
+        return projects.sorted(by: { $0.lastOpenedAt > $1.lastOpenedAt }).first
+    }
+
     private func initializeWindow(projectDirectory: String) {
         guard windowState == nil else { return }
 
-        let ws = WindowState(projectDirectory: projectDirectory)
+        let project = ProjectRecords.upsertProject(at: projectDirectory, in: modelContainer.mainContext)
+        initializeWindow(project: project)
+    }
+
+    private func initializeWindow(project: Project) {
+        guard windowState == nil else { return }
+
+        let ws = WindowState(project: project)
         ws.appState = appState
         windowState = ws
 
         // Save as last-used
-        InstanceConfig.userDefaults.set(projectDirectory, forKey: AppSettings.instanceWorkingDirectoryKey)
-        RecentDirectories.add(projectDirectory)
+        InstanceConfig.userDefaults.set(project.rootPath, forKey: AppSettings.instanceWorkingDirectoryKey)
+        RecentDirectories.add(project.rootPath)
 
         // Execute launch intent if present
         if let intent = launchIntent {
@@ -359,7 +430,7 @@ private struct ProjectPickerView: View {
                 Text("Open a Project")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                Text("Choose a folder to work in. Each window is bound to a project.")
+                Text("Choose a folder to add to the project-first shell.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
