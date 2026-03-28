@@ -2,8 +2,8 @@
 
 Living specification tracking implemented features, user flows, and requirements.
 
-**Version:** 0.12.0
-**Status:** Phase 12 — Task board, plan mode, logging infrastructure, rich display tools
+**Version:** 0.13.0
+**Status:** Phase 13 — Scheduled missions, recurring automation, schedule management UI
 
 ---
 
@@ -20,6 +20,7 @@ ClaudeStudio is a native macOS developer tool for managing multiple Claude AI ag
 - **Composable agents** — build agents from reusable skills, MCP servers, and permission presets
 - **Curated catalog** — browse and install from 30 agents, 101 skills, and 100 MCP servers with cascading dependency resolution
 - **Persistent conversations** — conversations survive app restarts, resumable via Claude session IDs
+- **Recurring missions** — save agent, group, or conversation missions and run them on hourly or daily schedules
 - **Native macOS experience** — SwiftUI three-panel layout optimized for developer workflows
 
 ---
@@ -639,6 +640,33 @@ Chat tool allowing agents to dynamically invite other agents into an ongoing con
 | FR-26.1: group_invite_agent chat tool — invites an agent to join current conversation | Done |
 | FR-26.2: Invited agent sees full transcript and can participate | Done |
 | FR-26.3: conversation.inviteAgent event broadcast to Swift | Done |
+
+### FR-27: Scheduled Missions
+
+**Status:** Implemented
+
+Swift-owned recurring automation system for saving missions against an agent, group, or existing conversation and executing them safely on a schedule.
+
+| Requirement | Status |
+|---|---|
+| FR-27.1: `ScheduledMission` SwiftData model stores schedule configuration, target, cadence, run mode, and launchd sync metadata | Done |
+| FR-27.2: `ScheduledMissionRun` SwiftData model stores append-only run history with status, trigger source, linked conversation, summary, and errors | Done |
+| FR-27.3: Schedule engine evaluates enabled schedules on launch, foreground, and 60-second timer ticks | Done |
+| FR-27.4: Deterministic occurrence keys dedupe in-app timer and launch-triggered executions | Done |
+| FR-27.5: Missed-run recovery executes only the latest missed occurrence per schedule | Done |
+| FR-27.6: Overlap protection skips new occurrences while a prior run is still active | Done |
+| FR-27.7: Stale running scheduled runs are marked failed during recovery after timeout | Done |
+| FR-27.8: Prompt rendering supports `{{now}}`, `{{lastRunAt}}`, `{{lastSuccessAt}}`, `{{runCount}}`, and `{{projectDirectory}}` variables | Done |
+| FR-27.9: Fresh conversation mode launches a new agent or group conversation and auto-sends the scheduled mission | Done |
+| FR-27.10: Reuse conversation mode appends a scheduled-run boundary message and sends into the existing conversation | Done |
+| FR-27.11: Group schedules support autonomous mode when the target group is autonomous-capable | Done |
+| FR-27.12: Launch intent supports CLI and URL-based schedule execution with optional occurrence timestamp | Done |
+| FR-27.13: Optional `launchd` export keeps schedules runnable when the app is closed | Done |
+| FR-27.14: Schedule Library sheet supports list, search, enable filter, detail pane, run now, duplicate, enable/disable, and delete | Done |
+| FR-27.15: Schedule Editor supports target selection, mission prompt, run behavior, cadence, validation, and reliability toggles | Done |
+| FR-27.16: Schedule creation entry points exist in toolbar, sidebar, chat overflow, user-message context menu, and group detail | Done |
+| FR-27.17: XCTest coverage includes cadence math, prompt rendering, dedupe, stale-run recovery, launch intent execution, and fresh/reuse run coordination | Done |
+| FR-27.18: Schedule accessibility/test identifiers are documented in `TESTING.md` and represented in AppXray UI scenarios | Done |
 
 ### Phase 9 — UX principles
 
@@ -1286,3 +1314,4 @@ flowchart TD
 | 2026-03-25 | Phase 10: Rich display tools (ask_user, render_content, show_progress, suggest_actions) as MCP injected into all sessions. Auto-expanding chat input with Shift+Enter newlines. | FR-25, FR-5 |
 | 2026-03-26 | Phase 11: Task Board system. TaskItem SwiftData model, TaskBoardStore in sidecar with persistence, 4 PeerBus tools (task_board_list/create/claim/update), REST API endpoints, TaskCreationSheet and TaskEditSheet in UI, sidebar tasks section, task-board-patterns skill, wire protocol events. group_invite_agent chat tool. | FR-22, FR-26, US-21 |
 | 2026-03-26 | Phase 12: Plan mode and logging. Custom plan mode via system prompt injection (not SDK plan mode). Opus override, interactive planning workflow (ask_user → show_progress → render_content → suggest_actions). Structured JSON logging in sidecar (logger.ts), Swift Log enum with OSLog, UnifiedLogEntry, LogAggregator, DebugLogView. Sidebar bottom bar refactored with SidebarBottomBarItem enum and adaptive layout. | FR-23, FR-24, US-22, US-23 |
+| 2026-03-27 | Phase 13: Scheduled Missions. Added SwiftData models for schedules and run history, schedule engine + run coordinator, prompt templating, launchd sync, schedule launch intents, Schedule Library/detail/editor UI, chat/group scheduling entry points, schedule accessibility IDs, AppXray schedule smoke tests, and execution-path XCTest coverage. Also fixed catalog fallback loading for bundled `github-workflow` skill so catalog integrity and cascading install tests stay green. | FR-27, FR-12, FR-13 |

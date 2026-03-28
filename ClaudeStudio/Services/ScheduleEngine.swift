@@ -1,0 +1,195 @@
+import AppKit
+import Foundation
+import SwiftData
+
+@MainActor
+final class ScheduleEngine {
+    static let staleRunTimeout: TimeInterval = 60 * 60
+
+    private let modelContext: ModelContext
+    private let coordinator: ScheduleRunCoordinator
+    private let launchdManager: ScheduleLaunchdManager
+    private let executeHandler: @MainActor (ScheduledMission, ScheduledMissionRun, WindowState?) async -> Void
+    private var timer: Timer?
+    private var becameActiveObserver: NSObjectProtocol?
+    private var hasStarted = false
+
+    init(
+        modelContext: ModelContext,
+        coordinator: ScheduleRunCoordinator,
+        launchdManager: ScheduleLaunchdManager = ScheduleLaunchdManager(),
+        executeHandler: (@MainActor (ScheduledMission, ScheduledMissionRun, WindowState?) async -> Void)? = nil
+    ) {
+        self.modelContext = modelContext
+        self.coordinator = coordinator
+        self.launchdManager = launchdManager
+        self.executeHandler = executeHandler ?? { schedule, run, windowState in
+            await coordinator.execute(schedule: schedule, run: run, windowState: windowState)
+        }
+    }
+
+    func start() {
+        guard !hasStarted else { return }
+        hasStarted = true
+        recoverStaleRuns(now: Date())
+        evaluateDueSchedules(now: Date(), triggerSource: .timer)
+
+        timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.evaluateDueSchedules(now: Date(), triggerSource: .timer)
+            }
+        }
+
+        becameActiveObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.evaluateDueSchedules(now: Date(), triggerSource: .timer)
+            }
+        }
+    }
+
+    func syncSchedule(_ schedule: ScheduledMission, now: Date = Date()) {
+        schedule.updatedAt = now
+        schedule.nextRunAt = schedule.isEnabled
+            ? ScheduledMissionCadence.nextOccurrence(for: schedule, after: now)
+            : nil
+        launchdManager.sync(schedule: schedule)
+        try? modelContext.save()
+    }
+
+    func removeSchedule(_ schedule: ScheduledMission) {
+        launchdManager.remove(schedule: schedule)
+        try? modelContext.save()
+    }
+
+    func runNow(scheduleId: UUID, windowState: WindowState? = nil) {
+        let descriptor = FetchDescriptor<ScheduledMission>(predicate: #Predicate { $0.id == scheduleId })
+        guard let schedule = try? modelContext.fetch(descriptor).first else { return }
+        let now = Date()
+        let run = ScheduledMissionRun(
+            scheduleId: schedule.id,
+            occurrenceKey: ScheduledMissionRun.occurrenceKey(scheduleId: schedule.id, scheduledFor: now),
+            status: .running,
+            triggerSource: .manual,
+            scheduledFor: now
+        )
+        schedule.lastStartedAt = now
+        schedule.updatedAt = now
+        modelContext.insert(run)
+        try? modelContext.save()
+        Task { @MainActor in
+            await executeHandler(schedule, run, windowState)
+        }
+    }
+
+    func runLaunchdSchedule(
+        scheduleId: UUID,
+        occurrence: Date?,
+        windowState: WindowState? = nil
+    ) {
+        let descriptor = FetchDescriptor<ScheduledMission>(predicate: #Predicate { $0.id == scheduleId })
+        guard let schedule = try? modelContext.fetch(descriptor).first else { return }
+        let due = occurrence ?? schedule.nextRunAt ?? Date()
+        claimAndExecute(schedule: schedule, scheduledFor: due, triggerSource: .launchd, windowState: windowState)
+    }
+
+    func evaluateDueSchedules(now: Date, triggerSource: ScheduledMissionRunTriggerSource) {
+        recoverStaleRuns(now: now)
+        let schedules = (try? modelContext.fetch(
+            FetchDescriptor<ScheduledMission>()
+        )) ?? []
+
+        for schedule in schedules where schedule.isEnabled {
+            schedule.lastEvaluatedAt = now
+            if schedule.nextRunAt == nil {
+                schedule.nextRunAt = ScheduledMissionCadence.nextOccurrence(for: schedule, after: now)
+            }
+            guard let nextRunAt = schedule.nextRunAt else { continue }
+            guard nextRunAt <= now else { continue }
+
+            var due = nextRunAt
+            while let next = ScheduledMissionCadence.nextOccurrence(for: schedule, after: due), next <= now {
+                due = next
+            }
+
+            claimAndExecute(schedule: schedule, scheduledFor: due, triggerSource: triggerSource, windowState: nil)
+        }
+
+        try? modelContext.save()
+    }
+
+    private func claimAndExecute(
+        schedule: ScheduledMission,
+        scheduledFor: Date,
+        triggerSource: ScheduledMissionRunTriggerSource,
+        windowState: WindowState?
+    ) {
+        let occurrenceKey = ScheduledMissionRun.occurrenceKey(scheduleId: schedule.id, scheduledFor: scheduledFor)
+        let existingRunDescriptor = FetchDescriptor<ScheduledMissionRun>(
+            predicate: #Predicate { $0.occurrenceKey == occurrenceKey }
+        )
+        if (try? modelContext.fetch(existingRunDescriptor).first) != nil {
+            return
+        }
+
+        let activeRun = (try? modelContext.fetch(FetchDescriptor<ScheduledMissionRun>()))?.first {
+            $0.scheduleId == schedule.id && $0.status == .running
+        }
+        if activeRun != nil {
+            let skipped = ScheduledMissionRun(
+                scheduleId: schedule.id,
+                occurrenceKey: occurrenceKey,
+                status: .skipped,
+                triggerSource: triggerSource,
+                scheduledFor: scheduledFor
+            )
+            skipped.completedAt = Date()
+            skipped.skipReason = "previousRunStillActive"
+            modelContext.insert(skipped)
+            schedule.lastScheduledOccurrenceAt = scheduledFor
+            schedule.nextRunAt = ScheduledMissionCadence.nextOccurrence(for: schedule, after: scheduledFor)
+            schedule.updatedAt = Date()
+            try? modelContext.save()
+            return
+        }
+
+        let run = ScheduledMissionRun(
+            scheduleId: schedule.id,
+            occurrenceKey: occurrenceKey,
+            status: .running,
+            triggerSource: triggerSource,
+            scheduledFor: scheduledFor
+        )
+        modelContext.insert(run)
+        schedule.lastScheduledOccurrenceAt = scheduledFor
+        schedule.lastStartedAt = run.startedAt
+        schedule.nextRunAt = ScheduledMissionCadence.nextOccurrence(for: schedule, after: scheduledFor)
+        schedule.updatedAt = run.startedAt
+        try? modelContext.save()
+
+        Task { @MainActor in
+            await executeHandler(schedule, run, windowState)
+        }
+    }
+
+    private func recoverStaleRuns(now: Date) {
+        let runningRuns = ((try? modelContext.fetch(FetchDescriptor<ScheduledMissionRun>())) ?? []).filter {
+            $0.status == .running
+        }
+
+        for run in runningRuns where now.timeIntervalSince(run.startedAt) > Self.staleRunTimeout {
+            run.status = .failed
+            run.completedAt = now
+            run.errorMessage = "schedulerRecoveryTimeout"
+
+            if let schedule = (try? modelContext.fetch(FetchDescriptor<ScheduledMission>()))?.first(where: { $0.id == run.scheduleId }) {
+                schedule.lastFailedAt = now
+                schedule.updatedAt = now
+            }
+        }
+        try? modelContext.save()
+    }
+}

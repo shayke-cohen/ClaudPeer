@@ -4,6 +4,7 @@ import SwiftData
 enum SidebarBottomBarItem: String, CaseIterable, Identifiable {
     case catalog = "Catalog"
     case workshop = "Workshop"
+    case schedules = "Schedules"
     case agents = "Agents"
     case autoAssemble = "Auto-assemble"
     case newSession = "New session"
@@ -14,6 +15,7 @@ enum SidebarBottomBarItem: String, CaseIterable, Identifiable {
         switch self {
         case .catalog: "square.grid.2x2"
         case .workshop: "wrench.and.screwdriver"
+        case .schedules: "clock.badge"
         case .agents: "cpu"
         case .autoAssemble: "wand.and.stars"
         case .newSession: "plus"
@@ -24,6 +26,7 @@ enum SidebarBottomBarItem: String, CaseIterable, Identifiable {
         switch self {
         case .catalog: "Browse catalog"
         case .workshop: "Entity workshop (⌘⇧W)"
+        case .schedules: "Scheduled missions (⌘⇧S)"
         case .agents: "Agent library"
         case .autoAssemble: "Auto-assemble team"
         case .newSession: "New session"
@@ -34,6 +37,7 @@ enum SidebarBottomBarItem: String, CaseIterable, Identifiable {
         switch self {
         case .catalog: "sidebar.catalogButton"
         case .workshop: "sidebar.workshopButton"
+        case .schedules: "sidebar.schedulesButton"
         case .agents: "sidebar.agentsButton"
         case .autoAssemble: "sidebar.autoAssembleButton"
         case .newSession: "sidebar.newSessionButton"
@@ -44,7 +48,7 @@ enum SidebarBottomBarItem: String, CaseIterable, Identifiable {
     /// Items with text labels participate in the adaptive icon-only collapse via `ViewThatFits`.
     var hasTextLabel: Bool {
         switch self {
-        case .catalog, .workshop, .agents: true
+        case .catalog, .workshop, .schedules, .agents: true
         case .autoAssemble, .newSession: false
         }
     }
@@ -212,11 +216,13 @@ struct SidebarView: View {
                 Label(catalog.rawValue, systemImage: catalog.icon)
                     .fixedSize(horizontal: true, vertical: false)
                     .font(.caption)
+                    .frame(minHeight: 24)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
             .help(catalog.helpText)
             .xrayId(catalog.xrayId)
+            .accessibilityLabel(catalog.helpText)
 
             Divider()
                 .frame(height: 16)
@@ -228,12 +234,33 @@ struct SidebarView: View {
                 Label(workshop.rawValue, systemImage: workshop.icon)
                     .fixedSize(horizontal: true, vertical: false)
                     .font(.caption)
+                    .frame(minHeight: 24)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
             .help(workshop.helpText)
             .xrayId(workshop.xrayId)
             .keyboardShortcut("w", modifiers: [.command, .shift])
+            .accessibilityLabel(workshop.helpText)
+
+            Divider()
+                .frame(height: 16)
+
+            let schedules = SidebarBottomBarItem.schedules
+            Button {
+                windowState.showScheduleLibrary = true
+            } label: {
+                Label(schedules.rawValue, systemImage: schedules.icon)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .font(.caption)
+                    .frame(minHeight: 24)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.plain)
+            .help(schedules.helpText)
+            .xrayId(schedules.xrayId)
+            .keyboardShortcut("s", modifiers: [.command, .shift])
+            .accessibilityLabel(schedules.helpText)
 
             Divider()
                 .frame(height: 16)
@@ -245,11 +272,13 @@ struct SidebarView: View {
                 Label(agents.rawValue, systemImage: agents.icon)
                     .fixedSize(horizontal: true, vertical: false)
                     .font(.caption)
+                    .frame(minHeight: 24)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
             .help(agents.helpText)
             .xrayId(agents.xrayId)
+            .accessibilityLabel(agents.helpText)
 
             Divider()
                 .frame(height: 16)
@@ -260,11 +289,14 @@ struct SidebarView: View {
             } label: {
                 Image(systemName: autoAssemble.icon)
                     .font(.caption)
+                    .frame(width: 24, height: 24)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
             .help(autoAssemble.helpText)
             .xrayId(autoAssemble.xrayId)
+            .accessibilityLabel(autoAssemble.helpText)
+            .contentShape(Rectangle())
 
             Divider()
                 .frame(height: 16)
@@ -275,11 +307,14 @@ struct SidebarView: View {
             } label: {
                 Image(systemName: newSession.icon)
                     .font(.caption)
+                    .frame(width: 24, height: 24)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
             .help(newSession.helpText)
             .xrayId(newSession.xrayId)
+            .accessibilityLabel(newSession.helpText)
+            .contentShape(Rectangle())
         }
     }
 
@@ -542,9 +577,12 @@ struct SidebarView: View {
                         } label: {
                             Image(systemName: "plus")
                                 .font(.caption)
+                                .frame(width: 20, height: 20)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityIdentifier("sidebar.tasksAddButton")
+                        .xrayId("sidebar.tasksAddButton")
+                        .accessibilityLabel("Add task")
+                        .contentShape(Rectangle())
                     }
                 }
             }
@@ -563,9 +601,9 @@ struct SidebarView: View {
                 HStack(spacing: 4) {
                     statusBadge(task.status)
                     priorityBadge(task.priority)
-                    if let agentId = task.assignedAgentId,
-                       let agent = agents.first(where: { $0.id == agentId }) {
-                        Text(agent.name)
+                    if let assignedAgentName = task.assignedAgentName
+                        ?? task.assignedAgentId.flatMap({ agentId in agents.first(where: { $0.id == agentId })?.name }) {
+                        Text(assignedAgentName)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
@@ -589,62 +627,79 @@ struct SidebarView: View {
         switch task.status {
         case .backlog:
             Button("Edit Task...") { editingTask = task }
+                .xrayId("sidebar.taskContext.edit.\(task.id.uuidString)")
             Button("Mark as Ready") { appState.updateTaskStatus(task, status: .ready) }
+                .xrayId("sidebar.taskContext.markReady.\(task.id.uuidString)")
             Button("Run with Orchestrator") {
                 appState.runTaskWithOrchestrator(task, modelContext: modelContext, windowState: windowState)
             }
+            .xrayId("sidebar.taskContext.runOrchestrator.\(task.id.uuidString)")
             Divider()
             Button("Delete", role: .destructive) {
                 modelContext.delete(task)
                 try? modelContext.save()
             }
+            .xrayId("sidebar.taskContext.delete.\(task.id.uuidString)")
         case .ready:
             Button("Edit Task...") { editingTask = task }
+                .xrayId("sidebar.taskContext.edit.\(task.id.uuidString)")
             Button("Run with Orchestrator") {
                 appState.runTaskWithOrchestrator(task, modelContext: modelContext, windowState: windowState)
             }
+            .xrayId("sidebar.taskContext.runOrchestrator.\(task.id.uuidString)")
             Button("Move to Backlog") { appState.updateTaskStatus(task, status: .backlog) }
+                .xrayId("sidebar.taskContext.moveBacklog.\(task.id.uuidString)")
             Divider()
             Button("Delete", role: .destructive) {
                 modelContext.delete(task)
                 try? modelContext.save()
             }
+            .xrayId("sidebar.taskContext.delete.\(task.id.uuidString)")
         case .inProgress:
             if task.conversationId != nil {
                 Button("Go to Conversation") {
                     windowState.selectedConversationId = task.conversationId
                 }
+                .xrayId("sidebar.taskContext.goToConversation.\(task.id.uuidString)")
             }
             Button("Pause") { appState.updateTaskStatus(task, status: .blocked) }
+                .xrayId("sidebar.taskContext.pause.\(task.id.uuidString)")
             Divider()
             Button("Cancel & Delete", role: .destructive) {
                 modelContext.delete(task)
                 try? modelContext.save()
             }
+            .xrayId("sidebar.taskContext.cancelDelete.\(task.id.uuidString)")
         case .blocked:
             if task.conversationId != nil {
                 Button("Go to Conversation") {
                     windowState.selectedConversationId = task.conversationId
                 }
+                .xrayId("sidebar.taskContext.goToConversation.\(task.id.uuidString)")
             }
             Button("Resume") { appState.updateTaskStatus(task, status: .inProgress) }
+                .xrayId("sidebar.taskContext.resume.\(task.id.uuidString)")
             Divider()
             Button("Cancel & Delete", role: .destructive) {
                 modelContext.delete(task)
                 try? modelContext.save()
             }
+            .xrayId("sidebar.taskContext.cancelDelete.\(task.id.uuidString)")
         case .done, .failed:
             if task.conversationId != nil {
                 Button("Go to Conversation") {
                     windowState.selectedConversationId = task.conversationId
                 }
+                .xrayId("sidebar.taskContext.goToConversation.\(task.id.uuidString)")
             }
             Button("Retry") { appState.updateTaskStatus(task, status: .ready) }
+                .xrayId("sidebar.taskContext.retry.\(task.id.uuidString)")
             Divider()
             Button("Delete", role: .destructive) {
                 modelContext.delete(task)
                 try? modelContext.save()
             }
+            .xrayId("sidebar.taskContext.delete.\(task.id.uuidString)")
         }
     }
 
@@ -746,10 +801,14 @@ struct SidebarView: View {
                             windowState.selectedConversationId = convoId
                         }
                     }
+                    .xrayId("sidebar.groupContext.startChat.\(group.id.uuidString)")
                     Button("Edit") { editingGroup = group }
+                        .xrayId("sidebar.groupContext.edit.\(group.id.uuidString)")
                     Button("Duplicate") { duplicateGroup(group) }
+                        .xrayId("sidebar.groupContext.duplicate.\(group.id.uuidString)")
                     Divider()
                     Button("Delete", role: .destructive) { deleteGroup(group) }
+                        .xrayId("sidebar.groupContext.delete.\(group.id.uuidString)")
                 }
             }
         } header: {
@@ -761,9 +820,13 @@ struct SidebarView: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.caption)
+                        .frame(width: 20, height: 20)
                 }
                 .buttonStyle(.plain)
+                .xrayId("sidebar.groupsAddButton")
                 .accessibilityIdentifier("sidebar.groupsAddButton")
+                .accessibilityLabel("Add group")
+                .contentShape(Rectangle())
             }
         }
         .accessibilityIdentifier("sidebar.groupsSection")
@@ -886,35 +949,43 @@ struct SidebarView: View {
         } label: {
             Label("Rename\u{2026}", systemImage: "pencil")
         }
+        .xrayId("sidebar.conversationContext.rename.\(convo.id.uuidString)")
         Button { togglePin(convo) } label: {
             Label(convo.isPinned ? "Unpin" : "Pin", systemImage: convo.isPinned ? "pin.slash" : "pin")
         }
+        .xrayId("sidebar.conversationContext.pin.\(convo.id.uuidString)")
         Button { toggleUnread(convo) } label: {
             Label(convo.isUnread ? "Mark as Read" : "Mark as Unread",
                   systemImage: convo.isUnread ? "envelope.open" : "envelope.badge")
         }
+        .xrayId("sidebar.conversationContext.unread.\(convo.id.uuidString)")
         Divider()
         if convo.status == .active {
             Button { closeConversation(convo) } label: {
                 Label("Close Session", systemImage: "stop.circle")
             }
+            .xrayId("sidebar.conversationContext.close.\(convo.id.uuidString)")
         }
         Button { duplicateConversation(convo) } label: {
             Label("Duplicate", systemImage: "doc.on.doc")
         }
+        .xrayId("sidebar.conversationContext.duplicate.\(convo.id.uuidString)")
         if convo.isArchived {
             Button { unarchiveConversation(convo) } label: {
                 Label("Unarchive", systemImage: "tray.and.arrow.up")
             }
+            .xrayId("sidebar.conversationContext.unarchive.\(convo.id.uuidString)")
         } else {
             Button { archiveConversation(convo) } label: {
                 Label("Archive", systemImage: "archivebox")
             }
+            .xrayId("sidebar.conversationContext.archive.\(convo.id.uuidString)")
         }
         Divider()
         Button(role: .destructive) { promptDelete(convo) } label: {
             Label("Delete", systemImage: "trash")
         }
+        .xrayId("sidebar.conversationContext.delete.\(convo.id.uuidString)")
     }
 
     // MARK: - Conversation Icon

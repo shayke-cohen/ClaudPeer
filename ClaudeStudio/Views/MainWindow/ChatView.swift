@@ -240,9 +240,11 @@ struct ChatView: View {
     @State private var showUnknownSlash = false
     @State private var unknownSlashName = ""
     @State private var showMentionError = false
-    @State private var showPeerChannelMessages = true
+    @State private var enabledPeerCategories: Set<PeerChannelCategory> = Set(PeerChannelCategory.allCases)
     @State private var mentionErrorDetail = ""
     @State private var showAddAgentsSheet = false
+    @State private var showingScheduleEditor = false
+    @State private var scheduleDraft = ScheduledMissionDraft()
     /// Retained while the system share sheet is visible so temp export files can be cleaned up.
     @State private var shareCoordinator: ShareTempFileCoordinator?
     @State private var showAllDoneBanner = false
@@ -277,8 +279,12 @@ struct ChatView: View {
     }
 
     private var displayMessages: [ConversationMessage] {
-        if showPeerChannelMessages { return sortedMessages }
-        return sortedMessages.filter { !$0.type.isPeerChannel }
+        let allEnabled = enabledPeerCategories.count == PeerChannelCategory.allCases.count
+        if allEnabled { return sortedMessages }
+        return sortedMessages.filter { msg in
+            guard let category = msg.type.peerChannelCategory else { return true }
+            return enabledPeerCategories.contains(category)
+        }
     }
 
     private var hasUserChatMessages: Bool {
@@ -496,6 +502,11 @@ struct ChatView: View {
                 .environmentObject(appState)
                 .environment(\.modelContext, modelContext)
         }
+        .sheet(isPresented: $showingScheduleEditor) {
+            ScheduleEditorView(schedule: nil, draft: scheduleDraft)
+                .environmentObject(appState)
+                .environment(\.modelContext, modelContext)
+        }
         .alert("Commands", isPresented: $showSlashHelp) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -551,24 +562,52 @@ struct ChatView: View {
                 }
 
                 if conversationSessions.count > 1 {
-                    Button {
-                        showPeerChannelMessages.toggle()
+                    Menu {
+                        let allEnabled = enabledPeerCategories.count == PeerChannelCategory.allCases.count
+                        Button {
+                            if allEnabled {
+                                enabledPeerCategories.removeAll()
+                            } else {
+                                enabledPeerCategories = Set(PeerChannelCategory.allCases)
+                            }
+                        } label: {
+                            Label(allEnabled ? "Hide All" : "Show All",
+                                  systemImage: allEnabled ? "eye.slash" : "eye")
+                        }
+                        Divider()
+                        ForEach(PeerChannelCategory.allCases, id: \.self) { category in
+                            Button {
+                                if enabledPeerCategories.contains(category) {
+                                    enabledPeerCategories.remove(category)
+                                } else {
+                                    enabledPeerCategories.insert(category)
+                                }
+                            } label: {
+                                Label {
+                                    Text(category.rawValue)
+                                } icon: {
+                                    Image(systemName: enabledPeerCategories.contains(category)
+                                        ? "checkmark.circle.fill" : "circle")
+                                }
+                            }
+                        }
                     } label: {
                         HStack(spacing: 4) {
-                            Image(systemName: showPeerChannelMessages
-                                ? "bubble.left.and.bubble.right.fill"
-                                : "bubble.left.and.bubble.right")
+                            Image(systemName: enabledPeerCategories.isEmpty
+                                ? "line.3.horizontal.decrease.circle"
+                                : "line.3.horizontal.decrease.circle.fill")
                             Text("Comms")
                         }
                         .font(.caption2)
                         .fontWeight(.medium)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(showPeerChannelMessages ? AnyShapeStyle(.blue.opacity(0.15)) : AnyShapeStyle(.quaternary))
+                        .background(enabledPeerCategories.isEmpty ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.blue.opacity(0.15)))
                         .clipShape(Capsule())
                     }
-                    .buttonStyle(.plain)
-                    .xrayId("chat.peerChannelToggle")
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .xrayId("chat.peerChannelFilter")
                 }
 
                 if let model = currentModel {
@@ -704,6 +743,15 @@ struct ChatView: View {
                     Label("Rename", systemImage: "pencil")
                 }
                 .xrayId("chat.moreOptions.rename")
+                Button {
+                    scheduleDraft = makeScheduleDraft(from: latestUserChatMessage)
+                    showingScheduleEditor = true
+                } label: {
+                    Label("Schedule This Mission", systemImage: "clock.badge")
+                }
+                .xrayId("chat.moreOptions.scheduleMission")
+                .accessibilityIdentifier("chat.moreOptions.scheduleMission")
+                .accessibilityLabel("Schedule This Mission")
                 Button { duplicateConversation(convo) } label: {
                     Label("Duplicate", systemImage: "doc.on.doc")
                 }
@@ -818,6 +866,10 @@ struct ChatView: View {
                             },
                             onForkFromHere: {
                                 forkFromMessage(message)
+                            },
+                            onScheduleFromMessage: {
+                                scheduleDraft = makeScheduleDraft(from: message)
+                                showingScheduleEditor = true
                             }
                         )
                         .id(message.id)
@@ -1698,6 +1750,65 @@ struct ChatView: View {
                 sendMessage()
             }
         }
+    }
+
+    private var latestUserChatMessage: ConversationMessage? {
+        sortedMessages.reversed().first { message in
+            guard message.type == .chat, let senderId = message.senderParticipantId else { return false }
+            return conversation?.participants.first(where: { $0.id == senderId })?.type == .user
+        }
+    }
+
+    private func makeScheduleDraft(from message: ConversationMessage?) -> ScheduledMissionDraft {
+        let prompt = (
+            message?.text
+                ?? primarySession?.mission
+                ?? inputText
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedPrompt = prompt.isEmpty
+            ? "Check the current repository and continue this recurring mission."
+            : prompt
+
+        if let groupId = conversation?.sourceGroupId {
+            var draft = ScheduledMissionDraft(
+                name: (conversation?.topic ?? "Group mission") + " schedule",
+                targetKind: .group,
+                projectDirectory: windowState.projectDirectory,
+                promptTemplate: resolvedPrompt
+            )
+            draft.targetGroupId = groupId
+            draft.targetConversationId = conversation?.id
+            draft.sourceConversationId = conversation?.id
+            draft.sourceMessageId = message?.id
+            draft.usesAutonomousMode = conversation?.isAutonomous ?? false
+            return draft
+        }
+
+        if let agentId = primarySession?.agent?.id, conversationSessions.count == 1 {
+            var draft = ScheduledMissionDraft(
+                name: (conversation?.topic ?? primarySession?.agent?.name ?? "Agent mission") + " schedule",
+                targetKind: .agent,
+                projectDirectory: windowState.projectDirectory,
+                promptTemplate: resolvedPrompt
+            )
+            draft.targetAgentId = agentId
+            draft.targetConversationId = conversation?.id
+            draft.sourceConversationId = conversation?.id
+            draft.sourceMessageId = message?.id
+            return draft
+        }
+
+        var draft = ScheduledMissionDraft(
+            name: (conversation?.topic ?? "Conversation mission") + " schedule",
+            targetKind: .conversation,
+            projectDirectory: windowState.projectDirectory,
+            promptTemplate: resolvedPrompt
+        )
+        draft.runMode = ScheduledMissionRunMode.reuseConversation
+        draft.targetConversationId = conversation?.id
+        draft.sourceConversationId = conversation?.id
+        draft.sourceMessageId = message?.id
+        return draft
     }
 
     // MARK: - Send Message

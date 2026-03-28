@@ -180,6 +180,7 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Inspector placeholder | `mainWindow.inspectorPlaceholder` | — | `@testId("mainWindow.inspectorPlaceholder")` |
 | Toolbar: New Session | `mainWindow.newSessionButton` | — | `@testId("mainWindow.newSessionButton")` |
 | Toolbar: Quick Chat | `mainWindow.quickChatButton` | — | `@testId("mainWindow.quickChatButton")` |
+| Toolbar: Schedules | `mainWindow.schedulesButton` | `Schedules` | `@testId("mainWindow.schedulesButton")` |
 | Toolbar: Agent Comms | `mainWindow.agentCommsButton` | — | `@testId("mainWindow.agentCommsButton")` |
 | Toolbar: Peer Network | `mainWindow.peerNetworkButton` | — | `@testId("mainWindow.peerNetworkButton")` |
 | Toolbar: Inspector toggle | `mainWindow.inspectorToggle` | — | `@testId("mainWindow.inspectorToggle")` |
@@ -206,6 +207,7 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Conversation list | `sidebar.conversationList` | — | `@testId("sidebar.conversationList")` |
 | Bottom bar | `sidebar.bottomBar` | — | `@testId("sidebar.bottomBar")` |
 | Catalog button | `sidebar.catalogButton` | — | `@testId("sidebar.catalogButton")` |
+| Schedules button | `sidebar.schedulesButton` | — | `@testId("sidebar.schedulesButton")` |
 | Agents button | `sidebar.agentsButton` | — | `@testId("sidebar.agentsButton")` |
 | New session (+) | `sidebar.newSessionButton` | — | `@testId("sidebar.newSessionButton")` |
 | Empty state: New Session | `sidebar.emptyState.newSessionButton` | — | `@testId("sidebar.emptyState.newSessionButton")` |
@@ -239,6 +241,7 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | More options menu | `chat.moreOptionsMenu` | `More options` | `@testId("chat.moreOptionsMenu")` |
 | Menu: Fork | `chat.moreOptions.fork` | — | `@testId("chat.moreOptions.fork")` |
 | Menu: Rename | `chat.moreOptions.rename` | — | `@testId("chat.moreOptions.rename")` |
+| Menu: Schedule This Mission | `chat.moreOptions.scheduleMission` | `Schedule This Mission` | `@testId("chat.moreOptions.scheduleMission")` |
 | Menu: Duplicate | `chat.moreOptions.duplicate` | — | `@testId("chat.moreOptions.duplicate")` |
 | Menu: Export (submenu) | `chat.exportSubmenu` | `Export chat` | `@testId("chat.exportSubmenu")` |
 | Menu: Export Markdown | `chat.export.markdown` | — | `@testId("chat.export.markdown")` |
@@ -264,6 +267,54 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Streaming thinking toggle | `chat.streamingThinkingToggle` | `Expand/Collapse thinking` | `@testId("chat.streamingThinkingToggle")` |
 
 **Note:** The inner `NSTextField` of `PasteableTextField` also exposes `pasteableTextField.input` at the AppKit level. **Return** submits when there is text or pending attachments (and the session is not processing); **Shift+Return** inserts a newline; **⌘↩** also submits; the Send button submits as well.
+
+---
+
+### Scheduled Missions
+
+**Files:** `Views/Schedules/ScheduleLibraryView.swift`, `Views/Schedules/ScheduleDetailView.swift`, `Views/Schedules/ScheduleEditorView.swift`
+**Access:** Main window toolbar `Schedules`, sidebar bottom bar `Schedules`, chat `More` menu, or group detail `Schedule`.
+
+| Control | Identifier | Label | Selector |
+|---------|-----------|-------|----------|
+| Library: empty state | `scheduleLibrary.emptyState` | — | `@testId("scheduleLibrary.emptyState")` |
+| Library: list | `scheduleLibrary.list` | — | `@testId("scheduleLibrary.list")` |
+| Library: New Schedule | `scheduleLibrary.newButton` | — | `@testId("scheduleLibrary.newButton")` |
+| Library: Done | `scheduleLibrary.doneButton` | — | `@testId("scheduleLibrary.doneButton")` |
+| Library: search | `scheduleLibrary.searchField` | — | `@testId("scheduleLibrary.searchField")` |
+| Library: enabled filter | `scheduleLibrary.filterPicker` | — | `@testId("scheduleLibrary.filterPicker")` |
+| Library: schedule row | `scheduleLibrary.row.{uuid}` | — | `@testId("scheduleLibrary.row.{uuid}")` |
+| Detail: scroll view | `scheduleDetail.scrollView` | — | `@testId("scheduleDetail.scrollView")` |
+| Detail: header | `scheduleDetail.header` | — | `@testId("scheduleDetail.header")` |
+| Detail: Run Now | `scheduleDetail.runNowButton` | — | `@testId("scheduleDetail.runNowButton")` |
+| Detail: Enable/Pause | `scheduleDetail.enableToggleButton` | — | `@testId("scheduleDetail.enableToggleButton")` |
+| Detail: Edit | `scheduleDetail.editButton` | — | `@testId("scheduleDetail.editButton")` |
+| Detail: Open last conversation | `scheduleDetail.openConversationButton` | — | `@testId("scheduleDetail.openConversationButton")` |
+| Detail: More menu | `scheduleDetail.moreMenu` | — | `@testId("scheduleDetail.moreMenu")` |
+| Detail: mission card | `scheduleDetail.missionCard` | — | `@testId("scheduleDetail.missionCard")` |
+| Detail: settings card | `scheduleDetail.settingsCard` | — | `@testId("scheduleDetail.settingsCard")` |
+| Detail: linked conversation | `scheduleDetail.linkedConversationButton` | — | `@testId("scheduleDetail.linkedConversationButton")` |
+| Detail: history card | `scheduleDetail.historyCard` | — | `@testId("scheduleDetail.historyCard")` |
+| Editor: name | `scheduleEditor.nameField` | — | `@testId("scheduleEditor.nameField")` |
+| Editor: project directory | `scheduleEditor.projectDirectoryField` | — | `@testId("scheduleEditor.projectDirectoryField")` |
+| Editor: target kind | `scheduleEditor.targetKindPicker` | — | `@testId("scheduleEditor.targetKindPicker")` |
+| Editor: agent picker | `scheduleEditor.agentPicker` | — | `@testId("scheduleEditor.agentPicker")` |
+| Editor: group picker | `scheduleEditor.groupPicker` | — | `@testId("scheduleEditor.groupPicker")` |
+| Editor: autonomous toggle | `scheduleEditor.autonomousToggle` | — | `@testId("scheduleEditor.autonomousToggle")` |
+| Editor: conversation picker | `scheduleEditor.conversationPicker` | — | `@testId("scheduleEditor.conversationPicker")` |
+| Editor: prompt field | `scheduleEditor.promptField` | — | `@testId("scheduleEditor.promptField")` |
+| Editor: run mode | `scheduleEditor.runModePicker` | — | `@testId("scheduleEditor.runModePicker")` |
+| Editor: cadence kind | `scheduleEditor.cadenceKindPicker` | — | `@testId("scheduleEditor.cadenceKindPicker")` |
+| Editor: interval stepper | `scheduleEditor.intervalStepper` | — | `@testId("scheduleEditor.intervalStepper")` |
+| Editor: hour stepper | `scheduleEditor.hourStepper` | — | `@testId("scheduleEditor.hourStepper")` |
+| Editor: minute stepper | `scheduleEditor.minuteStepper` | — | `@testId("scheduleEditor.minuteStepper")` |
+| Editor: weekday chip | `scheduleEditor.day.{weekday}` | — | `@testId("scheduleEditor.day.{weekday}")` |
+| Editor: enabled toggle | `scheduleEditor.enabledToggle` | — | `@testId("scheduleEditor.enabledToggle")` |
+| Editor: run when closed toggle | `scheduleEditor.runWhenClosedToggle` | — | `@testId("scheduleEditor.runWhenClosedToggle")` |
+| Editor: validation error | `scheduleEditor.validationError` | — | `@testId("scheduleEditor.validationError")` |
+| Editor: Cancel | `scheduleEditor.cancelButton` | — | `@testId("scheduleEditor.cancelButton")` |
+| Editor: Save | `scheduleEditor.saveButton` | — | `@testId("scheduleEditor.saveButton")` |
+| Group detail: Schedule | `groupDetail.scheduleButton` | `Schedule` | `@testId("groupDetail.scheduleButton")` |
 
 ---
 

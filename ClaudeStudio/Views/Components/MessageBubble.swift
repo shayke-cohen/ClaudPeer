@@ -14,6 +14,7 @@ struct MessageBubble: View {
     var onTapAttachment: ((MessageAttachment) -> Void)?
     /// When set, shows “Fork from here” in the context menu (chat bubbles only).
     var onForkFromHere: (() -> Void)?
+    var onScheduleFromMessage: (() -> Void)?
     @State private var isHovered = false
     @State private var isCopied = false
     @State private var isThinkingExpanded = false
@@ -48,6 +49,12 @@ struct MessageBubble: View {
                 delegationMessage
             case .blackboardUpdate:
                 blackboardMessage
+            case .taskEvent:
+                taskEventCard
+            case .workspaceEvent:
+                workspaceEventCard
+            case .agentInvite:
+                agentInviteCard
             case .question:
                 AnsweredQuestionBubble(message: message, agentAppearance: senderAppearance)
             case .richContent:
@@ -194,6 +201,14 @@ struct MessageBubble: View {
                     Label("Fork from here", systemImage: "arrow.branch")
                 }
                 .xrayId("messageBubble.forkFromHere.\(message.id.uuidString)")
+            }
+            if isUser, message.type == .chat, let schedule = onScheduleFromMessage {
+                Button {
+                    schedule()
+                } label: {
+                    Label("Schedule this mission", systemImage: "clock.badge")
+                }
+                .xrayId("messageBubble.schedule.\(message.id.uuidString)")
             }
             Button {
                 copyMessage()
@@ -368,6 +383,63 @@ struct MessageBubble: View {
         }
         .padding(8)
         .background(.teal.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    @ViewBuilder
+    private var taskEventCard: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checklist")
+                .foregroundStyle(.purple)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Task")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                Text(message.text)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(8)
+        .background(.purple.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    @ViewBuilder
+    private var workspaceEventCard: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "folder.fill")
+                .foregroundStyle(.indigo)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Workspace")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                Text(message.text)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(8)
+        .background(.indigo.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    @ViewBuilder
+    private var agentInviteCard: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "person.badge.plus")
+                .foregroundStyle(.green)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Agent Invited")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                Text(message.text)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(8)
+        .background(.green.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }

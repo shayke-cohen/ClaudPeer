@@ -181,6 +181,8 @@ final class AppState: ObservableObject {
     private(set) var sidecarManager: SidecarManager?
     private var eventTask: Task<Void, Never>?
     var modelContext: ModelContext?
+    private(set) var scheduleEngine: ScheduleEngine?
+    private(set) var scheduleRunCoordinator: ScheduleRunCoordinator?
 
     // instanceWorkingDirectory, loadInstanceWorkingDirectory, setInstanceWorkingDirectory
     // moved to WindowState.projectDirectory (per-window)
@@ -275,8 +277,43 @@ final class AppState: ObservableObject {
                     windowState.autoSendText = intent.prompt
                 }
             }
+
+        case .schedule(let id):
+            scheduleEngine?.runLaunchdSchedule(
+                scheduleId: id,
+                occurrence: intent.occurrence,
+                windowState: windowState
+            )
         }
     }
+
+    func configureScheduling(modelContext: ModelContext) {
+        if scheduleEngine != nil { return }
+        let coordinator = ScheduleRunCoordinator(appState: self, modelContext: modelContext)
+        let engine = ScheduleEngine(modelContext: modelContext, coordinator: coordinator)
+        self.scheduleRunCoordinator = coordinator
+        self.scheduleEngine = engine
+        engine.start()
+    }
+
+    func syncScheduledMission(_ schedule: ScheduledMission) {
+        scheduleEngine?.syncSchedule(schedule)
+    }
+
+    func removeScheduledMission(_ schedule: ScheduledMission) {
+        scheduleEngine?.removeSchedule(schedule)
+    }
+
+    func runScheduledMissionNow(_ scheduleId: UUID, windowState: WindowState? = nil) {
+        scheduleEngine?.runNow(scheduleId: scheduleId, windowState: windowState)
+    }
+
+    #if DEBUG
+    func setScheduleTestingHooks(engine: ScheduleEngine?, coordinator: ScheduleRunCoordinator?) {
+        self.scheduleEngine = engine
+        self.scheduleRunCoordinator = coordinator
+    }
+    #endif
 
     // MARK: - Group Chat
 
@@ -805,15 +842,27 @@ final class AppState: ObservableObject {
 
         case .conversationInviteAgent(let sessionId, let agentName):
             handleInviteAgent(sessionId: sessionId, agentName: agentName)
+            persistAgentInvite(sessionId: sessionId, invitedAgent: agentName, invitedBy: "Group")
 
-        case .taskCreated(let task):
+        case .taskCreated(let sessionId, let task):
             persistTask(task)
+            persistTaskEvent(sessionId: sessionId, task: task, action: "created")
 
-        case .taskUpdated(let task):
+        case .taskUpdated(let sessionId, let task):
             persistTask(task)
+            persistTaskEvent(sessionId: sessionId, task: task, action: task.status)
 
         case .taskListResult(let tasks):
             for task in tasks { persistTask(task) }
+
+        case .workspaceCreated(let sessionId, let workspaceName, let agentName):
+            persistWorkspaceEvent(sessionId: sessionId, workspaceName: workspaceName, agentName: agentName, action: "created")
+
+        case .workspaceJoined(let sessionId, let workspaceName, let agentName):
+            persistWorkspaceEvent(sessionId: sessionId, workspaceName: workspaceName, agentName: agentName, action: "joined")
+
+        case .agentInvited(let sessionId, let invitedAgent, let invitedBy):
+            persistAgentInvite(sessionId: sessionId, invitedAgent: invitedAgent, invitedBy: invitedBy)
 
         case .connected:
             sidecarStatus = .connected
@@ -891,6 +940,8 @@ final class AppState: ObservableObject {
     private func persistTask(_ wire: TaskWireSwift) {
         guard let ctx = modelContext else { return }
         guard let taskId = UUID(uuidString: wire.id) else { return }
+        let assignedAgentUUID = wire.assignedAgentId.flatMap(UUID.init)
+        let assignedAgentName = wire.assignedAgentName ?? (assignedAgentUUID == nil ? wire.assignedAgentId : nil)
 
         let descriptor = FetchDescriptor<TaskItem>(predicate: #Predicate { t in t.id == taskId })
 
@@ -902,7 +953,8 @@ final class AppState: ObservableObject {
             existing.labels = wire.labels
             existing.result = wire.result
             existing.parentTaskId = wire.parentTaskId.flatMap(UUID.init)
-            existing.assignedAgentId = wire.assignedAgentId.flatMap(UUID.init)
+            existing.assignedAgentId = assignedAgentUUID
+            existing.assignedAgentName = assignedAgentName
             existing.assignedGroupId = wire.assignedGroupId.flatMap(UUID.init)
             existing.conversationId = wire.conversationId.flatMap(UUID.init)
             existing.startedAt = wire.startedAt.flatMap { ISO8601DateFormatter().date(from: $0) }
@@ -917,7 +969,8 @@ final class AppState: ObservableObject {
             )
             item.id = taskId
             item.parentTaskId = wire.parentTaskId.flatMap(UUID.init)
-            item.assignedAgentId = wire.assignedAgentId.flatMap(UUID.init)
+            item.assignedAgentId = assignedAgentUUID
+            item.assignedAgentName = assignedAgentName
             item.assignedGroupId = wire.assignedGroupId.flatMap(UUID.init)
             item.conversationId = wire.conversationId.flatMap(UUID.init)
             item.result = wire.result
@@ -943,6 +996,7 @@ final class AppState: ObservableObject {
             result: nil,
             parentTaskId: nil,
             assignedAgentId: nil,
+            assignedAgentName: nil,
             assignedGroupId: nil,
             conversationId: nil,
             createdAt: now,
@@ -964,6 +1018,7 @@ final class AppState: ObservableObject {
             result: task.result,
             parentTaskId: task.parentTaskId?.uuidString,
             assignedAgentId: task.assignedAgentId?.uuidString,
+            assignedAgentName: task.assignedAgentName,
             assignedGroupId: task.assignedGroupId?.uuidString,
             conversationId: task.conversationId?.uuidString,
             createdAt: ISO8601DateFormatter().string(from: task.createdAt),
@@ -978,6 +1033,7 @@ final class AppState: ObservableObject {
             task.startedAt = nil
             task.completedAt = nil
             task.assignedAgentId = nil
+            task.assignedAgentName = nil
             task.assignedGroupId = nil
         }
         try? modelContext?.save()
@@ -1205,6 +1261,44 @@ final class AppState: ObservableObject {
             )
             ctx.insert(msg)
         }
+        try? ctx.save()
+    }
+
+    private func persistTaskEvent(sessionId: String?, task: TaskWireSwift, action: String) {
+        guard let ctx = modelContext, let sid = sessionId,
+              let convo = conversationForSession(sessionId: sid) else { return }
+        let statusLabel = action == "created" ? "Created" : action.capitalized
+        let msg = ConversationMessage(
+            text: "\(statusLabel): \(task.title)",
+            type: .taskEvent,
+            conversation: convo
+        )
+        msg.toolName = task.priority
+        ctx.insert(msg)
+        try? ctx.save()
+    }
+
+    private func persistWorkspaceEvent(sessionId: String, workspaceName: String, agentName: String, action: String) {
+        guard let ctx = modelContext,
+              let convo = conversationForSession(sessionId: sessionId) else { return }
+        let msg = ConversationMessage(
+            text: "\(agentName) \(action) workspace \"\(workspaceName)\"",
+            type: .workspaceEvent,
+            conversation: convo
+        )
+        ctx.insert(msg)
+        try? ctx.save()
+    }
+
+    private func persistAgentInvite(sessionId: String, invitedAgent: String, invitedBy: String) {
+        guard let ctx = modelContext,
+              let convo = conversationForSession(sessionId: sessionId) else { return }
+        let msg = ConversationMessage(
+            text: "\(invitedBy) invited \(invitedAgent)",
+            type: .agentInvite,
+            conversation: convo
+        )
+        ctx.insert(msg)
         try? ctx.save()
     }
 }

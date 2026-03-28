@@ -13,6 +13,8 @@ struct GroupDetailView: View {
     @State private var showDeleteConfirm = false
     @State private var autonomousGroup: AgentGroup?
     @State private var instructionExpanded = false
+    @State private var showingScheduleEditor = false
+    @State private var scheduleDraft = ScheduledMissionDraft()
 
     private var group: AgentGroup? { allGroups.first { $0.id == groupId } }
 
@@ -44,6 +46,11 @@ struct GroupDetailView: View {
             }
             .sheet(item: $autonomousGroup) { g in
                 AutonomousMissionSheet(group: g)
+            }
+            .sheet(isPresented: $showingScheduleEditor) {
+                ScheduleEditorView(schedule: nil, draft: scheduleDraft)
+                    .environmentObject(appState)
+                    .environment(\.modelContext, modelContext)
             }
             .alert("Delete Group?", isPresented: $showDeleteConfirm) {
                 Button("Delete", role: .destructive) { deleteGroup(group) }
@@ -136,6 +143,27 @@ struct GroupDetailView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.regular)
                     .xrayId("groupDetail.editButton")
+
+                    Button {
+                        scheduleDraft = ScheduledMissionDraft(
+                            name: "\(group.name) schedule",
+                            targetKind: .group,
+                            projectDirectory: windowState.projectDirectory,
+                            promptTemplate: group.defaultMission ?? ""
+                        )
+                        scheduleDraft.targetGroupId = group.id
+                        scheduleDraft.targetConversationId = groupConversations.first?.id
+                        scheduleDraft.sourceConversationId = groupConversations.first?.id
+                        scheduleDraft.usesAutonomousMode = group.autonomousCapable
+                        showingScheduleEditor = true
+                    } label: {
+                        Label("Schedule", systemImage: "clock.badge")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+                    .xrayId("groupDetail.scheduleButton")
+                    .accessibilityIdentifier("groupDetail.scheduleButton")
+                    .accessibilityLabel("Schedule")
 
                     Menu {
                         Button("Duplicate") { duplicateGroup(group) }

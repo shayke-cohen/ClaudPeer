@@ -63,3 +63,40 @@ tests:
           action: screenshot
     assert:
       screenshot_contains: "Orchestrator"
+
+  - name: "UI-8: Toolbar schedules button opens Schedule Library"
+    steps:
+      - interact:
+          action: tap
+          selector: '@testId("mainWindow.schedulesButton")'
+      - interact:
+          action: waitFor
+          condition: elementVisible
+          selector: '@testId("scheduleLibrary.newButton")'
+          timeout: 5000
+      - interact:
+          action: screenshot
+    assert:
+      screenshot_contains: "Scheduled Missions"
+
+  - name: "UI-9: New Schedule opens editor"
+    steps:
+      - interact:
+          action: tap
+          selector: '@testId("scheduleLibrary.newButton")'
+      - interact:
+          action: waitFor
+          condition: elementVisible
+          selector: '@testId("scheduleEditor.nameField")'
+          timeout: 5000
+      - interact:
+          action: screenshot
+    assert:
+      screenshot_contains: "New Schedule"
+
+  - name: "UI-10: Schedule editor exposes cadence controls"
+    steps:
+      - interact:
+          action: screenshot
+    assert:
+      screenshot_contains: "Every N hours"

@@ -5,6 +5,7 @@ enum LaunchMode: Sendable, Equatable {
     case chat
     case agent(name: String)
     case group(name: String)
+    case schedule(id: UUID)
 }
 
 /// A parsed launch intent from CLI args or a `claudpeer://` URL.
@@ -16,6 +17,7 @@ struct LaunchIntent: Sendable {
     let prompt: String?
     let workingDirectory: String?
     let autonomous: Bool
+    let occurrence: Date?
 
     // MARK: - CLI Parsing
 
@@ -31,12 +33,17 @@ struct LaunchIntent: Sendable {
     ///
     /// Returns `nil` when no launch-mode flag is present.
     static func fromCommandLine() -> LaunchIntent? {
-        let args = CommandLine.arguments
+        fromArguments(CommandLine.arguments)
+    }
+
+    static func fromArguments(_ args: [String]) -> LaunchIntent? {
 
         var mode: LaunchMode?
         var prompt: String?
         var workingDirectory: String?
         var autonomous = false
+        var scheduleId: UUID?
+        var occurrence: Date?
 
         var i = 1 // skip argv[0]
         while i < args.count {
@@ -67,18 +74,36 @@ struct LaunchIntent: Sendable {
             case "--autonomous":
                 autonomous = true
 
+            case "--schedule":
+                i += 1
+                guard i < args.count else { break }
+                scheduleId = UUID(uuidString: args[i])
+
+            case "--occurrence":
+                i += 1
+                guard i < args.count else { break }
+                occurrence = ISO8601DateFormatter().date(from: args[i])
+
             default:
                 break
             }
             i += 1
         }
 
-        guard let mode else { return nil }
+        let resolvedMode: LaunchMode
+        if let scheduleId {
+            resolvedMode = .schedule(id: scheduleId)
+        } else if let mode {
+            resolvedMode = mode
+        } else {
+            return nil
+        }
         return LaunchIntent(
-            mode: mode,
+            mode: resolvedMode,
             prompt: prompt,
             workingDirectory: workingDirectory,
-            autonomous: autonomous
+            autonomous: autonomous,
+            occurrence: occurrence
         )
     }
 
@@ -89,7 +114,8 @@ struct LaunchIntent: Sendable {
     /// Supported formats:
     /// - `claudestudio://chat?prompt=...`
     /// - `claudestudio://agent/Coder?prompt=...&workdir=/path&autonomous=true`
-    /// - `claudestudio://group/Dev%20Team?autonomous=true`
+        /// - `claudestudio://group/Dev%20Team?autonomous=true`
+        /// - `claudestudio://schedule/2F0D95B8-1D90-49B4-9C7B-6DAB4F9386A8?occurrence=2026-03-27T06:00:00Z`
     ///
     /// Returns `nil` when the URL is not a valid `claudestudio://` intent.
     static func fromURL(_ url: URL) -> LaunchIntent? {
@@ -113,6 +139,9 @@ struct LaunchIntent: Sendable {
         case "group":
             guard !pathName.isEmpty else { return nil }
             mode = .group(name: pathName)
+        case "schedule":
+            guard let id = UUID(uuidString: pathName) else { return nil }
+            mode = .schedule(id: id)
         default:
             return nil
         }
@@ -121,7 +150,8 @@ struct LaunchIntent: Sendable {
             mode: mode,
             prompt: queryValue("prompt"),
             workingDirectory: queryValue("workdir"),
-            autonomous: queryValue("autonomous") == "true"
+            autonomous: queryValue("autonomous") == "true",
+            occurrence: queryValue("occurrence").flatMap { ISO8601DateFormatter().date(from: $0) }
         )
     }
 }

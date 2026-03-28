@@ -1,0 +1,10 @@
+# Test: Schedule Library Opens From Main Window
+timeout: 10000
+---
+- tapOn:
+    selector: '@testId("mainWindow.schedulesButton")'
+- waitFor:
+    text: All
+    timeout: 3000
+- assertVisible:
+    text: All

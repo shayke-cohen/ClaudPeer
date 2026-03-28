@@ -29,6 +29,7 @@ final class WindowState {
     var showNewSessionSheet = false
     var showAgentLibrary = false
     var showGroupLibrary = false
+    var showScheduleLibrary = false
     var showPeerNetwork = false
     var showAgentComms = false
     var showWorkshop = false

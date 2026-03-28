@@ -42,6 +42,8 @@ struct ClaudeStudioApp: App {
                 Peer.self,
                 AgentGroup.self,
                 TaskItem.self,
+                ScheduledMission.self,
+                ScheduledMissionRun.self,
             ])
             modelContainer = try ModelContainer(
                 for: schema,
@@ -248,6 +250,7 @@ private struct ProjectWindowContent: View {
             appState.modelContext = modelContainer.mainContext
             appState.configSyncService = configSyncService
             configSyncService.start(container: modelContainer)
+            appState.configureScheduling(modelContext: modelContainer.mainContext)
 
             if autoConnectSidecar, appState.sidecarStatus == .disconnected {
                 appState.connectSidecar()

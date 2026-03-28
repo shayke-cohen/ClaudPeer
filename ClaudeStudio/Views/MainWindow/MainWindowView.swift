@@ -47,6 +47,8 @@ struct MainWindowView: View {
                 .keyboardShortcut("n", modifiers: .command)
                 .help("New session (⌘N)")
                 .xrayId("mainWindow.newSessionButton")
+                .accessibilityIdentifier("mainWindow.newSessionButton")
+                .accessibilityLabel("New Session")
 
                 Button {
                     createQuickChat()
@@ -56,10 +58,25 @@ struct MainWindowView: View {
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 .help("Quick chat (⌘⇧N)")
                 .xrayId("mainWindow.quickChatButton")
+                .accessibilityIdentifier("mainWindow.quickChatButton")
+                .accessibilityLabel("Quick Chat")
             }
 
             ToolbarItem(placement: .status) {
                 sidecarStatusPill
+            }
+
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    windowState.showScheduleLibrary = true
+                } label: {
+                    Label("Schedules", systemImage: "clock.badge")
+                }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+                .help("Schedules (⌘⇧S)")
+                .xrayId("mainWindow.schedulesButton")
+                .accessibilityIdentifier("mainWindow.schedulesButton")
+                .accessibilityLabel("Schedules")
             }
 
             ToolbarItem(placement: .automatic) {
@@ -71,6 +88,8 @@ struct MainWindowView: View {
                 .keyboardShortcut("a", modifiers: [.command, .shift])
                 .help("Agent comms (⌘⇧A)")
                 .xrayId("mainWindow.agentCommsButton")
+                .accessibilityIdentifier("mainWindow.agentCommsButton")
+                .accessibilityLabel("Agent Comms")
                 .badge(appState.commsEvents.count)
             }
 
@@ -83,6 +102,8 @@ struct MainWindowView: View {
                 .keyboardShortcut("p", modifiers: [.command, .shift])
                 .help("Peer network (⌘⇧P)")
                 .xrayId("mainWindow.peerNetworkButton")
+                .accessibilityIdentifier("mainWindow.peerNetworkButton")
+                .accessibilityLabel("Peer Network")
             }
 
             ToolbarItem(placement: .automatic) {
@@ -94,6 +115,8 @@ struct MainWindowView: View {
                 .keyboardShortcut("d", modifiers: [.command, .shift])
                 .help("Debug log (⌘⇧D)")
                 .xrayId("mainWindow.debugLogButton")
+                .accessibilityIdentifier("mainWindow.debugLogButton")
+                .accessibilityLabel("Debug Log")
             }
 
             ToolbarItem(placement: .automatic) {
@@ -108,6 +131,8 @@ struct MainWindowView: View {
                 .keyboardShortcut("0", modifiers: [.command, .option])
                 .help(inspectorVisible ? "Hide inspector (⌘⌥0)" : "Show inspector (⌘⌥0)")
                 .xrayId("mainWindow.inspectorToggle")
+                .accessibilityIdentifier("mainWindow.inspectorToggle")
+                .accessibilityLabel(inspectorVisible ? "Hide Inspector" : "Show Inspector")
             }
         }
         .sheet(isPresented: $ws.showNewSessionSheet) {
@@ -120,6 +145,10 @@ struct MainWindowView: View {
         .sheet(isPresented: $ws.showGroupLibrary) {
             GroupLibraryView()
                 .frame(minWidth: 700, minHeight: 500)
+        }
+        .sheet(isPresented: $ws.showScheduleLibrary) {
+            ScheduleLibraryView()
+                .frame(minWidth: 900, minHeight: 560)
         }
         .sheet(isPresented: $ws.showAgentComms) {
             AgentCommsView()

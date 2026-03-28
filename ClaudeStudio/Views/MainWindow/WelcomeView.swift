@@ -188,6 +188,16 @@ struct WelcomeView: View {
             ) {
                 windowState.showGroupLibrary = true
             }
+            quickActionCard(
+                title: "Schedules",
+                subtitle: "Recurring missions",
+                icon: "clock.badge",
+                shortcut: "\u{2318}\u{21E7}S",
+                color: .green,
+                identifier: "welcome.quickAction.schedules"
+            ) {
+                windowState.showScheduleLibrary = true
+            }
         }
         .frame(maxWidth: 520)
     }
@@ -228,6 +238,8 @@ struct WelcomeView: View {
         }
         .buttonStyle(.plain)
         .xrayId(identifier)
+        .accessibilityIdentifier(identifier)
+        .accessibilityLabel(title)
     }
 
     // MARK: - Recent Agents
@@ -427,6 +439,9 @@ struct ChangeProjectSheet: View {
                                     Image(systemName: "xmark")
                                 }
                                 .buttonStyle(.plain)
+                                .xrayId("changeProject.cancelCloneButton")
+                                .accessibilityIdentifier("changeProject.cancelCloneButton")
+                                .accessibilityLabel("Cancel clone")
                             }
                             .padding(10)
                             .background(.background)
