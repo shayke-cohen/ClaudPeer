@@ -269,9 +269,6 @@ struct SidebarView: View {
         projects.sorted { lhs, rhs in
             if lhs.id == windowState.selectedProjectId { return true }
             if rhs.id == windowState.selectedProjectId { return false }
-            if lhs.isPinned != rhs.isPinned {
-                return lhs.isPinned && !rhs.isPinned
-            }
             return lhs.lastOpenedAt > rhs.lastOpenedAt
         }
     }
@@ -559,25 +556,35 @@ struct SidebarView: View {
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
-                togglePin(project)
-            } label: {
-                Label(project.isPinned ? "Unpin Folder" : "Pin Folder", systemImage: project.isPinned ? "pin.slash" : "pin")
-            }
-            .tint(.yellow)
-
-            Button {
                 createQuickChat(in: project)
             } label: {
                 Label("New Thread", systemImage: "square.and.pencil")
             }
             .tint(tint)
+
+            Button {
+                openProjectInFinder(project)
+            } label: {
+                Label("Open in Finder", systemImage: "folder")
+            }
+            .tint(.blue)
         }
         .xrayId("sidebar.projectRow.\(project.id.uuidString)")
     }
 
     @ViewBuilder
     private func projectThreadRows(_ project: Project) -> some View {
-        let liveThreads = visibleProjectThreads(for: project)
+        let liveThreads = rootConversations(in: project)
+            .filter { !$0.isArchived }
+            .sorted { lhs, rhs in
+                if lhs.isPinned != rhs.isPinned {
+                    return lhs.isPinned && !rhs.isPinned
+                }
+                return lhs.startedAt > rhs.startedAt
+            }
+        let pinnedThreads = filteredConversations(liveThreads.filter(\.isPinned))
+        let activeThreads = filteredConversations(Array(liveThreads.filter { !$0.isPinned }.prefix(10)))
+        let historyThreads = filteredConversations(Array(liveThreads.filter { !$0.isPinned }.dropFirst(10)))
         let archivedThreads = filteredConversations(rootConversations(in: project).filter(\.isArchived))
 
         if liveThreads.isEmpty {
@@ -587,18 +594,87 @@ struct SidebarView: View {
                     .foregroundStyle(.tertiary)
             }
         } else {
-            ForEach(liveThreads) { convo in
-                projectIndentedRow {
-                    conversationTreeNode(
-                        convo,
-                        pinAction: convo.isPinned ? "Unpin" : "Pin"
-                    )
-                }
-            }
+            projectThreadBucket(
+                title: "Pinned (\(pinnedThreads.count))",
+                symbol: "pin.fill",
+                isExpanded: Binding(
+                    get: { isPinnedExpanded || !searchText.isEmpty },
+                    set: { isPinnedExpanded = $0 }
+                ),
+                conversations: pinnedThreads,
+                pinAction: "Unpin",
+                xrayId: "sidebar.pinnedSection"
+            )
+
+            projectThreadBucket(
+                title: "Active (\(activeThreads.count))",
+                symbol: "bolt.fill",
+                isExpanded: Binding(
+                    get: { isActiveExpanded || !searchText.isEmpty },
+                    set: { isActiveExpanded = $0 }
+                ),
+                conversations: activeThreads,
+                pinAction: "Pin",
+                xrayId: "sidebar.activeSection"
+            )
+
+            projectThreadBucket(
+                title: "History (\(historyThreads.count))",
+                symbol: "clock.arrow.circlepath",
+                isExpanded: Binding(
+                    get: { isHistoryExpanded || !searchText.isEmpty },
+                    set: { isHistoryExpanded = $0 }
+                ),
+                conversations: historyThreads,
+                pinAction: "Pin",
+                xrayId: "sidebar.historySection"
+            )
         }
 
         if !archivedThreads.isEmpty {
             projectArchivedRows(archivedThreads)
+        }
+    }
+
+    @ViewBuilder
+    private func projectThreadBucket(
+        title: String,
+        symbol: String,
+        isExpanded: Binding<Bool>,
+        conversations: [Conversation],
+        pinAction: String,
+        xrayId: String
+    ) -> some View {
+        if !conversations.isEmpty {
+            let expanded = isExpanded.wrappedValue || !searchText.isEmpty
+
+            projectIndentedRow {
+                Button {
+                    if searchText.isEmpty {
+                        isExpanded.wrappedValue.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Label(title, systemImage: symbol)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .xrayId(xrayId)
+            }
+
+            if expanded {
+                ForEach(conversations) { convo in
+                    projectIndentedRow {
+                        conversationTreeNode(convo, pinAction: pinAction)
+                    }
+                }
+            }
         }
     }
 
@@ -665,12 +741,6 @@ struct SidebarView: View {
                 openProjectInFinder(project)
             } label: {
                 Label("Open in Finder", systemImage: "folder")
-            }
-
-            Button {
-                togglePin(project)
-            } label: {
-                Label(project.isPinned ? "Unpin folder" : "Pin folder", systemImage: project.isPinned ? "pin.slash" : "pin")
             }
 
             Button {
@@ -823,81 +893,6 @@ struct SidebarView: View {
         }
     }
 
-    // MARK: - Pinned Section
-
-    @ViewBuilder
-    private func pinnedSection(for project: Project) -> some View {
-        let pinned = rootConversations(in: project).filter { $0.isPinned && !$0.isArchived }
-        let filteredPinned = filteredConversations(pinned)
-        if !filteredPinned.isEmpty {
-            DisclosureGroup(
-                isExpanded: Binding(
-                    get: { isPinnedExpanded || !searchText.isEmpty },
-                    set: { isPinnedExpanded = $0 }
-                )
-            ) {
-                ForEach(filteredPinned) { convo in
-                    conversationTreeNode(convo, pinAction: "Unpin")
-                }
-            } label: {
-                Label("Pinned (\(filteredPinned.count))", systemImage: "pin.fill")
-                    .foregroundStyle(.secondary)
-            }
-            .xrayId("sidebar.pinnedSection")
-        }
-    }
-
-    // MARK: - Active Section (last 10)
-
-    @ViewBuilder
-    private func activeSection(for project: Project) -> some View {
-        let all = rootConversations(in: project).filter { !$0.isPinned && !$0.isArchived }
-        let visible = filteredConversations(Array(all.prefix(10)))
-        if !visible.isEmpty {
-            DisclosureGroup(
-                isExpanded: Binding(
-                    get: { isActiveExpanded || !searchText.isEmpty },
-                    set: { isActiveExpanded = $0 }
-                )
-            ) {
-                ForEach(visible) { convo in
-                    conversationTreeNode(convo, pinAction: "Pin")
-                }
-            } label: {
-                Label("Active (\(visible.count))", systemImage: "bolt.fill")
-                    .foregroundStyle(.secondary)
-            }
-            .xrayId("sidebar.activeSection")
-        }
-    }
-
-    // MARK: - History Section (overflow, foldable)
-
-    @ViewBuilder
-    private func historySection(for project: Project) -> some View {
-        let all = rootConversations(in: project).filter { !$0.isPinned && !$0.isArchived }
-        let overflow = Array(all.dropFirst(10))
-        let visible = filteredConversations(overflow)
-        if !visible.isEmpty {
-            DisclosureGroup(
-                isExpanded: Binding(
-                    get: { isHistoryExpanded || !searchText.isEmpty },
-                    set: { isHistoryExpanded = $0 }
-                )
-            ) {
-                ForEach(visible) { convo in
-                    conversationTreeNode(convo, pinAction: "Pin")
-                }
-            } label: {
-                Label("History (\(visible.count))", systemImage: "clock.arrow.circlepath")
-                    .foregroundStyle(.secondary)
-            }
-            .xrayId("sidebar.historySection")
-        }
-    }
-
-    // MARK: - Archived Section
-
     // MARK: - Tree helpers
 
     private func rootConversations(in project: Project) -> [Conversation] {
@@ -914,21 +909,6 @@ struct SidebarView: View {
         conversations
             .filter { $0.parentConversationId == parent.id }
             .sorted { $0.startedAt < $1.startedAt }
-    }
-
-    private func visibleProjectThreads(for project: Project) -> [Conversation] {
-        let liveThreads = rootConversations(in: project).filter { !$0.isArchived }
-        let sorted = liveThreads.sorted { lhs, rhs in
-            if lhs.isPinned != rhs.isPinned {
-                return lhs.isPinned && !rhs.isPinned
-            }
-            return lhs.startedAt > rhs.startedAt
-        }
-        let filtered = filteredConversations(sorted)
-        if searchText.isEmpty {
-            return Array(filtered.prefix(12))
-        }
-        return filtered
     }
 
     @ViewBuilder
@@ -1721,11 +1701,6 @@ struct SidebarView: View {
 
     private func togglePin(_ convo: Conversation) {
         convo.isPinned.toggle()
-        try? modelContext.save()
-    }
-
-    private func togglePin(_ project: Project) {
-        project.isPinned.toggle()
         try? modelContext.save()
     }
 
