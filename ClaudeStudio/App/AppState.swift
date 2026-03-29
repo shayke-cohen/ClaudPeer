@@ -774,7 +774,7 @@ final class AppState: ObservableObject {
         case .streamToken(let sessionId, let text):
             let current = streamingText[sessionId] ?? ""
             streamingText[sessionId] = current + text
-            if let uuid = UUID(uuidString: sessionId) {
+            if let uuid = ensureActiveSessionInfo(sessionId: sessionId) {
                 activeSessions[uuid]?.isStreaming = true
                 // Rough estimate: ~4 chars per output token, refined on completion
                 activeSessions[uuid]?.tokenCount += max(1, text.count / 4)
@@ -784,14 +784,16 @@ final class AppState: ObservableObject {
         case .streamThinking(let sessionId, let text):
             let current = thinkingText[sessionId] ?? ""
             thinkingText[sessionId] = current + text
-            activeSessions[UUID(uuidString: sessionId) ?? UUID()]?.isStreaming = true
+            if let uuid = ensureActiveSessionInfo(sessionId: sessionId) {
+                activeSessions[uuid]?.isStreaming = true
+            }
             sessionActivity[sessionId] = .thinking
 
         case .streamToolCall(let sessionId, let tool, let input):
             var calls = toolCalls[sessionId] ?? []
             calls.append(ToolCallInfo(tool: tool, input: input, timestamp: Date()))
             toolCalls[sessionId] = calls
-            if let uuid = UUID(uuidString: sessionId) {
+            if let uuid = ensureActiveSessionInfo(sessionId: sessionId) {
                 activeSessions[uuid]?.toolCallCount += 1
             }
             sessionActivity[sessionId] = .callingTool(toolName: tool)
@@ -808,7 +810,7 @@ final class AppState: ObservableObject {
             sessionActivity[sessionId] = .waitingForResult
 
         case .sessionResult(let sessionId, let resultText, let cost, let tokenCount, let toolCallCount):
-            if let uuid = UUID(uuidString: sessionId) {
+            if let uuid = ensureActiveSessionInfo(sessionId: sessionId) {
                 activeSessions[uuid]?.isStreaming = false
                 activeSessions[uuid]?.cost = cost
                 activeSessions[uuid]?.tokenCount = tokenCount
@@ -830,7 +832,9 @@ final class AppState: ObservableObject {
             cleanupWorktreeIfNeeded(sessionId: sessionId)
 
         case .sessionError(let sessionId, let error):
-            activeSessions[UUID(uuidString: sessionId) ?? UUID()]?.isStreaming = false
+            if let uuid = ensureActiveSessionInfo(sessionId: sessionId) {
+                activeSessions[uuid]?.isStreaming = false
+            }
             lastSessionEvent[sessionId] = .error(error)
             thinkingText.removeValue(forKey: sessionId)
             streamingImages.removeValue(forKey: sessionId)
@@ -1376,6 +1380,34 @@ final class AppState: ObservableObject {
         session.toolCallCount = toolCallCount
         session.lastActiveAt = Date()
         try? ctx.save()
+    }
+
+    private func ensureActiveSessionInfo(sessionId: String) -> UUID? {
+        guard let uuid = UUID(uuidString: sessionId) else { return nil }
+        if activeSessions[uuid] != nil { return uuid }
+
+        guard let session = fetchSession(id: uuid) else {
+            activeSessions[uuid] = SessionInfo(id: uuid, agentName: "Agent")
+            return uuid
+        }
+
+        activeSessions[uuid] = SessionInfo(
+            id: uuid,
+            agentName: session.agent?.name ?? "Agent",
+            tokenCount: session.tokenCount,
+            cost: session.totalCost,
+            toolCallCount: session.toolCallCount,
+            isStreaming: false
+        )
+        return uuid
+    }
+
+    private func fetchSession(id: UUID) -> Session? {
+        guard let ctx = modelContext else { return nil }
+        let descriptor = FetchDescriptor<Session>(predicate: #Predicate { session in
+            session.id == id
+        })
+        return try? ctx.fetch(descriptor).first
     }
 
     // MARK: - Persistence helpers for inter-agent events

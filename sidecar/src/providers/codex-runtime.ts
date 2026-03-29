@@ -20,12 +20,14 @@ interface PendingTurn {
   sessionId: string;
   threadId: string;
   turnId: string | null;
+  model: string;
   resultText: string;
   latestPlanText: string | null;
   latestToolOutputs: Map<string, string>;
   lastError?: string;
   usage: {
     inputTokens: number;
+    cachedInputTokens: number;
     outputTokens: number;
   };
   resolve: (result: RuntimeSendResult) => void;
@@ -65,6 +67,18 @@ interface SessionClientContext {
 
 export class CodexRuntime implements ProviderRuntime {
   readonly provider = "codex" as const;
+
+  private static readonly pricingByModel: Record<string, {
+    inputUsdPerMillion: number;
+    cachedInputUsdPerMillion: number;
+    outputUsdPerMillion: number;
+  }> = {
+    "gpt-5-codex": { inputUsdPerMillion: 1.25, cachedInputUsdPerMillion: 0.125, outputUsdPerMillion: 10 },
+    "gpt-5.1-codex": { inputUsdPerMillion: 1.25, cachedInputUsdPerMillion: 0.125, outputUsdPerMillion: 10 },
+    "gpt-5.1-codex-max": { inputUsdPerMillion: 1.25, cachedInputUsdPerMillion: 0.125, outputUsdPerMillion: 10 },
+    "gpt-5.1-codex-mini": { inputUsdPerMillion: 0.25, cachedInputUsdPerMillion: 0.025, outputUsdPerMillion: 2 },
+    "codex-mini-latest": { inputUsdPerMillion: 1.5, cachedInputUsdPerMillion: 0.375, outputUsdPerMillion: 6 },
+  };
 
   private readonly clientsBySession = new Map<string, SessionClientContext>();
   private readonly threadToSessionId = new Map<string, string>();
@@ -255,6 +269,7 @@ export class CodexRuntime implements ProviderRuntime {
   async sendMessage(args: RuntimeSendArgs): Promise<RuntimeSendResult> {
     const clientCtx = this.getClientContext(args.sessionId, args.config);
     await clientCtx.client.start();
+    const resolvedModel = this.resolveModel(args.config.model, args.planMode);
 
     const dynamicTools = createCodexDynamicTools(
       this.deps.toolCtx,
@@ -278,11 +293,13 @@ export class CodexRuntime implements ProviderRuntime {
         sessionId: args.sessionId,
         threadId,
         turnId: null,
+        model: resolvedModel,
         resultText: "",
         latestPlanText: null,
         latestToolOutputs: new Map(),
         usage: {
           inputTokens: 0,
+          cachedInputTokens: 0,
           outputTokens: 0,
         },
         resolve,
@@ -303,7 +320,7 @@ export class CodexRuntime implements ProviderRuntime {
         threadId,
         input,
         cwd: args.config.workingDirectory || undefined,
-        model: this.resolveModel(args.config.model, args.planMode),
+        model: resolvedModel,
         approvalPolicy: "on-request",
       }).then((turnResponse) => {
         const turnId = turnResponse?.turn?.id as string | undefined;
@@ -506,8 +523,10 @@ export class CodexRuntime implements ProviderRuntime {
       case "thread/tokenUsage/updated": {
         const pendingTurn = this.resolvePendingTurn(params);
         if (pendingTurn) {
-          pendingTurn.usage.inputTokens = params.tokenUsage?.last?.inputTokens ?? 0;
-          pendingTurn.usage.outputTokens = params.tokenUsage?.last?.outputTokens ?? 0;
+          const usage = this.extractTokenUsage(params);
+          if (usage) {
+            pendingTurn.usage = usage;
+          }
           this.deps.registry.update(pendingTurn.sessionId, {
             tokenCount: pendingTurn.usage.inputTokens + pendingTurn.usage.outputTokens,
           });
@@ -759,14 +778,55 @@ export class CodexRuntime implements ProviderRuntime {
       return;
     }
 
+    const completionUsage = this.extractTokenUsage(params);
+    if (completionUsage) {
+      pendingTurn.usage = completionUsage;
+    }
+
+    const costDelta = this.estimateCostDelta(pendingTurn.model, pendingTurn.usage);
+
     pendingTurn.resolve({
       backendSessionId: pendingTurn.threadId,
       resultText: pendingTurn.resultText || pendingTurn.latestPlanText || "(no text response)",
-      costDelta: 0,
+      costDelta,
       inputTokens: pendingTurn.usage.inputTokens,
       outputTokens: pendingTurn.usage.outputTokens,
       numTurns: 1,
     });
+  }
+
+  private extractTokenUsage(params: any): PendingTurn["usage"] | null {
+    const usage =
+      params?.tokenUsage?.last ??
+      params?.tokenUsage?.total ??
+      params?.turn?.usage ??
+      params?.usage;
+
+    if (!usage) {
+      return null;
+    }
+
+    return {
+      inputTokens: usage.inputTokens ?? usage.input_tokens ?? 0,
+      cachedInputTokens: usage.cachedInputTokens ?? usage.cached_input_tokens ?? 0,
+      outputTokens: usage.outputTokens ?? usage.output_tokens ?? 0,
+    };
+  }
+
+  private estimateCostDelta(model: string, usage: PendingTurn["usage"]): number {
+    const pricing = CodexRuntime.pricingByModel[model];
+    if (!pricing) {
+      return 0;
+    }
+
+    const cachedInputTokens = Math.min(usage.cachedInputTokens, usage.inputTokens);
+    const uncachedInputTokens = Math.max(0, usage.inputTokens - cachedInputTokens);
+
+    return (
+      (uncachedInputTokens * pricing.inputUsdPerMillion) +
+      (cachedInputTokens * pricing.cachedInputUsdPerMillion) +
+      (usage.outputTokens * pricing.outputUsdPerMillion)
+    ) / 1_000_000;
   }
 
   private async handleServerRequest(

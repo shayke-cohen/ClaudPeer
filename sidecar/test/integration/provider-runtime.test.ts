@@ -90,10 +90,11 @@ describe("Provider runtime integration", () => {
       sessionId: "codex-session",
       threadId: "thr-1",
       turnId: "turn-1",
+      model: "gpt-5-codex",
       resultText: "",
       latestPlanText: null,
       latestToolOutputs: new Map<string, string>(),
-      usage: { inputTokens: 10, outputTokens: 20 },
+      usage: { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0 },
       resolve: (value: any) => resolved.push(value),
       reject: (error: Error) => {
         throw error;
@@ -114,6 +115,20 @@ describe("Provider runtime integration", () => {
           id: "item-1",
           tool: "ask_user",
           arguments: { question: "Proceed?" },
+        },
+      },
+    });
+    (runtime as any).handleNotification({
+      method: "thread/tokenUsage/updated",
+      params: {
+        threadId: "thr-1",
+        turnId: "turn-1",
+        tokenUsage: {
+          last: {
+            inputTokens: 1000,
+            cachedInputTokens: 200,
+            outputTokens: 300,
+          },
         },
       },
     });
@@ -189,9 +204,9 @@ describe("Provider runtime integration", () => {
       {
         backendSessionId: "thr-1",
         resultText: "Hello from Codex",
-        costDelta: 0,
-        inputTokens: 10,
-        outputTokens: 20,
+        costDelta: 0.004025,
+        inputTokens: 1000,
+        outputTokens: 300,
         numTurns: 1,
       },
     ]);
@@ -217,10 +232,11 @@ describe("Provider runtime integration", () => {
       sessionId: "codex-session",
       threadId: "thr-race",
       turnId: null,
+      model: "gpt-5-codex",
       resultText: "",
       latestPlanText: null,
       latestToolOutputs: new Map<string, string>(),
-      usage: { inputTokens: 4, outputTokens: 9 },
+      usage: { inputTokens: 4, cachedInputTokens: 0, outputTokens: 9 },
       resolve: (value: any) => resolved.push(value),
       reject: (error: Error) => {
         throw error;
@@ -259,7 +275,7 @@ describe("Provider runtime integration", () => {
       {
         backendSessionId: "thr-race",
         resultText: "codex smoke ok",
-        costDelta: 0,
+        costDelta: 0.000095,
         inputTokens: 4,
         outputTokens: 9,
         numTurns: 1,

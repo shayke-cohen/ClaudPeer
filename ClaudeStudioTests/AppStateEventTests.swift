@@ -124,6 +124,19 @@ final class AppStateEventTests: XCTestCase {
         XCTAssertEqual(appState.streamingText[sid], "Hello World")
     }
 
+    func testEH4b_streamTokenEvent_seedsLiveSessionUsageFromPersistedSession() {
+        let sid = makeSessionWithConversation()
+        guard let uuid = UUID(uuidString: sid) else {
+            return XCTFail("Expected valid UUID session id")
+        }
+
+        appState.handleEventForTesting(.streamToken(sessionId: sid, text: "Hello"))
+
+        XCTAssertEqual(appState.activeSessions[uuid]?.agentName, "Agent")
+        XCTAssertEqual(appState.activeSessions[uuid]?.tokenCount, 1)
+        XCTAssertTrue(appState.activeSessions[uuid]?.isStreaming ?? false)
+    }
+
     func testEH5_sessionResultEvent_clearsStreamingFlags() {
         let sid = UUID()
         appState.activeSessions[sid] = AppState.SessionInfo(id: sid, agentName: "Bot", isStreaming: true)
@@ -138,6 +151,26 @@ final class AppStateEventTests: XCTestCase {
         } else {
             XCTFail("Expected .result session event")
         }
+    }
+
+    func testEH5c_sessionResultEvent_seedsLiveSessionUsageWhenMissing() {
+        let sid = makeSessionWithConversation()
+        guard let uuid = UUID(uuidString: sid) else {
+            return XCTFail("Expected valid UUID session id")
+        }
+
+        appState.handleEventForTesting(.sessionResult(
+            sessionId: sid,
+            result: "done",
+            cost: 0.42,
+            tokenCount: 321,
+            toolCallCount: 7
+        ))
+
+        XCTAssertEqual(appState.activeSessions[uuid]?.cost, 0.42)
+        XCTAssertEqual(appState.activeSessions[uuid]?.tokenCount, 321)
+        XCTAssertEqual(appState.activeSessions[uuid]?.toolCallCount, 7)
+        XCTAssertFalse(appState.activeSessions[uuid]?.isStreaming ?? true)
     }
 
     func testEH5b_sessionResultEvent_clearsPendingQuestionsAndConfirmations() {

@@ -174,6 +174,9 @@ final class AppStateRecoveryTests: XCTestCase {
         ))
 
         XCTAssertEqual(session.status, .completed)
+        XCTAssertEqual(session.tokenCount, 42)
+        XCTAssertEqual(session.totalCost, 0.01)
+        XCTAssertEqual(session.toolCallCount, 2)
     }
 
     func testSessionErrorEvent_persistsFailedStatus() throws {

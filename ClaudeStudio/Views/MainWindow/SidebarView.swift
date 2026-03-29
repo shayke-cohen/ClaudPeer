@@ -83,6 +83,55 @@ private struct SidebarChromeButtonModifier: ViewModifier {
     }
 }
 
+enum SidebarConversationMetadata {
+    static func isDelegationThread(_ convo: Conversation) -> Bool {
+        convo.threadKind == .delegation
+    }
+
+    static func lastMessagePreview(_ convo: Conversation) -> (text: String, attachmentIcon: String?)? {
+        let latestMessage = convo.messages
+            .sorted { $0.timestamp < $1.timestamp }
+            .last
+        guard let latestMessage else { return nil }
+
+        let attachments = latestMessage.attachments
+        let text = latestMessage.text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let icon: String? = {
+            guard !attachments.isEmpty else { return nil }
+            let hasImages = attachments.contains { $0.isImage }
+            let hasDocs = attachments.contains { $0.isDocument }
+            if hasImages && hasDocs { return "paperclip" }
+            if hasDocs { return "doc.text" }
+            return "photo"
+        }()
+
+        if text.isEmpty && !attachments.isEmpty {
+            let count = attachments.count
+            let hasImages = attachments.contains { $0.isImage }
+            let hasDocs = attachments.contains { $0.isDocument }
+            let label: String
+            if hasImages && !hasDocs {
+                label = count == 1 ? "Image" : "\(count) Images"
+            } else if hasDocs && !hasImages {
+                label = count == 1 ? "File" : "\(count) Files"
+            } else {
+                label = "\(count) Attachments"
+            }
+            return (text: label, attachmentIcon: icon)
+        }
+
+        let preview: String
+        if text.count <= 40 {
+            preview = text
+        } else {
+            let cutoff = text.index(text.startIndex, offsetBy: 40)
+            preview = String(text[..<cutoff]) + "..."
+        }
+        return preview.isEmpty ? nil : (text: preview, attachmentIcon: icon)
+    }
+}
+
 struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(WindowState.self) private var windowState: WindowState
@@ -1469,7 +1518,7 @@ struct SidebarView: View {
             return false
         }.count
         let isChild = convo.parentConversationId != nil
-        let isDelegation = convo.messages.contains { $0.type == .delegation }
+        let isDelegation = SidebarConversationMetadata.isDelegationThread(convo)
 
         if let agent = convo.primarySession?.agent, hasUser {
             return (agent.icon, agentColor(agent.color))
@@ -1497,45 +1546,7 @@ struct SidebarView: View {
     }
 
     private func lastMessagePreview(_ convo: Conversation) -> (text: String, attachmentIcon: String?)? {
-        let chatMessages = convo.messages
-            .filter { $0.type == .chat }
-            .sorted { $0.timestamp < $1.timestamp }
-        guard let last = chatMessages.last else { return nil }
-        let attachments = last.attachments
-        let text = last.text.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        let icon: String? = {
-            guard !attachments.isEmpty else { return nil }
-            let hasImages = attachments.contains { $0.isImage }
-            let hasDocs = attachments.contains { $0.isDocument }
-            if hasImages && hasDocs { return "paperclip" }
-            if hasDocs { return "doc.text" }
-            return "photo"
-        }()
-
-        if text.isEmpty && !attachments.isEmpty {
-            let count = attachments.count
-            let hasImages = attachments.contains { $0.isImage }
-            let hasDocs = attachments.contains { $0.isDocument }
-            let label: String
-            if hasImages && !hasDocs {
-                label = count == 1 ? "Image" : "\(count) Images"
-            } else if hasDocs && !hasImages {
-                label = count == 1 ? "File" : "\(count) Files"
-            } else {
-                label = "\(count) Attachments"
-            }
-            return (text: label, attachmentIcon: icon)
-        }
-
-        let preview: String
-        if text.count <= 40 {
-            preview = text
-        } else {
-            let cutoff = text.index(text.startIndex, offsetBy: 40)
-            preview = String(text[..<cutoff]) + "..."
-        }
-        return preview.isEmpty ? nil : (text: preview, attachmentIcon: icon)
+        SidebarConversationMetadata.lastMessagePreview(convo)
     }
 
     private func filteredConversations(_ convos: [Conversation]) -> [Conversation] {

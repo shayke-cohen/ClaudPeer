@@ -297,4 +297,36 @@ final class SidebarSectionTests: XCTestCase {
         let total = pinnedItems(roots).count + activeItems(roots).count + historyItems(roots).count + archivedItems(roots).count
         XCTAssertEqual(total, 50)
     }
+
+    func testSidebarMetadataTreatsDelegationAsThreadKindOnly() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+
+        let convo = Conversation(topic: "Delegated", threadKind: .delegation)
+        ctx.insert(convo)
+        try ctx.save()
+
+        XCTAssertTrue(SidebarConversationMetadata.isDelegationThread(convo))
+    }
+
+    func testSidebarMetadataUsesLatestMessagePreviewWithoutTypeFiltering() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+
+        let convo = Conversation(topic: "Preview")
+        let older = ConversationMessage(text: "Older message", type: .chat, conversation: convo)
+        older.timestamp = Date().addingTimeInterval(-60)
+        let latest = ConversationMessage(text: "Latest event from the sidebar metadata helper", type: .toolResult, conversation: convo)
+        latest.timestamp = Date()
+        convo.messages = [older, latest]
+
+        ctx.insert(convo)
+        ctx.insert(older)
+        ctx.insert(latest)
+        try ctx.save()
+
+        let preview = SidebarConversationMetadata.lastMessagePreview(convo)
+        XCTAssertEqual(preview?.text, "Latest event from the sidebar metadata h...")
+        XCTAssertNil(preview?.attachmentIcon)
+    }
 }
