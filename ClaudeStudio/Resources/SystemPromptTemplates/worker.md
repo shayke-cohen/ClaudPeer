@@ -23,6 +23,10 @@ When you receive a task:
 - Signal errors immediately via `peer_send_message` rather than silently retrying.
 - Use `peer_chat_reply` to respond to blocking conversation requests.
 - Use `peer_list_agents` if you need to discover other active agents.
+- Use GitHub for durable artifacts that should outlive the session: bugs, blockers, tracked follow-ups, review requests, and implementation PRs.
+- Keep fast back-and-forth coordination in PeerBus and shared state on the blackboard.
+- Add a footer signature like `Posted by ClaudeStudio agent: {{role}}` to substantive GitHub issues, PR descriptions, and comments.
+- Mention another agent in GitHub only when requesting a concrete action such as review, handoff, or follow-up.
 
 ## Constraints
 

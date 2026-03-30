@@ -138,6 +138,58 @@ final class CatalogServiceTests: XCTestCase {
                        "All skills should have content loaded from .md files")
     }
 
+    func testGitHubWorkflowSkillIncludesDurableArtifactPolicy() {
+        let skill = CatalogService.shared.findSkill("github-workflow")
+        XCTAssertNotNil(skill)
+        XCTAssertTrue(skill!.content.contains("durable artifacts that should survive the session"))
+        XCTAssertTrue(skill!.content.contains("Mention another agent in GitHub only when requesting a concrete action"))
+        XCTAssertTrue(skill!.content.contains("Posted by ClaudeStudio agent: <AgentName>"))
+        XCTAssertTrue(skill!.content.contains("Tester and Reviewer should file issues for durable defects or must-fix findings"))
+    }
+
+    func testCoordinatorTemplateIncludesGitHubDurabilityGuidance() throws {
+        let template = try loadSystemPromptTemplate(named: "coordinator")
+        XCTAssertTrue(template.contains("Use GitHub for durable artifacts that should outlive the session"))
+        XCTAssertTrue(template.contains("Keep chatty coordination in PeerBus and status/state on the blackboard"))
+        XCTAssertTrue(template.contains("Posted by ClaudeStudio agent: Orchestrator"))
+        XCTAssertTrue(template.contains("Mention another agent in GitHub only when you are asking for a concrete action"))
+    }
+
+    func testWorkerTemplateIncludesGitHubDurabilityGuidance() throws {
+        let template = try loadSystemPromptTemplate(named: "worker")
+        XCTAssertTrue(template.contains("Use GitHub for durable artifacts that should outlive the session"))
+        XCTAssertTrue(template.contains("Keep fast back-and-forth coordination in PeerBus and shared state on the blackboard"))
+        XCTAssertTrue(template.contains("Posted by ClaudeStudio agent: {{role}}"))
+        XCTAssertTrue(template.contains("Mention another agent in GitHub only when requesting a concrete action"))
+    }
+
+    func testRolePromptsIncludeGitHubCollaborationPolicy() {
+        let orchestrator = CatalogService.shared.findAgent("orchestrator")
+        XCTAssertNotNil(orchestrator)
+        XCTAssertTrue(orchestrator!.systemPrompt.contains("Externalize durable blockers"))
+        XCTAssertTrue(orchestrator!.systemPrompt.contains("keep chatty coordination inside ClaudeStudio"))
+
+        let coder = CatalogService.shared.findAgent("coder")
+        XCTAssertNotNil(coder)
+        XCTAssertTrue(coder!.systemPrompt.contains("issue or PR references"))
+        XCTAssertTrue(coder!.systemPrompt.contains("Posted by ClaudeStudio agent: Coder"))
+
+        let reviewer = CatalogService.shared.findAgent("reviewer")
+        XCTAssertNotNil(reviewer)
+        XCTAssertTrue(reviewer!.systemPrompt.contains("Externalize durable must-fix findings"))
+        XCTAssertTrue(reviewer!.systemPrompt.contains("Never approve your own PR"))
+
+        let tester = CatalogService.shared.findAgent("tester")
+        XCTAssertNotNil(tester)
+        XCTAssertTrue(tester!.systemPrompt.contains("File durable defects, blockers, and must-fix regressions to GitHub"))
+        XCTAssertTrue(tester!.systemPrompt.contains("transient observations and low-value nits in ClaudeStudio"))
+
+        let devops = CatalogService.shared.findAgent("devops")
+        XCTAssertNotNil(devops)
+        XCTAssertTrue(devops!.systemPrompt.contains("durable rollout tasks, CI fixes, release follow-ups"))
+        XCTAssertTrue(devops!.systemPrompt.contains("Posted by ClaudeStudio agent: DevOps"))
+    }
+
     // MARK: - Install / Uninstall
 
     func testInstallMCP() {
@@ -330,5 +382,23 @@ final class CatalogServiceTests: XCTestCase {
             XCTAssertFalse(mcp.icon.isEmpty, "MCP '\(mcp.name)' has empty icon")
             XCTAssertFalse(mcp.transport.kind.isEmpty, "MCP '\(mcp.name)' has empty transport kind")
         }
+    }
+
+    private func loadSystemPromptTemplate(named name: String) throws -> String {
+        if let url = Bundle.main.url(forResource: name, withExtension: "md", subdirectory: "SystemPromptTemplates") {
+            return try String(contentsOf: url, encoding: .utf8)
+        }
+
+        let fallbackPaths = [
+            "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/SystemPromptTemplates/\(name).md",
+            "\(FileManager.default.currentDirectoryPath)/ClaudeStudio/Resources/SystemPromptTemplates/\(name).md"
+        ]
+
+        for path in fallbackPaths where FileManager.default.fileExists(atPath: path) {
+            return try String(contentsOf: URL(fileURLWithPath: path), encoding: .utf8)
+        }
+
+        XCTFail("Missing template resource: \(name)")
+        return ""
     }
 }

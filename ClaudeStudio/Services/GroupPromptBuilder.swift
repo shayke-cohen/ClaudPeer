@@ -2,13 +2,20 @@ import Foundation
 
 /// Builds `session.message` text for group chats: shared transcript delta + latest user line.
 ///
-/// **Watermark policy:** `lastInjectedMessageId` advances when that session’s own assistant
-/// message is persisted (`advanceWatermark`). Sessions that are waiting for the same user-turn
-/// prompt are excluded from peer fan-out so their next `buildMessageText` delta already includes
-/// prior agents’ new lines—no extra catch-up watermark is required.
+/// **Watermark policy:** `lastInjectedMessageId` tracks the last chat message already shown to a
+/// session, whether via a persisted assistant reply or an explicit catch-up mark for a no-op
+/// response. Parallel group waves may also provide an explicit transcript boundary so every
+/// recipient sees the same frozen snapshot even while other replies are arriving.
 enum GroupPromptBuilder {
     /// Rough cap for injected transcript (characters) to avoid huge prompts.
     static let maxInjectedCharacters = 120_000
+    static let noReplySentinel = "<NO_REPLY>"
+
+    enum PeerDeliveryReason {
+        case generic
+        case directMention
+        case broadcast
+    }
 
     // MARK: - Team Roster
 
@@ -57,8 +64,11 @@ enum GroupPromptBuilder {
     - Do not monopolize the conversation. Make your point and yield.
 
     **GitHub (when available)**
-    - Use GitHub issues and PRs for work that should be visible outside this chat.
+    - Use GitHub for durable artifacts that should survive this session: bugs, blockers, follow-up tasks, review requests, and implementation PRs.
+    - Keep ephemeral coordination in ClaudeStudio chat and on the blackboard.
     - Link issues and PRs in your messages so others can follow along.
+    - Mention another agent in GitHub only when you are asking for a concrete action such as review, handoff, or follow-up.
+    - When writing a substantive GitHub issue, PR description, or comment, add a short footer signature like: Posted by ClaudeStudio agent: Coder
     ---
 
     """
@@ -74,6 +84,10 @@ enum GroupPromptBuilder {
         latestUserMessageText: String,
         participants: [Participant],
         highlightedMentionAgentNames: [String] = [],
+        mentionedAll: Bool = false,
+        selectiveRepliesEnabled: Bool = false,
+        transcriptBoundaryMessageId: UUID? = nil,
+        allowNoReply: Bool = false,
         groupInstruction: String? = nil,
         role: GroupRole? = nil,
         teamMembers: [TeamMemberInfo] = []
@@ -93,7 +107,8 @@ enum GroupPromptBuilder {
         let deltaLines = deltaTranscriptLines(
             sortedChat: sortedChat,
             lastInjectedMessageId: targetSession.lastInjectedMessageId,
-            participants: participants
+            participants: participants,
+            throughMessageId: transcriptBoundaryMessageId
         )
 
         let transcriptBody = deltaLines.joined(separator: "\n")
@@ -117,9 +132,25 @@ enum GroupPromptBuilder {
             let names = highlightedMentionAgentNames
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
-            guard !names.isEmpty else { return "" }
+            guard !names.isEmpty || mentionedAll else { return "" }
+            if mentionedAll {
+                return "\nThe user addressed the whole group with @all. Reply if you can contribute something that materially advances the conversation or mission.\n"
+            }
             let joined = names.joined(separator: ", ")
             return "\nThe user specifically mentioned by name: \(joined). Address them directly when appropriate.\n"
+        }()
+        let directlyMentioned = highlightedMentionAgentNames.contains {
+            $0.caseInsensitiveCompare(agentName) == .orderedSame
+        }
+        let selectiveInstruction: String = {
+            if directlyMentioned {
+                return "\nYou were directly @mentioned by the user. You MUST respond substantively.\n"
+            }
+            if mentionedAll {
+                return "\nThe whole group was addressed. Reply only if you can add net-new information that materially advances the conversation or mission. If not, reply with exactly \(noReplySentinel) and nothing else.\n"
+            }
+            guard selectiveRepliesEnabled || allowNoReply else { return "" }
+            return "\nYou were not directly mentioned. Reply only if you can add net-new information that materially advances the conversation or mission. If not, reply with exactly \(noReplySentinel) and nothing else.\n"
         }()
         return """
         \(instructionBlock)\(roleBlock)\(rosterBlock)\(communicationGuidelines)--- Group thread (new since your last reply) ---
@@ -127,6 +158,7 @@ enum GroupPromptBuilder {
         --- End ---
         \(mentionNote)
         You are @\(agentName). Respond to the latest user message in this group.
+        \(selectiveInstruction)
         Latest user message:
         \"\"\"
         \(latestUserMessageText)
@@ -139,9 +171,11 @@ enum GroupPromptBuilder {
         senderLabel: String,
         peerMessageText: String,
         recipientSession: Session,
+        deliveryReason: PeerDeliveryReason = .generic,
+        selectiveRepliesEnabled: Bool = false,
+        allowNoReply: Bool = false,
         role: GroupRole? = nil,
-        teamMembers: [TeamMemberInfo] = [],
-        wasMentioned: Bool = false
+        teamMembers: [TeamMemberInfo] = []
     ) -> String {
         let name = recipientSession.agent?.name ?? "Assistant"
         let body = peerMessageText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -149,23 +183,48 @@ enum GroupPromptBuilder {
 
         let rosterBlock = buildTeamRoster(targetAgentName: name, teamMembers: teamMembers)
 
-        let mentionOverride: String
-        if wasMentioned {
-            mentionOverride = "**You were directly @mentioned in the above message. You MUST respond substantively.**\n\n"
-        } else {
-            mentionOverride = ""
-        }
+        let rolePrefix: String = {
+            switch role {
+            case .observer:
+                return "You are @\(name) (observer)."
+            case .scribe:
+                return "You are @\(name) (scribe)."
+            case .coordinator:
+                return "You are @\(name) (coordinator)."
+            default:
+                return "You are @\(name)."
+            }
+        }()
+        let roleSuffix: String = {
+            switch role {
+            case .observer:
+                return " Only reply if you are directly addressed by name or have critical information."
+            case .scribe:
+                return " If this exchange contains a decision or outcome, record it to the blackboard. You may also reply briefly to the group."
+            case .coordinator:
+                return " Consider whether this changes the plan or requires redirecting the group. Reply if you have guidance."
+            default:
+                return ""
+            }
+        }()
 
         let roleInstruction: String
-        switch role {
-        case .observer:
-            roleInstruction = "You are @\(name) (observer). Only reply if you are directly addressed by name or have critical information. Otherwise reply very briefly that you have nothing to add."
-        case .scribe:
-            roleInstruction = "You are @\(name) (scribe). If this exchange contains a decision or outcome, record it to the blackboard. You may also reply briefly to the group."
-        case .coordinator:
-            roleInstruction = "You are @\(name) (coordinator). Consider whether this changes the plan or requires redirecting the group. Reply if you have guidance."
-        default:
-            roleInstruction = "You are @\(name). Another participant posted the above in this shared group. You may reply to the whole group if you have something substantive to add; stay concise. If you have nothing useful to add, reply very briefly (e.g. that you have nothing to add)."
+        switch deliveryReason {
+        case .directMention:
+            roleInstruction = "\(rolePrefix) Another participant directly @mentioned you. You MUST respond substantively.\(role == nil ? "" : roleSuffix)"
+        case .broadcast:
+            let suffix = (selectiveRepliesEnabled || allowNoReply)
+                ? " Reply only if you can add net-new information that materially advances the conversation or mission. If not, reply with exactly \(noReplySentinel) and nothing else."
+                : " Reply if you have something substantive to add; stay concise."
+            roleInstruction = "\(rolePrefix) Another participant addressed the whole group with @all.\(suffix)\(role == nil ? "" : roleSuffix)"
+        case .generic:
+            if role == nil && allowNoReply {
+                roleInstruction = "\(rolePrefix) Another participant posted the above in this shared group. Reply only if you can add net-new information that materially advances the conversation or mission. If not, reply with exactly \(noReplySentinel) and nothing else."
+            } else if role == nil {
+                roleInstruction = "\(rolePrefix) Another participant posted the above in this shared group. You may reply to the whole group if you have something substantive to add; stay concise."
+            } else {
+                roleInstruction = "\(rolePrefix)\(roleSuffix)"
+            }
         }
 
         return """
@@ -173,7 +232,7 @@ enum GroupPromptBuilder {
         \(senderLabel): \(shown)
         --- End ---
 
-        \(mentionOverride)\(roleInstruction)
+        \(roleInstruction)
         """
     }
 
@@ -254,7 +313,8 @@ enum GroupPromptBuilder {
     private static func deltaTranscriptLines(
         sortedChat: [ConversationMessage],
         lastInjectedMessageId: UUID?,
-        participants: [Participant]
+        participants: [Participant],
+        throughMessageId: UUID?
     ) -> [String] {
         var startIndex = 0
         if let wid = lastInjectedMessageId,
@@ -264,9 +324,14 @@ enum GroupPromptBuilder {
             startIndex = 0
         }
 
-        guard startIndex < sortedChat.count else { return [] }
+        let endIndex: Int = {
+            guard let throughMessageId else { return sortedChat.count - 1 }
+            return sortedChat.firstIndex(where: { $0.id == throughMessageId }) ?? (sortedChat.count - 1)
+        }()
 
-        return sortedChat[startIndex...].map { msg in
+        guard startIndex <= endIndex, startIndex < sortedChat.count else { return [] }
+
+        return sortedChat[startIndex...endIndex].map { msg in
             let label = senderLabel(for: msg, participants: participants)
             let body = msg.text.trimmingCharacters(in: .whitespacesAndNewlines)
             return body.isEmpty ? "\(label): (empty)" : "\(label): \(body)"
@@ -295,5 +360,14 @@ enum GroupPromptBuilder {
     /// Call after persisting an assistant `ConversationMessage` for this session.
     static func advanceWatermark(session: Session, assistantMessage: ConversationMessage) {
         session.lastInjectedMessageId = assistantMessage.id
+    }
+
+    /// Call when a session consumed a prompt but intentionally produced no visible assistant reply.
+    static func markSessionCaughtUp(session: Session, through message: ConversationMessage?) {
+        session.lastInjectedMessageId = message?.id
+    }
+
+    static func isNoReplySentinel(_ text: String) -> Bool {
+        text.trimmingCharacters(in: .whitespacesAndNewlines) == noReplySentinel
     }
 }

@@ -137,6 +137,57 @@ final class GroupPromptBuilderTests: XCTestCase {
         XCTAssertTrue(built.contains("NEW"))
     }
 
+    func testTranscriptBoundaryFreezesSnapshotForParallelWave() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let a1 = Agent(name: "A1")
+        let a2 = Agent(name: "A2")
+        ctx.insert(a1)
+        ctx.insert(a2)
+
+        let convo = Conversation()
+        let s1 = Session(agent: a1, workingDirectory: "/tmp")
+        let s2 = Session(agent: a2, workingDirectory: "/tmp")
+        s1.conversations = [convo]
+        s2.conversations = [convo]
+        convo.sessions = [s1, s2]
+
+        let user = Participant(type: .user, displayName: "You")
+        user.conversation = convo
+        convo.participants.append(user)
+        let p1 = Participant(type: .agentSession(sessionId: s1.id), displayName: a1.name)
+        p1.conversation = convo
+        convo.participants.append(p1)
+        let p2 = Participant(type: .agentSession(sessionId: s2.id), displayName: a2.name)
+        p2.conversation = convo
+        convo.participants.append(p2)
+
+        let rootUser = ConversationMessage(senderParticipantId: user.id, text: "Root question", type: .chat, conversation: convo)
+        let laterReply = ConversationMessage(senderParticipantId: p2.id, text: "Later reply", type: .chat, conversation: convo)
+        convo.messages.append(contentsOf: [rootUser, laterReply])
+
+        ctx.insert(convo)
+        ctx.insert(s1)
+        ctx.insert(s2)
+        ctx.insert(user)
+        ctx.insert(p1)
+        ctx.insert(p2)
+        ctx.insert(rootUser)
+        ctx.insert(laterReply)
+
+        let built = GroupPromptBuilder.buildMessageText(
+            conversation: convo,
+            targetSession: s1,
+            latestUserMessageText: "Root question",
+            participants: convo.participants,
+            transcriptBoundaryMessageId: rootUser.id,
+            allowNoReply: true
+        )
+        XCTAssertTrue(built.contains("Root question"))
+        XCTAssertFalse(built.contains("Later reply"))
+        XCTAssertTrue(built.contains(GroupPromptBuilder.noReplySentinel))
+    }
+
     func testShouldUseGroupInjection() {
         XCTAssertFalse(GroupPromptBuilder.shouldUseGroupInjection(sessionCount: 1))
         XCTAssertFalse(GroupPromptBuilder.shouldUseGroupInjection(sessionCount: 0))
@@ -155,6 +206,21 @@ final class GroupPromptBuilderTests: XCTestCase {
 
         XCTAssertNil(session.lastInjectedMessageId)
         GroupPromptBuilder.advanceWatermark(session: session, assistantMessage: msg)
+        XCTAssertEqual(session.lastInjectedMessageId, msg.id)
+    }
+
+    func testMarkSessionCaughtUpSetsLastInjectedMessageId() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let agent = Agent(name: "A")
+        ctx.insert(agent)
+        let session = Session(agent: agent, workingDirectory: "/tmp")
+        let msg = ConversationMessage(text: "Seen", type: .chat)
+        ctx.insert(session)
+        ctx.insert(msg)
+
+        XCTAssertNil(session.lastInjectedMessageId)
+        GroupPromptBuilder.markSessionCaughtUp(session: session, through: msg)
         XCTAssertEqual(session.lastInjectedMessageId, msg.id)
     }
 
@@ -344,6 +410,111 @@ final class GroupPromptBuilderTests: XCTestCase {
         XCTAssertTrue(built.contains("specifically mentioned by name: A2"))
     }
 
+    func testSelectiveRepliesPromptForUnmentionedAgentIncludesNoReplySentinel() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let a1 = Agent(name: "A1")
+        let a2 = Agent(name: "A2")
+        ctx.insert(a1)
+        ctx.insert(a2)
+
+        let convo = Conversation()
+        let s1 = Session(agent: a1, workingDirectory: "/tmp")
+        let s2 = Session(agent: a2, workingDirectory: "/tmp")
+        s1.conversations = [convo]
+        s2.conversations = [convo]
+        convo.sessions = [s1, s2]
+
+        let user = Participant(type: .user, displayName: "You")
+        user.conversation = convo
+        convo.participants.append(user)
+        ctx.insert(convo)
+        ctx.insert(s1)
+        ctx.insert(s2)
+        ctx.insert(user)
+
+        let built = GroupPromptBuilder.buildMessageText(
+            conversation: convo,
+            targetSession: s1,
+            latestUserMessageText: "Hello",
+            participants: convo.participants,
+            highlightedMentionAgentNames: ["A2"],
+            selectiveRepliesEnabled: true
+        )
+        XCTAssertTrue(built.contains(GroupPromptBuilder.noReplySentinel))
+        XCTAssertTrue(built.contains("not directly mentioned"))
+    }
+
+    func testSelectiveRepliesPromptForDirectMentionRequiresSubstantiveReply() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let a1 = Agent(name: "A1")
+        let a2 = Agent(name: "A2")
+        ctx.insert(a1)
+        ctx.insert(a2)
+
+        let convo = Conversation()
+        let s1 = Session(agent: a1, workingDirectory: "/tmp")
+        let s2 = Session(agent: a2, workingDirectory: "/tmp")
+        s1.conversations = [convo]
+        s2.conversations = [convo]
+        convo.sessions = [s1, s2]
+
+        let user = Participant(type: .user, displayName: "You")
+        user.conversation = convo
+        convo.participants.append(user)
+        ctx.insert(convo)
+        ctx.insert(s1)
+        ctx.insert(s2)
+        ctx.insert(user)
+
+        let built = GroupPromptBuilder.buildMessageText(
+            conversation: convo,
+            targetSession: s1,
+            latestUserMessageText: "Hello",
+            participants: convo.participants,
+            highlightedMentionAgentNames: ["A1"],
+            selectiveRepliesEnabled: true
+        )
+        XCTAssertTrue(built.contains("MUST respond substantively"))
+        XCTAssertFalse(built.contains("not directly mentioned"))
+    }
+
+    func testSelectiveRepliesPromptForAtAllMentionsIncludesBroadcastInstruction() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let a1 = Agent(name: "A1")
+        let a2 = Agent(name: "A2")
+        ctx.insert(a1)
+        ctx.insert(a2)
+
+        let convo = Conversation()
+        let s1 = Session(agent: a1, workingDirectory: "/tmp")
+        let s2 = Session(agent: a2, workingDirectory: "/tmp")
+        s1.conversations = [convo]
+        s2.conversations = [convo]
+        convo.sessions = [s1, s2]
+
+        let user = Participant(type: .user, displayName: "You")
+        user.conversation = convo
+        convo.participants.append(user)
+        ctx.insert(convo)
+        ctx.insert(s1)
+        ctx.insert(s2)
+        ctx.insert(user)
+
+        let built = GroupPromptBuilder.buildMessageText(
+            conversation: convo,
+            targetSession: s1,
+            latestUserMessageText: "Hello",
+            participants: convo.participants,
+            mentionedAll: true,
+            selectiveRepliesEnabled: true
+        )
+        XCTAssertTrue(built.contains("@all"))
+        XCTAssertTrue(built.contains(GroupPromptBuilder.noReplySentinel))
+    }
+
     func testPeerNotifyPrompt() throws {
         let container = try makeContainer()
         let ctx = ModelContext(container)
@@ -382,25 +553,56 @@ final class GroupPromptBuilderTests: XCTestCase {
         )
     }
 
-    func testGroupPeerFanOutContextBudgetAndDedup() {
+    func testGroupPeerFanOutContextBudgetAndDedup() async {
         let t1 = UUID()
         let t2 = UUID()
         let msg = UUID()
 
-        let ctx = GroupPeerFanOutContext(maxAdditionalSidecarTurns: 2)
-        XCTAssertTrue(ctx.trySchedulePeerDelivery(targetSessionId: t1, triggerMessageId: msg))
-        XCTAssertTrue(ctx.trySchedulePeerDelivery(targetSessionId: t2, triggerMessageId: msg))
-        XCTAssertFalse(ctx.trySchedulePeerDelivery(targetSessionId: t1, triggerMessageId: msg))
-        XCTAssertFalse(ctx.trySchedulePeerDelivery(targetSessionId: t2, triggerMessageId: UUID()))
+        let ctx = GroupPeerFanOutContext(rootMessageId: UUID(), maxAdditionalSidecarTurns: 2)
+        let wave1 = await ctx.reservePeerWave(
+            triggerMessageId: msg,
+            transcriptBoundaryMessageId: msg,
+            candidateSessionIds: [t1, t2]
+        )
+        XCTAssertEqual(wave1?.recipientSessionIds, Set([t1, t2]))
+
+        let duplicate = await ctx.reservePeerWave(
+            triggerMessageId: msg,
+            transcriptBoundaryMessageId: msg,
+            candidateSessionIds: [t1]
+        )
+        XCTAssertNil(duplicate)
+
+        let exhausted = await ctx.reservePeerWave(
+            triggerMessageId: UUID(),
+            transcriptBoundaryMessageId: msg,
+            candidateSessionIds: [t2]
+        )
+        XCTAssertNil(exhausted)
     }
 
     /// Same target may receive another delivery when the trigger message id differs (new peer line).
-    func testGroupPeerFanOutContextSameTargetNewTriggerUsesBudget() {
+    func testGroupPeerFanOutContextSameTargetNewTriggerUsesBudget() async {
         let target = UUID()
-        let ctx = GroupPeerFanOutContext(maxAdditionalSidecarTurns: 2)
-        XCTAssertTrue(ctx.trySchedulePeerDelivery(targetSessionId: target, triggerMessageId: UUID()))
-        XCTAssertTrue(ctx.trySchedulePeerDelivery(targetSessionId: target, triggerMessageId: UUID()))
-        XCTAssertFalse(ctx.trySchedulePeerDelivery(targetSessionId: target, triggerMessageId: UUID()))
+        let ctx = GroupPeerFanOutContext(rootMessageId: UUID(), maxAdditionalSidecarTurns: 2)
+        let first = await ctx.reservePeerWave(
+            triggerMessageId: UUID(),
+            transcriptBoundaryMessageId: nil,
+            candidateSessionIds: [target]
+        )
+        XCTAssertNotNil(first)
+        let second = await ctx.reservePeerWave(
+            triggerMessageId: UUID(),
+            transcriptBoundaryMessageId: nil,
+            candidateSessionIds: [target]
+        )
+        XCTAssertNotNil(second)
+        let third = await ctx.reservePeerWave(
+            triggerMessageId: UUID(),
+            transcriptBoundaryMessageId: nil,
+            candidateSessionIds: [target]
+        )
+        XCTAssertNil(third)
     }
 
     func testSenderDisplayLabelForAgentParticipant() throws {
@@ -613,9 +815,9 @@ final class GroupPromptBuilderTests: XCTestCase {
         XCTAssertTrue(prompt.contains("[Your Team]"))
     }
 
-    // MARK: - wasMentioned Tests
+    // MARK: - Delivery Reason Tests
 
-    func testPeerNotifyWasMentionedTrue() throws {
+    func testPeerNotifyDirectMentionRequiresSubstantiveReply() throws {
         let container = try makeContainer()
         let ctx = ModelContext(container)
         let agent = Agent(name: "Target")
@@ -627,13 +829,13 @@ final class GroupPromptBuilderTests: XCTestCase {
             senderLabel: "Sender",
             peerMessageText: "@Target check this",
             recipientSession: session,
-            wasMentioned: true
+            deliveryReason: .directMention
         )
         XCTAssertTrue(prompt.contains("directly @mentioned"))
         XCTAssertTrue(prompt.contains("MUST respond substantively"))
     }
 
-    func testPeerNotifyWasMentionedFalse() throws {
+    func testPeerNotifyGenericDeliveryOmitsDirectMentionCopy() throws {
         let container = try makeContainer()
         let ctx = ModelContext(container)
         let agent = Agent(name: "Target")
@@ -644,13 +846,31 @@ final class GroupPromptBuilderTests: XCTestCase {
         let prompt = GroupPromptBuilder.buildPeerNotifyPrompt(
             senderLabel: "Sender",
             peerMessageText: "General message",
-            recipientSession: session,
-            wasMentioned: false
+            recipientSession: session
         )
         XCTAssertFalse(prompt.contains("directly @mentioned"))
     }
 
-    func testPeerNotifyMentionOverrideWithObserverRole() throws {
+    func testPeerNotifyBroadcastSelectiveIncludesNoReplySentinel() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let agent = Agent(name: "Target")
+        ctx.insert(agent)
+        let session = Session(agent: agent, workingDirectory: "/tmp")
+        ctx.insert(session)
+
+        let prompt = GroupPromptBuilder.buildPeerNotifyPrompt(
+            senderLabel: "Sender",
+            peerMessageText: "@all need eyes on this",
+            recipientSession: session,
+            deliveryReason: .broadcast,
+            selectiveRepliesEnabled: true
+        )
+        XCTAssertTrue(prompt.contains("addressed the whole group with @all"))
+        XCTAssertTrue(prompt.contains(GroupPromptBuilder.noReplySentinel))
+    }
+
+    func testPeerNotifyDirectMentionRetainsObserverContext() throws {
         let container = try makeContainer()
         let ctx = ModelContext(container)
         let agent = Agent(name: "Watcher")
@@ -662,10 +882,9 @@ final class GroupPromptBuilderTests: XCTestCase {
             senderLabel: "Sender",
             peerMessageText: "@Watcher need your input",
             recipientSession: session,
-            role: .observer,
-            wasMentioned: true
+            deliveryReason: .directMention,
+            role: .observer
         )
-        // Both should be present — mention override takes precedence but observer context is still there
         XCTAssertTrue(prompt.contains("directly @mentioned"))
         XCTAssertTrue(prompt.contains("MUST respond substantively"))
         XCTAssertTrue(prompt.contains("observer"))
@@ -673,41 +892,76 @@ final class GroupPromptBuilderTests: XCTestCase {
 
     // MARK: - Fan-Out Context Mention Delivery Tests
 
-    func testMentionDeliveryNoBudgetCost() {
+    func testMentionDeliveryNoBudgetCost() async {
         let t1 = UUID()
         let t2 = UUID()
         let msg = UUID()
 
-        let ctx = GroupPeerFanOutContext(maxAdditionalSidecarTurns: 1)
-        // Mention deliveries don't consume budget
-        XCTAssertTrue(ctx.tryScheduleMentionDelivery(targetSessionId: t1, triggerMessageId: msg))
-        XCTAssertTrue(ctx.tryScheduleMentionDelivery(targetSessionId: t2, triggerMessageId: msg))
-        // Budget of 1 is still available for generic fan-out
+        let ctx = GroupPeerFanOutContext(rootMessageId: UUID(), maxAdditionalSidecarTurns: 1)
+        let wave = await ctx.reservePeerWave(
+            triggerMessageId: msg,
+            transcriptBoundaryMessageId: nil,
+            candidateSessionIds: [t1, t2],
+            prioritySessionIds: Set([t1, t2])
+        )
+        XCTAssertEqual(wave?.recipientSessionIds, Set([t1, t2]))
+
         let t3 = UUID()
-        XCTAssertTrue(ctx.trySchedulePeerDelivery(targetSessionId: t3, triggerMessageId: msg))
-        // Now budget is exhausted
+        let genericWave = await ctx.reservePeerWave(
+            triggerMessageId: UUID(),
+            transcriptBoundaryMessageId: nil,
+            candidateSessionIds: [t3]
+        )
+        XCTAssertNotNil(genericWave)
+
         let t4 = UUID()
-        XCTAssertFalse(ctx.trySchedulePeerDelivery(targetSessionId: t4, triggerMessageId: msg))
+        let exhaustedWave = await ctx.reservePeerWave(
+            triggerMessageId: UUID(),
+            transcriptBoundaryMessageId: nil,
+            candidateSessionIds: [t4]
+        )
+        XCTAssertNil(exhaustedWave)
     }
 
-    func testMentionDeliveryDeduplicates() {
+    func testMentionDeliveryDeduplicates() async {
         let target = UUID()
         let msg = UUID()
 
-        let ctx = GroupPeerFanOutContext(maxAdditionalSidecarTurns: 5)
-        XCTAssertTrue(ctx.tryScheduleMentionDelivery(targetSessionId: target, triggerMessageId: msg))
-        XCTAssertFalse(ctx.tryScheduleMentionDelivery(targetSessionId: target, triggerMessageId: msg))
+        let ctx = GroupPeerFanOutContext(rootMessageId: UUID(), maxAdditionalSidecarTurns: 5)
+        let firstMentionWave = await ctx.reservePeerWave(
+            triggerMessageId: msg,
+            transcriptBoundaryMessageId: nil,
+            candidateSessionIds: [target],
+            prioritySessionIds: Set([target])
+        )
+        XCTAssertNotNil(firstMentionWave)
+        let duplicateMentionWave = await ctx.reservePeerWave(
+            triggerMessageId: msg,
+            transcriptBoundaryMessageId: nil,
+            candidateSessionIds: [target],
+            prioritySessionIds: Set([target])
+        )
+        XCTAssertNil(duplicateMentionWave)
     }
 
-    func testMentionDeliveryBlocksSubsequentPeerDelivery() {
+    func testMentionDeliveryBlocksSubsequentPeerDelivery() async {
         let target = UUID()
         let msg = UUID()
 
-        let ctx = GroupPeerFanOutContext(maxAdditionalSidecarTurns: 5)
-        // Mention delivery first
-        XCTAssertTrue(ctx.tryScheduleMentionDelivery(targetSessionId: target, triggerMessageId: msg))
-        // Same pair via peer delivery should be blocked (dedup)
-        XCTAssertFalse(ctx.trySchedulePeerDelivery(targetSessionId: target, triggerMessageId: msg))
+        let ctx = GroupPeerFanOutContext(rootMessageId: UUID(), maxAdditionalSidecarTurns: 5)
+        let mentionWave = await ctx.reservePeerWave(
+            triggerMessageId: msg,
+            transcriptBoundaryMessageId: nil,
+            candidateSessionIds: [target],
+            prioritySessionIds: Set([target])
+        )
+        XCTAssertNotNil(mentionWave)
+        let blockedGenericWave = await ctx.reservePeerWave(
+            triggerMessageId: msg,
+            transcriptBoundaryMessageId: nil,
+            candidateSessionIds: [target]
+        )
+        XCTAssertNil(blockedGenericWave)
     }
 
     func testHighlightedMentionMultipleAgentNames() throws {
@@ -755,8 +1009,14 @@ final class GroupPromptBuilderTests: XCTestCase {
         let guidelines = GroupPromptBuilder.communicationGuidelines
         XCTAssertTrue(guidelines.contains("GitHub (when available)"),
                        "Communication guidelines should include GitHub section")
-        XCTAssertTrue(guidelines.contains("GitHub issues and PRs"),
-                       "GitHub section should mention issues and PRs")
+        XCTAssertTrue(guidelines.contains("durable artifacts that should survive this session"),
+                       "GitHub section should describe durable work that belongs in GitHub")
+        XCTAssertTrue(guidelines.contains("Keep ephemeral coordination in ClaudeStudio chat and on the blackboard"),
+                       "GitHub section should distinguish durable artifacts from in-chat coordination")
+        XCTAssertTrue(guidelines.contains("Mention another agent in GitHub only when you are asking for a concrete action"),
+                       "GitHub section should keep mentions action-oriented")
+        XCTAssertTrue(guidelines.contains("Posted by ClaudeStudio agent: Coder"),
+                       "GitHub section should require lightweight agent attribution")
     }
 
     func testCommunicationGuidelinesPreserveExistingSections() {

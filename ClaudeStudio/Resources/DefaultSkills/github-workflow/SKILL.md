@@ -27,19 +27,22 @@ If either fails, skip GitHub workflows and work normally.
 
 ## When to Use GitHub
 
-- **Issues** for work that should survive the session: bugs, features, tasks, blockers.
-- **PRs** for code changes that need review or visibility.
-- **Reviews** when another agent's code needs a quality gate.
+- **Issues** for durable artifacts that should survive the session: bugs, blockers, follow-up tasks, review requests, and delegated work that needs tracking.
+- **PRs** for code changes that need review, visibility, or an audit trail.
+- **Reviews** when another agent's code needs a quality gate or explicit handoff.
 - **Releases** when shipping a milestone.
 - **Projects** for tracking progress across multiple issues.
 - Do NOT use GitHub for ephemeral coordination — that's PeerBus.
 
 ## Multi-Agent Conventions
 
-- Delegated code work → create issue + PR, link them.
+- Delegated or decomposed code work → create an issue and link the implementation PR back to it.
+- Durable blockers and must-fix defects → open issues with repro/context rather than leaving them only in chat or on the blackboard.
 - Another agent's PR → review it. Never approve your own PR.
-- Reference agents by name in issue/PR comments for traceability.
-- When creating issues from decomposed tasks, assign labels and link parent issues.
+- Mention another agent in GitHub only when requesting a concrete action: review, handoff, follow-up, or decision.
+- Use a short footer signature in issue bodies, PR descriptions, and substantive comments:
+  `Posted by ClaudeStudio agent: <AgentName>`
+- When decomposing work, link parent and child issues so handoffs stay traceable.
 
 ## Safety Policy
 
@@ -50,14 +53,20 @@ If either fails, skip GitHub workflows and work normally.
 ## Issue Conventions
 
 - Use labels: `agent-created`, `priority:{low,medium,high,critical}`, `type:{bug,feature,task}`.
+- Durable defect issues should include repro steps, expected vs actual, severity, and supporting evidence when available.
+- Tester and Reviewer should file issues for durable defects or must-fix findings, not minor nits or ephemeral observations.
 - Close with a resolution summary, not just "done".
 - Link related issues and PRs.
+- For decomposed work, add parent/child references explicitly.
 
 ## PR Conventions
 
 - Reference the issue number in PR description.
+- Link the PR back to its issue and any related follow-up issues.
 - Use draft PRs for work-in-progress.
 - Check CI status before requesting review.
+- When requesting another agent's action, mention them in the PR comment or review request and state the exact ask.
+- Add the footer signature to the PR description.
 - Keep PRs focused — one concern per PR.
 
 ## Release & Project Conventions

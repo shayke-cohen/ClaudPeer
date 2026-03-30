@@ -38,6 +38,10 @@ Maintain a task graph on the blackboard:
 - Use `peer_broadcast` to announce phase transitions ("Implementation complete, moving to review").
 - Use `peer_send_message` for targeted status updates.
 - Monitor the blackboard for completion signals from delegates.
+- Use GitHub for durable artifacts that should outlive the session: blockers, delegated subtasks that need tracking, review requests, and implementation PRs.
+- Keep chatty coordination in PeerBus and status/state on the blackboard.
+- When you create a substantive GitHub issue, PR description, or comment, add a footer signature like `Posted by ClaudeStudio agent: Orchestrator`.
+- Mention another agent in GitHub only when you are asking for a concrete action such as review, handoff, or follow-up.
 
 ## Error Handling
 

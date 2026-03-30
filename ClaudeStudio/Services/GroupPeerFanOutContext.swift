@@ -1,29 +1,79 @@
 import Foundation
 
+struct GroupWaveMetadata: Sendable {
+    let rootMessageId: UUID
+    let waveId: Int
+    let triggerMessageId: UUID
+    let transcriptBoundaryMessageId: UUID?
+    let recipientSessionIds: Set<UUID>
+}
+
 /// Budget and deduplication for automatic peer `session.message` fan-out in group chats.
-final class GroupPeerFanOutContext: @unchecked Sendable {
+actor GroupPeerFanOutContext {
+    let rootMessageId: UUID
     private var additionalTurnsRemaining: Int
     private var deliveredNotifyKeys: Set<String> = []
+    private var nextWaveId: Int = 1
 
-    init(maxAdditionalSidecarTurns: Int = 12) {
+    init(rootMessageId: UUID, maxAdditionalSidecarTurns: Int = 12) {
+        self.rootMessageId = rootMessageId
         self.additionalTurnsRemaining = maxAdditionalSidecarTurns
     }
 
-    /// Reserves budget and records this (target, trigger) pair, or returns false if duplicate or budget exhausted.
-    func trySchedulePeerDelivery(targetSessionId: UUID, triggerMessageId: UUID) -> Bool {
-        let key = "\(targetSessionId.uuidString)|\(triggerMessageId.uuidString)"
-        guard !deliveredNotifyKeys.contains(key) else { return false }
-        guard additionalTurnsRemaining > 0 else { return false }
-        additionalTurnsRemaining -= 1
-        deliveredNotifyKeys.insert(key)
-        return true
+    func makeRootWave(
+        triggerMessageId: UUID,
+        transcriptBoundaryMessageId: UUID?,
+        recipientSessionIds: [UUID]
+    ) -> GroupWaveMetadata {
+        let wave = GroupWaveMetadata(
+            rootMessageId: rootMessageId,
+            waveId: nextWaveId,
+            triggerMessageId: triggerMessageId,
+            transcriptBoundaryMessageId: transcriptBoundaryMessageId,
+            recipientSessionIds: Set(recipientSessionIds)
+        )
+        nextWaveId += 1
+        return wave
     }
 
-    /// Priority delivery for @mentioned agents — deduplicates but does NOT consume budget.
-    func tryScheduleMentionDelivery(targetSessionId: UUID, triggerMessageId: UUID) -> Bool {
-        let key = "\(targetSessionId.uuidString)|\(triggerMessageId.uuidString)"
-        guard !deliveredNotifyKeys.contains(key) else { return false }
-        deliveredNotifyKeys.insert(key)
-        return true
+    /// Reserves recipients for a peer-notify wave.
+    ///
+    /// Mentioned recipients bypass the additional-turn budget, but every
+    /// `(target, trigger)` pair is still delivered at most once.
+    func reservePeerWave(
+        triggerMessageId: UUID,
+        transcriptBoundaryMessageId: UUID?,
+        candidateSessionIds: [UUID],
+        prioritySessionIds: Set<UUID> = []
+    ) -> GroupWaveMetadata? {
+        var recipients: [UUID] = []
+
+        for targetSessionId in candidateSessionIds {
+            let key = "\(targetSessionId.uuidString)|\(triggerMessageId.uuidString)"
+            guard !deliveredNotifyKeys.contains(key) else { continue }
+
+            if prioritySessionIds.contains(targetSessionId) {
+                deliveredNotifyKeys.insert(key)
+                recipients.append(targetSessionId)
+                continue
+            }
+
+            guard additionalTurnsRemaining > 0 else { continue }
+            additionalTurnsRemaining -= 1
+            deliveredNotifyKeys.insert(key)
+            recipients.append(targetSessionId)
+        }
+
+        guard !recipients.isEmpty else { return nil }
+
+        let wave = GroupWaveMetadata(
+            rootMessageId: rootMessageId,
+            waveId: nextWaveId,
+            triggerMessageId: triggerMessageId,
+            transcriptBoundaryMessageId: transcriptBoundaryMessageId,
+            recipientSessionIds: Set(recipients)
+        )
+        nextWaveId += 1
+        return wave
     }
 }

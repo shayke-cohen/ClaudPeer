@@ -232,8 +232,9 @@ struct ChatView: View {
     @State private var inputText = ""
     @State private var inputHeight: CGFloat = PasteableTextField.minHeight
     @State private var isProcessing = false
-    @State private var lastTokenTime: Date?
-    @State private var processingStartTime: Date?
+    @State private var isManagingWaveResponses = false
+    @State private var lastTokenTimes: [String: Date] = [:]
+    @State private var processingStartTimes: [String: Date] = [:]
     @State private var isEditingTopic = false
     @State private var editedTopic = ""
     @State private var showClearConfirmation = false
@@ -241,10 +242,11 @@ struct ChatView: View {
     @State private var showFileImporter = false
     @State private var previewAttachment: MessageAttachment?
     @State private var previewImageFromPending: (data: Data, mediaType: String)?
-    @State private var isStreamingThinkingExpanded = false
-    /// Sidecar `Session.id` string currently receiving stream (sequential multi-agent).
-    @State private var activeStreamSessionKey: String?
-    @State private var streamingDisplayName: String = "Claude"
+    @State private var expandedStreamingThinkingSessionKeys: Set<String> = []
+    @State private var activeStreamingSessionKeys: Set<String> = []
+    @State private var activeStreamingDisplayNames: [String: String] = [:]
+    @State private var lastStreamingTextLengths: [String: Int] = [:]
+    @State private var queuedPeerDeliveriesBySession: [UUID: [QueuedPeerDelivery]] = [:]
     @State private var showSlashHelp = false
     @State private var showUnknownSlash = false
     @State private var unknownSlashName = ""
@@ -355,18 +357,26 @@ struct ChatView: View {
         activeStreamSessionKey ?? primarySession?.id.uuidString
     }
 
-    private var liveStreamingText: String? {
-        guard let key = streamSessionKeyForUI else { return nil }
-        let text = appState.streamingText[key]
-        guard let text, !text.isEmpty else { return nil }
-        return text
+    private var activeStreamSessionKey: String? {
+        activeStreamingSessionOrder.first
     }
 
-    private var liveThinkingText: String? {
-        guard let key = streamSessionKeyForUI else { return nil }
-        let text = appState.thinkingText[key]
-        guard let text, !text.isEmpty else { return nil }
-        return text
+    private var activeStreamingSessionOrder: [String] {
+        guard let convo = conversation else { return activeStreamingSessionKeys.sorted() }
+        let orderedConversationKeys = convo.sessions
+            .sorted { $0.startedAt < $1.startedAt }
+            .map { $0.id.uuidString }
+        let orderedActive = orderedConversationKeys.filter { activeStreamingSessionKeys.contains($0) }
+        let extraKeys = activeStreamingSessionKeys.subtracting(Set(orderedConversationKeys)).sorted()
+        return orderedActive + extraKeys
+    }
+
+    private var streamingContentVersion: Int {
+        activeStreamingSessionOrder.reduce(0) { partial, key in
+            partial
+                + (appState.streamingText[key]?.count ?? 0)
+                + (appState.thinkingText[key]?.count ?? 0)
+        }
     }
 
     private var mentionAutocompleteAgents: [Agent] {
@@ -389,7 +399,15 @@ struct ChatView: View {
     private var sendingToSubtitle: String? {
         guard let c = conversation, c.sessions.count > 1 else { return nil }
         let names = c.sessions.compactMap { $0.agent?.name ?? "Assistant" }
-        return "Group — " + names.joined(separator: ", ") + " · peer replies reach everyone"
+        let suffix = c.selectiveRepliesEnabled
+            ? " · unmentioned agents reply only when useful"
+            : " · peer replies can fan out to the group"
+        return "Group — " + names.joined(separator: ", ") + suffix
+    }
+
+    private var selectiveRepliesEnabledForConversation: Bool {
+        guard let convo = conversation, convo.sessions.count > 1 else { return false }
+        return convo.selectiveRepliesEnabled
     }
 
     /// Maps participantId → AgentAppearance for multi-agent conversations. `nil` for single-agent.
@@ -409,13 +427,25 @@ struct ChatView: View {
         return map.isEmpty ? nil : map
     }
 
-    /// Resolves the active streaming agent's appearance for multi-agent conversations.
-    private var streamingAgentAppearance: AgentAppearance? {
-        guard let convo = conversation, convo.sessions.count > 1 else { return nil }
-        guard let key = activeStreamSessionKey,
-              let sessionId = UUID(uuidString: key),
+    private func streamingDisplayName(for sidecarKey: String) -> String {
+        if let name = activeStreamingDisplayNames[sidecarKey] {
+            return name
+        }
+        guard let convo = conversation,
+              let sessionId = UUID(uuidString: sidecarKey),
+              let session = convo.sessions.first(where: { $0.id == sessionId }) else {
+            return "Claude"
+        }
+        return session.agent?.name ?? "Claude"
+    }
+
+    private func streamingAppearance(for sidecarKey: String) -> AgentAppearance? {
+        guard let convo = conversation, convo.sessions.count > 1,
+              let sessionId = UUID(uuidString: sidecarKey),
               let session = convo.sessions.first(where: { $0.id == sessionId }),
-              let agent = session.agent else { return nil }
+              let agent = session.agent else {
+            return nil
+        }
         return AgentAppearance(color: Color.fromAgentColor(agent.color), icon: agent.icon)
     }
 
@@ -424,7 +454,11 @@ struct ChatView: View {
         let key = streamSessionKeyForUI ?? ""
         let text = appState.streamingText[key] ?? ""
         let thinking = appState.thinkingText[key] ?? ""
-        let app = ChatTranscriptStreamingAppendix(text: text, thinking: thinking, displayName: streamingDisplayName)
+        let app = ChatTranscriptStreamingAppendix(
+            text: text,
+            thinking: thinking,
+            displayName: streamingDisplayName(for: key)
+        )
         return app.isEmpty ? nil : app
     }
 
@@ -460,27 +494,34 @@ struct ChatView: View {
             checkForCompletion(events: events)
         }
         .onReceive(appState.$streamingText) { texts in
-            if let key = streamSessionKeyForUI, texts[key] != nil {
-                lastTokenTime = Date()
+            for key in activeStreamingSessionKeys {
+                let newCount = texts[key]?.count ?? 0
+                let previousCount = lastStreamingTextLengths[key] ?? 0
+                if newCount > previousCount {
+                    lastTokenTimes[key] = Date()
+                }
+                lastStreamingTextLengths[key] = newCount
             }
         }
         .onReceive(appState.$sidecarStatus) { status in
             if status != .connected && isProcessing {
                 isProcessing = false
-                processingStartTime = nil
+                processingStartTimes.removeAll()
+                activeStreamingSessionKeys.removeAll()
+                activeStreamingDisplayNames.removeAll()
+                queuedPeerDeliveriesBySession.removeAll()
             }
         }
         .onReceive(Timer.publish(every: 5, on: .main, in: .common).autoconnect()) { _ in
-            guard isProcessing, let start = processingStartTime else { return }
-            let elapsed = Date().timeIntervalSince(start)
-            let key = streamSessionKeyForUI ?? ""
-            let hasStreamingText = !(appState.streamingText[key]?.isEmpty ?? true)
-            if elapsed > 120 && !hasStreamingText {
-                Log.chat.warning("Timeout: no response after \(Int(elapsed))s for \(key, privacy: .public)")
-                isProcessing = false
-                processingStartTime = nil
-                if !key.isEmpty {
+            guard isProcessing else { return }
+            for key in activeStreamingSessionKeys {
+                guard let start = processingStartTimes[key] else { continue }
+                let elapsed = Date().timeIntervalSince(start)
+                let hasStreamingText = !(appState.streamingText[key]?.isEmpty ?? true)
+                if elapsed > 120 && !hasStreamingText {
+                    Log.chat.warning("Timeout: no response after \(Int(elapsed))s for \(key, privacy: .public)")
                     appState.lastSessionEvent[key] = .error("No response received (timeout)")
+                    processingStartTimes.removeValue(forKey: key)
                 }
             }
         }
@@ -512,9 +553,10 @@ struct ChatView: View {
             while isProcessing {
                 try? await Task.sleep(for: .seconds(3))
                 guard isProcessing else { return }
+                guard !isManagingWaveResponses else { continue }
                 let key = streamSessionKeyForUI ?? ""
                 let hasText = appState.streamingText[key] != nil
-                let stale = lastTokenTime.map { Date().timeIntervalSince($0) > 3 } ?? false
+                let stale = lastTokenTimes[key].map { Date().timeIntervalSince($0) > 3 } ?? false
                 if hasText && stale {
                     collectResponseIfSingle()
                     return
@@ -1071,7 +1113,7 @@ struct ChatView: View {
                     guard shouldAutoScroll || !isProcessing else { return }
                     scrollToBottom(proxy, animated: true)
                 }
-                .onChange(of: liveStreamingText) { _, _ in
+                .onChange(of: streamingContentVersion) { _, _ in
                     guard isProcessing, shouldAutoScroll else { return }
                     scrollToBottom(proxy, animated: false)
                 }
@@ -1225,6 +1267,26 @@ struct ChatView: View {
                 .accessibilityLabel("Toggle plan mode")
                 .help(planModeEnabled ? "Plan mode on — agent will read and plan only" : "Plan mode off — agent can make changes")
                 .disabled(isProcessing)
+
+                if conversation?.sessions.count ?? 0 > 1 {
+                    Button {
+                        conversation?.selectiveRepliesEnabled.toggle()
+                        try? modelContext.save()
+                    } label: {
+                        Label("Selective", systemImage: "line.3.horizontal.decrease.circle")
+                            .font(captionFont)
+                            .foregroundStyle(selectiveRepliesEnabledForConversation ? .green : .secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .xrayId("chat.selectiveRepliesToggle")
+                    .accessibilityLabel("Toggle selective replies")
+                    .help(
+                        selectiveRepliesEnabledForConversation
+                        ? "Selective replies on — unmentioned agents should stay quiet unless they can materially advance the conversation"
+                        : "Selective replies off — peer replies may fan out more broadly"
+                    )
+                    .disabled(isProcessing)
+                }
 
                 Spacer()
 
@@ -1647,31 +1709,44 @@ struct ChatView: View {
 
     @ViewBuilder
     private var streamingBubble: some View {
-        let appearance = streamingAgentAppearance
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(activeStreamingSessionOrder, id: \.self) { sidecarKey in
+                streamingBubble(for: sidecarKey)
+                    .id("streaming-\(sidecarKey)")
+            }
+        }
+        .xrayId("chat.streamingBubble")
+    }
+
+    @ViewBuilder
+    private func streamingBubble(for sidecarKey: String) -> some View {
+        let appearance = streamingAppearance(for: sidecarKey)
+        let thinking = appState.thinkingText[sidecarKey]
+        let text = appState.streamingText[sidecarKey]
+
         HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 4) {
                     Image(systemName: appearance?.icon ?? "cpu")
                         .font(caption2Font)
                         .foregroundStyle(appearance?.color ?? .purple)
-                    Text(streamingDisplayName)
+                    Text(streamingDisplayName(for: sidecarKey))
                         .font(captionFont)
                         .foregroundStyle(appearance?.color ?? .secondary)
-                    if let key = activeStreamSessionKey,
-                       let state = appState.sessionActivity[key] {
+                    if let state = appState.sessionActivity[sidecarKey] {
                         Text(state.displayLabel)
                             .font(caption2Font)
                             .foregroundStyle(state.displayColor.opacity(0.8))
                     }
                 }
 
-                if let thinking = liveThinkingText {
-                    streamingThinkingSection(thinking)
+                if let thinking, !thinking.isEmpty {
+                    streamingThinkingSection(thinking, sidecarKey: sidecarKey)
                 }
 
-                if let text = liveStreamingText {
+                if let text, !text.isEmpty {
                     MarkdownContent(text: text)
-                } else if liveThinkingText == nil {
+                } else if thinking?.isEmpty != false {
                     StreamingIndicator()
                 }
             }
@@ -1682,15 +1757,19 @@ struct ChatView: View {
 
             Spacer(minLength: 60)
         }
-        .xrayId("chat.streamingBubble")
     }
 
     @ViewBuilder
-    private func streamingThinkingSection(_ thinking: String) -> some View {
+    private func streamingThinkingSection(_ thinking: String, sidecarKey: String) -> some View {
+        let isExpanded = expandedStreamingThinkingSessionKeys.contains(sidecarKey)
         VStack(alignment: .leading, spacing: 0) {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    isStreamingThinkingExpanded.toggle()
+                    if isExpanded {
+                        expandedStreamingThinkingSessionKeys.remove(sidecarKey)
+                    } else {
+                        expandedStreamingThinkingSessionKeys.insert(sidecarKey)
+                    }
                 }
             } label: {
                 HStack(spacing: 4) {
@@ -1703,7 +1782,7 @@ struct ChatView: View {
                         .foregroundStyle(.indigo)
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .rotationEffect(.degrees(isStreamingThinkingExpanded ? 90 : 0))
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
                         .font(caption2Font)
                         .foregroundStyle(.secondary)
                 }
@@ -1711,10 +1790,10 @@ struct ChatView: View {
                 .padding(.vertical, 5)
             }
             .buttonStyle(.plain)
-            .xrayId("chat.streamingThinkingToggle")
-            .accessibilityLabel(isStreamingThinkingExpanded ? "Collapse thinking" : "Expand thinking")
+            .xrayId("chat.streamingThinkingToggle.\(sidecarKey)")
+            .accessibilityLabel(isExpanded ? "Collapse thinking" : "Expand thinking")
 
-            if isStreamingThinkingExpanded {
+            if isExpanded {
                 Divider()
                 ScrollView {
                     Text(thinking)
@@ -1759,7 +1838,7 @@ struct ChatView: View {
     }
 
     private var summaryDuration: TimeInterval? {
-        guard let start = processingStartTime else { return nil }
+        guard let start = processingStartTimes.values.min() else { return nil }
         return Date().timeIntervalSince(start)
     }
 
@@ -2061,6 +2140,7 @@ struct ChatView: View {
         pendingAttachments = []
 
         let mentionNames = ChatSendRouting.mentionedAgentNames(in: text)
+        let mentionedAll = ChatSendRouting.containsMentionAll(in: text)
         let (resolvedMentionAgents, unknownMentions) = ChatSendRouting.resolveMentionedAgents(
             names: mentionNames,
             agents: allAgents
@@ -2156,16 +2236,25 @@ struct ChatView: View {
         }
 
         isProcessing = true
-        processingStartTime = Date()
+        isManagingWaveResponses = true
+        activeStreamingSessionKeys.removeAll()
+        activeStreamingDisplayNames.removeAll()
+        processingStartTimes.removeAll()
+        lastTokenTimes.removeAll()
+        lastStreamingTextLengths.removeAll()
+        expandedStreamingThinkingSessionKeys.removeAll()
+        queuedPeerDeliveriesBySession.removeAll()
 
         let mentionHighlightNames = resolvedMentionAgents.map(\.name)
         let currentPlanMode = planModeEnabled
         Task { @MainActor in
-            await runSequentialAgentTurns(
+            await runParallelAgentTurns(
                 convo: convo,
+                rootMessage: message,
                 targetSessions: targetSessions,
                 latestUserText: text,
                 highlightedMentionAgentNames: mentionHighlightNames,
+                mentionedAll: mentionedAll,
                 wireAttachments: wireAttachments,
                 manager: manager,
                 planMode: currentPlanMode
@@ -2173,136 +2262,74 @@ struct ChatView: View {
         }
     }
 
+    private struct PendingGroupCompletion: Sendable {
+        let sessionId: UUID
+        let sidecarKey: String
+        let seenThroughMessageId: UUID?
+        let wave: GroupWaveMetadata
+        let planMode: Bool
+    }
+
+    private struct QueuedPeerDelivery {
+        let prompt: String
+        let seenThroughMessageId: UUID?
+        let wave: GroupWaveMetadata
+    }
+
     @MainActor
-    private func runSequentialAgentTurns(
+    private func runParallelAgentTurns(
         convo: Conversation,
+        rootMessage: ConversationMessage,
         targetSessions: [Session],
         latestUserText: String,
         highlightedMentionAgentNames: [String],
+        mentionedAll: Bool,
         wireAttachments: [WireAttachment],
         manager: SidecarManager,
         planMode: Bool = false
     ) async {
-        // Ensure worktree exists for this conversation (lazy — created on first message)
         let worktreePath = await WorktreeManager.ensureWorktree(
             for: convo,
             projectDirectory: windowState.projectDirectory,
             modelContext: modelContext
         )
-        // Update all sessions to use the worktree path
         for session in targetSessions where session.workingDirectory != worktreePath {
             session.workingDirectory = worktreePath
         }
         try? modelContext.save()
+
         let participants = convo.participants
         let provisioner = AgentProvisioner(modelContext: modelContext)
-        let fanOutContext = GroupPeerFanOutContext()
+        let fanOutContext = GroupPeerFanOutContext(rootMessageId: rootMessage.id)
+        let rootWave = await fanOutContext.makeRootWave(
+            triggerMessageId: rootMessage.id,
+            transcriptBoundaryMessageId: rootMessage.id,
+            recipientSessionIds: targetSessions.map(\.id)
+        )
+        let initialPending = await launchUserWave(
+            convo: convo,
+            targetSessions: targetSessions,
+            latestUserText: latestUserText,
+            highlightedMentionAgentNames: highlightedMentionAgentNames,
+            mentionedAll: mentionedAll,
+            wireAttachments: wireAttachments,
+            manager: manager,
+            provisioner: provisioner,
+            worktreePath: worktreePath,
+            wave: rootWave,
+            planMode: planMode
+        )
+        await processPendingGroupCompletions(
+            initialPending: initialPending,
+            convo: convo,
+            manager: manager,
+            provisioner: provisioner,
+            participants: participants,
+            context: fanOutContext
+        )
 
-        for (index, session) in targetSessions.enumerated() {
-            let sidecarKey = session.id.uuidString
-            activeStreamSessionKey = sidecarKey
-            streamingDisplayName = session.agent?.name ?? "Claude"
-
-            appState.streamingText.removeValue(forKey: sidecarKey)
-            appState.thinkingText.removeValue(forKey: sidecarKey)
-            appState.lastSessionEvent.removeValue(forKey: sidecarKey)
-            appState.sessionActivity[sidecarKey] = .idle
-
-            var createConfig: AgentConfig?
-            if !appState.createdSessions.contains(sidecarKey) {
-                if session.agent != nil {
-                    session.workingDirectory = session.workingDirectory.isEmpty ? worktreePath : session.workingDirectory
-                    createConfig = provisioner.config(for: session)
-                } else {
-                    createConfig = makeFreeformAgentConfig()
-                }
-            }
-
-            let sourceGroup: AgentGroup? = {
-                guard let gid = convo.sourceGroupId else { return nil }
-                let desc = FetchDescriptor<AgentGroup>(predicate: #Predicate { $0.id == gid })
-                return try? modelContext.fetch(desc).first
-            }()
-            let groupInstruction = sourceGroup?.groupInstruction
-            let agentRole: GroupRole? = {
-                guard let group = sourceGroup, let agentId = session.agent?.id else { return nil }
-                return group.roleFor(agentId: agentId)
-            }()
-
-            let teamMembers: [GroupPromptBuilder.TeamMemberInfo] = convo.sessions
-                .filter { $0.id != session.id }
-                .compactMap { s in
-                    guard let agent = s.agent else { return nil }
-                    let role = sourceGroup?.roleFor(agentId: agent.id) ?? .participant
-                    return .init(name: agent.name, description: agent.agentDescription, role: role)
-                }
-
-            let promptText = GroupPromptBuilder.buildMessageText(
-                conversation: convo,
-                targetSession: session,
-                latestUserMessageText: latestUserText,
-                participants: participants,
-                highlightedMentionAgentNames: highlightedMentionAgentNames,
-                groupInstruction: groupInstruction,
-                role: agentRole,
-                teamMembers: teamMembers
-            )
-
-            do {
-                session.status = .active
-                if let config = createConfig {
-                    try await manager.send(.sessionCreate(
-                        conversationId: sidecarKey,
-                        agentConfig: config
-                    ))
-                    appState.createdSessions.insert(sidecarKey)
-                }
-                try await manager.send(.sessionMessage(
-                    sessionId: sidecarKey,
-                    text: promptText,
-                    attachments: wireAttachments,
-                    planMode: planMode
-                ))
-            } catch {
-                isProcessing = false
-                activeStreamSessionKey = nil
-                appState.lastSessionEvent[sidecarKey] = .error("Failed to send: \(error.localizedDescription)")
-                return
-            }
-
-            await waitForSessionCompletion(sidecarKey: sidecarKey)
-
-            guard let stillConvo = conversation, stillConvo.id == convo.id else {
-                isProcessing = false
-                activeStreamSessionKey = nil
-                return
-            }
-
-            if let reply = finalizeAssistantStreamIntoMessage(
-                convo: stillConvo,
-                session: session,
-                sidecarKey: sidecarKey
-            ) {
-                if planMode {
-                    lastPlanResponseMessageId = reply.id
-                }
-                let pendingUserTurnIds = Set(targetSessions.suffix(from: index + 1).map(\.id))
-                await fanOutPeerNotifications(
-                    fromSession: session,
-                    triggerMessage: reply,
-                    convo: stillConvo,
-                    skipRecipientSessionIds: pendingUserTurnIds,
-                    manager: manager,
-                    provisioner: provisioner,
-                    participants: participants,
-                    context: fanOutContext
-                )
-            }
-        }
-
+        isManagingWaveResponses = false
         isProcessing = false
-        activeStreamSessionKey = nil
-        streamingDisplayName = "Claude"
     }
 
     private func makeFreeformAgentConfig() -> AgentConfig {
@@ -2321,37 +2348,216 @@ struct ChatView: View {
         )
     }
 
-    /// Delivers peer messages to other agents (`may_reply`); skips recipients that still have their user-turn prompt pending in `runSequentialAgentTurns`.
-    /// Mentioned agents (@Name / @all) get priority delivery that bypasses fan-out budget.
     @MainActor
-    private func fanOutPeerNotifications(
+    private func beginStreamingState(for session: Session) {
+        let sidecarKey = session.id.uuidString
+        activeStreamingSessionKeys.insert(sidecarKey)
+        activeStreamingDisplayNames[sidecarKey] = session.agent?.name ?? "Claude"
+        appState.streamingText.removeValue(forKey: sidecarKey)
+        appState.thinkingText.removeValue(forKey: sidecarKey)
+        appState.lastSessionEvent.removeValue(forKey: sidecarKey)
+        appState.sessionActivity[sidecarKey] = .idle
+        processingStartTimes[sidecarKey] = Date()
+        lastTokenTimes.removeValue(forKey: sidecarKey)
+        lastStreamingTextLengths[sidecarKey] = 0
+    }
+
+    @MainActor
+    private func finishStreamingState(for sidecarKey: String) {
+        activeStreamingSessionKeys.remove(sidecarKey)
+        activeStreamingDisplayNames.removeValue(forKey: sidecarKey)
+        processingStartTimes.removeValue(forKey: sidecarKey)
+        lastTokenTimes.removeValue(forKey: sidecarKey)
+        lastStreamingTextLengths.removeValue(forKey: sidecarKey)
+        expandedStreamingThinkingSessionKeys.remove(sidecarKey)
+    }
+
+    @MainActor
+    private func sourceGroup(for convo: Conversation) -> AgentGroup? {
+        guard let gid = convo.sourceGroupId else { return nil }
+        let desc = FetchDescriptor<AgentGroup>(predicate: #Predicate { $0.id == gid })
+        return try? modelContext.fetch(desc).first
+    }
+
+    private func groupRole(for session: Session, sourceGroup: AgentGroup?) -> GroupRole? {
+        guard let group = sourceGroup, let agentId = session.agent?.id else { return nil }
+        return group.roleFor(agentId: agentId)
+    }
+
+    private func teamMembers(
+        excluding session: Session,
+        in convo: Conversation,
+        sourceGroup: AgentGroup?
+    ) -> [GroupPromptBuilder.TeamMemberInfo] {
+        convo.sessions
+            .filter { $0.id != session.id }
+            .compactMap { other in
+                guard let agent = other.agent else { return nil }
+                let role = sourceGroup?.roleFor(agentId: agent.id) ?? .participant
+                return .init(name: agent.name, description: agent.agentDescription, role: role)
+            }
+    }
+
+    @MainActor
+    private func sendPrompt(
+        to session: Session,
+        prompt: String,
+        attachments: [WireAttachment],
+        manager: SidecarManager,
+        provisioner: AgentProvisioner,
+        worktreePath: String? = nil,
+        planMode: Bool,
+        errorPrefix: String,
+        seenThroughMessageId: UUID?,
+        wave: GroupWaveMetadata
+    ) async -> PendingGroupCompletion? {
+        let sidecarKey = session.id.uuidString
+        beginStreamingState(for: session)
+
+        var createConfig: AgentConfig?
+        if !appState.createdSessions.contains(sidecarKey) {
+            if session.agent != nil {
+                if let worktreePath {
+                    session.workingDirectory = session.workingDirectory.isEmpty ? worktreePath : session.workingDirectory
+                }
+                createConfig = provisioner.config(for: session)
+            } else {
+                createConfig = makeFreeformAgentConfig()
+            }
+        }
+
+        do {
+            session.status = .active
+            if let config = createConfig {
+                try await manager.send(.sessionCreate(
+                    conversationId: sidecarKey,
+                    agentConfig: config
+                ))
+                appState.createdSessions.insert(sidecarKey)
+            }
+            try await manager.send(.sessionMessage(
+                sessionId: sidecarKey,
+                text: prompt,
+                attachments: attachments,
+                planMode: planMode
+            ))
+            return PendingGroupCompletion(
+                sessionId: session.id,
+                sidecarKey: sidecarKey,
+                seenThroughMessageId: seenThroughMessageId,
+                wave: wave,
+                planMode: planMode
+            )
+        } catch {
+            appState.lastSessionEvent[sidecarKey] = .error("\(errorPrefix): \(error.localizedDescription)")
+            finishStreamingState(for: sidecarKey)
+            return nil
+        }
+    }
+
+    @MainActor
+    private func flushQueuedPeerDelivery(
+        for session: Session,
+        manager: SidecarManager,
+        provisioner: AgentProvisioner
+    ) async -> PendingGroupCompletion? {
+        guard var queued = queuedPeerDeliveriesBySession[session.id], !queued.isEmpty else { return nil }
+        let next = queued.removeFirst()
+        if queued.isEmpty {
+            queuedPeerDeliveriesBySession.removeValue(forKey: session.id)
+        } else {
+            queuedPeerDeliveriesBySession[session.id] = queued
+        }
+        return await sendPrompt(
+            to: session,
+            prompt: next.prompt,
+            attachments: [],
+            manager: manager,
+            provisioner: provisioner,
+            planMode: false,
+            errorPrefix: "Peer notify failed",
+            seenThroughMessageId: next.seenThroughMessageId,
+            wave: next.wave
+        )
+    }
+
+    @MainActor
+    private func launchUserWave(
+        convo: Conversation,
+        targetSessions: [Session],
+        latestUserText: String,
+        highlightedMentionAgentNames: [String],
+        mentionedAll: Bool,
+        wireAttachments: [WireAttachment],
+        manager: SidecarManager,
+        provisioner: AgentProvisioner,
+        worktreePath: String,
+        wave: GroupWaveMetadata,
+        planMode: Bool
+    ) async -> [PendingGroupCompletion] {
+        let sourceGroup = sourceGroup(for: convo)
+        let groupInstruction = sourceGroup?.groupInstruction
+        let participants = convo.participants
+        var pending: [PendingGroupCompletion] = []
+
+        for session in targetSessions where wave.recipientSessionIds.contains(session.id) {
+            let promptText = GroupPromptBuilder.buildMessageText(
+                conversation: convo,
+                targetSession: session,
+                latestUserMessageText: latestUserText,
+                participants: participants,
+                highlightedMentionAgentNames: highlightedMentionAgentNames,
+                mentionedAll: mentionedAll,
+                selectiveRepliesEnabled: convo.selectiveRepliesEnabled,
+                transcriptBoundaryMessageId: wave.transcriptBoundaryMessageId,
+                allowNoReply: true,
+                groupInstruction: groupInstruction,
+                role: groupRole(for: session, sourceGroup: sourceGroup),
+                teamMembers: teamMembers(excluding: session, in: convo, sourceGroup: sourceGroup)
+            )
+
+            if let launched = await sendPrompt(
+                to: session,
+                prompt: promptText,
+                attachments: wireAttachments,
+                manager: manager,
+                provisioner: provisioner,
+                worktreePath: worktreePath,
+                planMode: planMode,
+                errorPrefix: "Failed to send",
+                seenThroughMessageId: wave.transcriptBoundaryMessageId,
+                wave: wave
+            ) {
+                pending.append(launched)
+            }
+        }
+
+        return pending
+    }
+
+    @MainActor
+    private func launchPeerWave(
         fromSession: Session,
         triggerMessage: ConversationMessage,
         convo: Conversation,
-        skipRecipientSessionIds: Set<UUID>,
         manager: SidecarManager,
         provisioner: AgentProvisioner,
         participants: [Participant],
         context: GroupPeerFanOutContext
-    ) async {
-        guard convo.sessions.count > 1 else { return }
+    ) async -> [PendingGroupCompletion] {
+        guard convo.sessions.count > 1 else { return [] }
 
-        // Check auto-reply toggle on the source group
-        let sourceGroup: AgentGroup? = {
-            guard let gid = convo.sourceGroupId else { return nil }
-            let desc = FetchDescriptor<AgentGroup>(predicate: #Predicate { $0.id == gid })
-            return try? modelContext.fetch(desc).first
-        }()
-        if let group = sourceGroup, !group.autoReplyEnabled { return }
+        let sourceGroup = sourceGroup(for: convo)
+        if let group = sourceGroup, !group.autoReplyEnabled { return [] }
 
         let senderLabel = GroupPromptBuilder.senderDisplayLabel(for: triggerMessage, participants: participants)
         let sortedOthers = convo.sessions
-            .filter { $0.id != fromSession.id && !skipRecipientSessionIds.contains($0.id) }
+            .filter { $0.id != fromSession.id }
             .sorted { $0.startedAt < $1.startedAt }
 
-        // Detect @mentions in the trigger message
         let mentionNames = ChatSendRouting.mentionedAgentNames(in: triggerMessage.text)
         let isAllMention = ChatSendRouting.containsMentionAll(in: triggerMessage.text)
+        let selectiveRepliesEnabled = convo.selectiveRepliesEnabled
 
         let mentionedSessionIds: Set<UUID>
         if isAllMention {
@@ -2364,124 +2570,146 @@ struct ChatView: View {
             }.map(\.id))
         }
 
-        // Phase 1: Mentioned agents — priority delivery, no budget cost
-        for other in sortedOthers where mentionedSessionIds.contains(other.id) {
-            guard context.tryScheduleMentionDelivery(targetSessionId: other.id, triggerMessageId: triggerMessage.id) else {
-                continue
-            }
-            await deliverPeerNotification(
-                to: other, from: fromSession, triggerMessage: triggerMessage,
-                senderLabel: senderLabel, convo: convo, sourceGroup: sourceGroup,
-                wasMentioned: true, manager: manager, provisioner: provisioner,
-                participants: participants, context: context
-            )
+        let candidateSessions: [Session]
+        if selectiveRepliesEnabled {
+            guard isAllMention || !mentionedSessionIds.isEmpty else { return [] }
+            candidateSessions = sortedOthers.filter { mentionedSessionIds.contains($0.id) }
+        } else {
+            candidateSessions = sortedOthers
         }
 
-        // Phase 2: Non-mentioned agents — budget-limited generic fan-out
-        for other in sortedOthers where !mentionedSessionIds.contains(other.id) {
-            guard context.trySchedulePeerDelivery(targetSessionId: other.id, triggerMessageId: triggerMessage.id) else {
+        guard let wave = await context.reservePeerWave(
+            triggerMessageId: triggerMessage.id,
+            transcriptBoundaryMessageId: triggerMessage.id,
+            candidateSessionIds: candidateSessions.map(\.id),
+            prioritySessionIds: mentionedSessionIds
+        ) else {
+            return []
+        }
+
+        var pending: [PendingGroupCompletion] = []
+        for other in candidateSessions where wave.recipientSessionIds.contains(other.id) {
+            let key = other.id.uuidString
+
+            let deliveryReason: GroupPromptBuilder.PeerDeliveryReason
+            if mentionedSessionIds.contains(other.id) {
+                deliveryReason = isAllMention ? .broadcast : .directMention
+            } else {
+                deliveryReason = .generic
+            }
+
+            let prompt = GroupPromptBuilder.buildPeerNotifyPrompt(
+                senderLabel: senderLabel,
+                peerMessageText: triggerMessage.text,
+                recipientSession: other,
+                deliveryReason: deliveryReason,
+                selectiveRepliesEnabled: convo.selectiveRepliesEnabled,
+                allowNoReply: true,
+                role: groupRole(for: other, sourceGroup: sourceGroup),
+                teamMembers: teamMembers(excluding: other, in: convo, sourceGroup: sourceGroup)
+            )
+
+            if activeStreamingSessionKeys.contains(key) {
+                queuedPeerDeliveriesBySession[other.id, default: []].append(
+                    QueuedPeerDelivery(
+                        prompt: prompt,
+                        seenThroughMessageId: triggerMessage.id,
+                        wave: wave
+                    )
+                )
                 continue
             }
-            await deliverPeerNotification(
-                to: other, from: fromSession, triggerMessage: triggerMessage,
-                senderLabel: senderLabel, convo: convo, sourceGroup: sourceGroup,
-                wasMentioned: false, manager: manager, provisioner: provisioner,
-                participants: participants, context: context
-            )
+
+            if let launched = await sendPrompt(
+                to: other,
+                prompt: prompt,
+                attachments: [],
+                manager: manager,
+                provisioner: provisioner,
+                planMode: false,
+                errorPrefix: "Peer notify failed",
+                seenThroughMessageId: triggerMessage.id,
+                wave: wave
+            ) {
+                pending.append(launched)
+            }
         }
+
+        return pending
     }
 
     @MainActor
-    private func deliverPeerNotification(
-        to other: Session,
-        from fromSession: Session,
-        triggerMessage: ConversationMessage,
-        senderLabel: String,
+    private func processPendingGroupCompletions(
+        initialPending: [PendingGroupCompletion],
         convo: Conversation,
-        sourceGroup: AgentGroup?,
-        wasMentioned: Bool,
         manager: SidecarManager,
         provisioner: AgentProvisioner,
         participants: [Participant],
         context: GroupPeerFanOutContext
     ) async {
-        let key = other.id.uuidString
-        activeStreamSessionKey = key
-        streamingDisplayName = other.agent?.name ?? "Claude"
-        appState.streamingText.removeValue(forKey: key)
-        appState.thinkingText.removeValue(forKey: key)
-        appState.lastSessionEvent.removeValue(forKey: key)
-        appState.sessionActivity[key] = .idle
+        guard !initialPending.isEmpty else { return }
 
-        var createConfig: AgentConfig?
-        if !appState.createdSessions.contains(key) {
-            if other.agent != nil {
-                createConfig = provisioner.config(for: other)
-            } else {
-                createConfig = makeFreeformAgentConfig()
-            }
-        }
-
-        let peerRole: GroupRole? = {
-            guard let group = sourceGroup, let agentId = other.agent?.id else { return nil }
-            return group.roleFor(agentId: agentId)
-        }()
-
-        let teamMembers: [GroupPromptBuilder.TeamMemberInfo] = convo.sessions
-            .filter { $0.id != other.id }
-            .compactMap { s in
-                guard let agent = s.agent else { return nil }
-                let role = sourceGroup?.roleFor(agentId: agent.id) ?? .participant
-                return .init(name: agent.name, description: agent.agentDescription, role: role)
+        await withTaskGroup(of: PendingGroupCompletion.self) { group in
+            for pending in initialPending {
+                group.addTask {
+                    await waitForSessionCompletion(sidecarKey: pending.sidecarKey)
+                    return pending
+                }
             }
 
-        let prompt = GroupPromptBuilder.buildPeerNotifyPrompt(
-            senderLabel: senderLabel,
-            peerMessageText: triggerMessage.text,
-            recipientSession: other,
-            role: peerRole,
-            teamMembers: teamMembers,
-            wasMentioned: wasMentioned
-        )
+            while let completion = await group.next() {
+                guard let session = convo.sessions.first(where: { $0.id == completion.sessionId }) else {
+                    finishStreamingState(for: completion.sidecarKey)
+                    continue
+                }
+                let seenThroughMessage = completion.seenThroughMessageId.flatMap { messageId in
+                    convo.messages.first(where: { $0.id == messageId })
+                }
 
-        do {
-            if let config = createConfig {
-                try await manager.send(.sessionCreate(
-                    conversationId: key,
-                    agentConfig: config
-                ))
-                appState.createdSessions.insert(key)
+                if let reply = finalizeAssistantStreamIntoMessage(
+                    convo: convo,
+                    session: session,
+                    sidecarKey: completion.sidecarKey,
+                    seenThroughMessage: seenThroughMessage
+                ) {
+                    if completion.planMode {
+                        lastPlanResponseMessageId = reply.id
+                    }
+
+                    let followUps = await launchPeerWave(
+                        fromSession: session,
+                        triggerMessage: reply,
+                        convo: convo,
+                        manager: manager,
+                        provisioner: provisioner,
+                        participants: participants,
+                        context: context
+                    )
+                    for pending in followUps {
+                        group.addTask {
+                            await waitForSessionCompletion(sidecarKey: pending.sidecarKey)
+                            return pending
+                        }
+                    }
+                }
+
+                finishStreamingState(for: completion.sidecarKey)
+                if let queued = await flushQueuedPeerDelivery(
+                    for: session,
+                    manager: manager,
+                    provisioner: provisioner
+                ) {
+                    group.addTask {
+                        await waitForSessionCompletion(sidecarKey: queued.sidecarKey)
+                        return queued
+                    }
+                }
             }
-            try await manager.send(.sessionMessage(
-                sessionId: key,
-                text: prompt,
-                attachments: []
-            ))
-        } catch {
-            appState.lastSessionEvent[key] = .error("Peer notify failed: \(error.localizedDescription)")
-            return
-        }
-
-        await waitForSessionCompletion(sidecarKey: key)
-
-        guard let liveConvo = conversation, liveConvo.id == convo.id else { return }
-
-        if let peerReply = finalizeAssistantStreamIntoMessage(convo: liveConvo, session: other, sidecarKey: key) {
-            await fanOutPeerNotifications(
-                fromSession: other,
-                triggerMessage: peerReply,
-                convo: liveConvo,
-                skipRecipientSessionIds: [],
-                manager: manager,
-                provisioner: provisioner,
-                participants: participants,
-                context: context
-            )
         }
     }
 
     private func waitForSessionCompletion(sidecarKey: String) async {
-        let maxWait = 600
+        let maxWait = 1_200
         var iterations = 0
         while iterations < maxWait {
             if let ev = await MainActor.run(body: { appState.lastSessionEvent[sidecarKey] }) {
@@ -2498,6 +2726,7 @@ struct ChatView: View {
     // MARK: - Session Events
 
     private func checkForPendingResponse() {
+        guard !isManagingWaveResponses else { return }
         guard let key = streamSessionKeyForUI else { return }
         if let event = appState.lastSessionEvent[key] {
             isProcessing = true
@@ -2516,6 +2745,7 @@ struct ChatView: View {
     }
 
     private func checkForCompletion(events: [String: AppState.SessionEventKind]? = nil) {
+        guard !isManagingWaveResponses else { return }
         guard let key = streamSessionKeyForUI else { return }
         let source = events ?? appState.lastSessionEvent
         guard let event = source[key] else { return }
@@ -2539,7 +2769,7 @@ struct ChatView: View {
         }
         _ = finalizeAssistantStreamIntoMessage(convo: convo, session: session, sidecarKey: key, errorMessage: errorMessage)
         isProcessing = false
-        activeStreamSessionKey = nil
+        finishStreamingState(for: key)
     }
 
     @discardableResult
@@ -2547,7 +2777,8 @@ struct ChatView: View {
         convo: Conversation,
         session: Session,
         sidecarKey: String,
-        errorMessage: String? = nil
+        errorMessage: String? = nil,
+        seenThroughMessage: ConversationMessage? = nil
     ) -> ConversationMessage? {
         var err = errorMessage
         if err == nil, case .error(let m) = appState.lastSessionEvent[sidecarKey] {
@@ -2560,6 +2791,15 @@ struct ChatView: View {
             return nil
         }
         let responseText = !streamedText.isEmpty ? streamedText : (err ?? "")
+
+        if err == nil,
+           !hasImages,
+           !hasFileCards,
+           GroupPromptBuilder.isNoReplySentinel(responseText) {
+            GroupPromptBuilder.markSessionCaughtUp(session: session, through: seenThroughMessage)
+            clearFinishedStreamState(for: sidecarKey)
+            return nil
+        }
 
         let agentParticipant = participantForSession(session, in: convo)
         let response = ConversationMessage(
@@ -2604,11 +2844,15 @@ struct ChatView: View {
         }
 
         try? modelContext.save()
+        clearFinishedStreamState(for: sidecarKey)
+        return response
+    }
+
+    private func clearFinishedStreamState(for sidecarKey: String) {
         appState.streamingText.removeValue(forKey: sidecarKey)
         appState.thinkingText.removeValue(forKey: sidecarKey)
         appState.lastSessionEvent.removeValue(forKey: sidecarKey)
-        isStreamingThinkingExpanded = false
-        return response
+        expandedStreamingThinkingSessionKeys.remove(sidecarKey)
     }
 
     // MARK: - Actions
@@ -2735,6 +2979,7 @@ struct ChatView: View {
             projectId: source.projectId,
             threadKind: source.threadKind
         )
+        newConvo.selectiveRepliesEnabled = source.selectiveRepliesEnabled
         newConvo.parentConversationId = source.id
 
         let userParticipant = Participant(type: .user, displayName: "You")
@@ -2909,6 +3154,7 @@ struct ChatView: View {
             projectId: convo.projectId,
             threadKind: convo.threadKind
         )
+        newConvo.selectiveRepliesEnabled = convo.selectiveRepliesEnabled
         let userParticipant = Participant(type: .user, displayName: "You")
         userParticipant.conversation = newConvo
         newConvo.participants.append(userParticipant)
