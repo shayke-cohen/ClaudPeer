@@ -50,6 +50,17 @@ final class AgentDefaultsTests: XCTestCase {
         XCTAssertEqual(session.model, CodexModel.gpt5Codex.rawValue)
     }
 
+    func testFreeformSessionInheritsSystemProviderAndModelDefaults() {
+        AppSettings.store.set(ProviderSelection.codex.rawValue, forKey: AppSettings.defaultProviderKey)
+        AppSettings.store.set(CodexModel.gpt5Codex.rawValue, forKey: AppSettings.defaultCodexModelKey)
+
+        let session = Session(agent: nil, workingDirectory: "/tmp")
+
+        XCTAssertEqual(session.provider, ProviderSelection.codex.rawValue)
+        XCTAssertEqual(session.model, CodexModel.gpt5Codex.rawValue)
+        XCTAssertEqual(AgentDefaults.displayName(forProvider: session.provider), "Codex")
+    }
+
     func testExplicitAgentProviderUsesProviderSpecificDefaultModelWhenModelInherits() {
         AppSettings.store.set(ProviderSelection.claude.rawValue, forKey: AppSettings.defaultProviderKey)
         AppSettings.store.set(ClaudeModel.haiku.rawValue, forKey: AppSettings.defaultClaudeModelKey)
@@ -147,6 +158,22 @@ final class AgentDefaultsTests: XCTestCase {
         XCTAssertEqual(config?.provider, ProviderSelection.codex.rawValue)
         XCTAssertEqual(config?.model, CodexModel.gpt5Codex.rawValue)
         XCTAssertEqual(config?.workingDirectory, "/tmp/work")
+    }
+
+    func testFreeformConfigUsesResolvedProviderDisplayNameAndModel() {
+        AppSettings.store.set(ProviderSelection.codex.rawValue, forKey: AppSettings.defaultProviderKey)
+        AppSettings.store.set(CodexModel.gpt5Codex.rawValue, forKey: AppSettings.defaultCodexModelKey)
+
+        let config = AgentDefaults.makeFreeformAgentConfig(
+            provider: ProviderSelection.system.rawValue,
+            model: AgentDefaults.inheritMarker,
+            workingDirectory: "/tmp/freeform"
+        )
+
+        XCTAssertEqual(config.provider, ProviderSelection.codex.rawValue)
+        XCTAssertEqual(config.name, "Codex")
+        XCTAssertEqual(config.model, CodexModel.gpt5Codex.rawValue)
+        XCTAssertEqual(config.workingDirectory, "/tmp/freeform")
     }
 
     func testProvisionerKeepsSkillsStructuredAndLeavesSystemPromptForBasePromptAndMission() {

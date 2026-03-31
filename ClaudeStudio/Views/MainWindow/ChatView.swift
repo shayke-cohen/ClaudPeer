@@ -240,6 +240,7 @@ struct ChatView: View {
     let selectedConversation: Conversation
     @Environment(\.modelContext) private var modelContext
     @Environment(\.appTextScale) private var appTextScale
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var appState: AppState
     @Environment(WindowState.self) private var windowState: WindowState
     @StateObject private var quickActionTracker = QuickActionUsageTracker()
@@ -451,9 +452,9 @@ struct ChatView: View {
         guard let convo = conversation,
               let sessionId = UUID(uuidString: sidecarKey),
               let session = convo.sessions.first(where: { $0.id == sessionId }) else {
-            return "Claude"
+            return AgentDefaults.displayName(forProvider: nil)
         }
-        return session.agent?.name ?? "Claude"
+        return session.agent?.name ?? AgentDefaults.displayName(forProvider: session.provider)
     }
 
     private func streamingAppearance(for sidecarKey: String) -> AgentAppearance? {
@@ -471,10 +472,22 @@ struct ChatView: View {
         let key = streamSessionKeyForUI ?? ""
         let text = appState.streamingText[key] ?? ""
         let thinking = appState.thinkingText[key] ?? ""
+        let iconName = conversation?
+            .sessions
+            .first(where: { $0.id.uuidString == key })?
+            .agent?
+            .icon
+        let colorName = conversation?
+            .sessions
+            .first(where: { $0.id.uuidString == key })?
+            .agent?
+            .color
         let app = ChatTranscriptStreamingAppendix(
             text: text,
             thinking: thinking,
-            displayName: streamingDisplayName(for: key)
+            displayName: streamingDisplayName(for: key),
+            iconName: iconName,
+            colorName: colorName
         )
         return app.isEmpty ? nil : app
     }
@@ -495,7 +508,11 @@ struct ChatView: View {
             conversation: convo,
             messages: sortedMessages,
             participants: convo.participants,
-            streamingAppendix: appendix
+            streamingAppendix: appendix,
+            theme: ChatTranscriptExportTheme(
+                appearance: colorScheme == .dark ? .dark : .light,
+                textScale: Double(appTextScale)
+            )
         )
     }
 
@@ -2117,6 +2134,7 @@ struct ChatView: View {
     /// Freeform / quick chat: ensure one `Session` + Claude participant exist before first model call.
     private func ensureFreeformSidecarSession(in convo: Conversation) -> Session? {
         if let existing = convo.primarySession, convo.sessions.count == 1, existing.agent == nil {
+            syncFreeformParticipantDisplayName(for: existing, in: convo)
             return existing
         }
         if let s = convo.primarySession, s.agent != nil { return s }
@@ -2130,7 +2148,7 @@ struct ChatView: View {
         convo.sessions.append(session)
         let agentParticipant = Participant(
             type: .agentSession(sessionId: session.id),
-            displayName: "Claude"
+            displayName: AgentDefaults.displayName(forProvider: session.provider)
         )
         agentParticipant.conversation = convo
         convo.participants.append(agentParticipant)
@@ -2138,6 +2156,15 @@ struct ChatView: View {
         modelContext.insert(agentParticipant)
         try? modelContext.save()
         return session
+    }
+
+    private func syncFreeformParticipantDisplayName(for session: Session, in convo: Conversation) {
+        guard session.agent == nil,
+              let participant = participantForSession(session, in: convo) else { return }
+        let expectedName = AgentDefaults.displayName(forProvider: session.provider)
+        guard participant.displayName != expectedName else { return }
+        participant.displayName = expectedName
+        try? modelContext.save()
     }
 
     private func participantForSession(_ session: Session, in convo: Conversation) -> Participant? {
@@ -2340,6 +2367,10 @@ struct ChatView: View {
             return
         }
 
+        for session in targetSessions where session.agent == nil {
+            syncFreeformParticipantDisplayName(for: session, in: convo)
+        }
+
         let userParticipant = convo.participants.first { $0.type == .user }
         let isFirstChat = convo.messages.filter({ $0.type == .chat }).isEmpty
 
@@ -2483,19 +2514,13 @@ struct ChatView: View {
         isProcessing = false
     }
 
-    private func makeFreeformAgentConfig() -> AgentConfig {
-        AgentConfig(
-            name: "Claude",
-            systemPrompt: "You are a helpful assistant. Be concise and clear.",
-            allowedTools: [],
-            mcpServers: [],
-            model: "claude-sonnet-4-6",
-            maxTurns: 5,
-            maxBudget: nil,
-            maxThinkingTokens: 10000,
-            workingDirectory: windowState.projectDirectory.isEmpty ? NSHomeDirectory() : windowState.projectDirectory,
-            skills: [],
-            interactive: true
+    private func makeFreeformAgentConfig(for session: Session) -> AgentConfig {
+        AgentDefaults.makeFreeformAgentConfig(
+            provider: session.provider,
+            model: session.model,
+            workingDirectory: session.workingDirectory.isEmpty
+                ? (windowState.projectDirectory.isEmpty ? NSHomeDirectory() : windowState.projectDirectory)
+                : session.workingDirectory
         )
     }
 
@@ -2503,7 +2528,7 @@ struct ChatView: View {
     private func beginStreamingState(for session: Session) {
         let sidecarKey = session.id.uuidString
         activeStreamingSessionKeys.insert(sidecarKey)
-        activeStreamingDisplayNames[sidecarKey] = session.agent?.name ?? "Claude"
+        activeStreamingDisplayNames[sidecarKey] = session.agent?.name ?? AgentDefaults.displayName(forProvider: session.provider)
         appState.streamingText.removeValue(forKey: sidecarKey)
         appState.thinkingText.removeValue(forKey: sidecarKey)
         appState.lastSessionEvent.removeValue(forKey: sidecarKey)
@@ -2573,7 +2598,7 @@ struct ChatView: View {
                 }
                 createConfig = provisioner.config(for: session)
             } else {
-                createConfig = makeFreeformAgentConfig()
+                createConfig = makeFreeformAgentConfig(for: session)
             }
         }
 

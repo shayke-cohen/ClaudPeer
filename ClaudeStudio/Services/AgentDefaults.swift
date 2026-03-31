@@ -42,6 +42,7 @@ struct ModelChoice: Identifiable, Equatable {
 
 enum AgentDefaults {
     static let inheritMarker = ProviderSelection.system.rawValue
+    static let defaultFreeformSystemPrompt = "You are a helpful assistant. Be concise and clear."
 
     static func normalizedProviderSelection(_ value: String?) -> ProviderSelection {
         switch value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
@@ -58,6 +59,10 @@ enum AgentDefaults {
         normalizedProviderSelection(
             AppSettings.store.string(forKey: AppSettings.defaultProviderKey) ?? AppSettings.defaultProvider
         ).concreteProvider ?? AppSettings.defaultProvider
+    }
+
+    static func concreteProvider(from value: String?) -> String {
+        normalizedProviderSelection(value).concreteProvider ?? defaultProvider()
     }
 
     static func defaultModel(for provider: String) -> String {
@@ -181,6 +186,50 @@ enum AgentDefaults {
             return match.label
         }
         return model ?? inheritMarker
+    }
+
+    static func displayName(forProvider provider: String?) -> String {
+        switch concreteProvider(from: provider) {
+        case ProviderSelection.codex.rawValue:
+            return ProviderSelection.codex.label
+        default:
+            return ProviderSelection.claude.label
+        }
+    }
+
+    static func makeFreeformAgentConfig(
+        provider: String?,
+        model: String?,
+        workingDirectory: String,
+        systemPrompt: String = defaultFreeformSystemPrompt,
+        maxTurns: Int? = 5,
+        maxBudget: Double? = nil,
+        maxThinkingTokens: Int? = 10000,
+        interactive: Bool? = true
+    ) -> AgentConfig {
+        let resolvedProvider = concreteProvider(from: provider)
+        let resolvedModel = {
+            let normalized = normalizedModelSelection(model)
+            if normalized != inheritMarker, isModel(normalized, compatibleWith: resolvedProvider) {
+                return normalized
+            }
+            return defaultModel(for: resolvedProvider)
+        }()
+
+        return AgentConfig(
+            name: displayName(forProvider: resolvedProvider),
+            systemPrompt: systemPrompt,
+            allowedTools: [],
+            mcpServers: [],
+            provider: resolvedProvider,
+            model: resolvedModel,
+            maxTurns: maxTurns,
+            maxBudget: maxBudget,
+            maxThinkingTokens: maxThinkingTokens,
+            workingDirectory: workingDirectory,
+            skills: [],
+            interactive: interactive
+        )
     }
 
     private static func explicitModelSelection(from value: String?) -> String? {

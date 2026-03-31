@@ -142,7 +142,7 @@ final class ScheduleRunCoordinator {
                 if session.agent != nil {
                     createConfig = provisioner.config(for: session)
                 } else {
-                    createConfig = makeFreeformAgentConfig(workingDirectory: session.workingDirectory)
+                    createConfig = makeFreeformAgentConfig(for: session)
                 }
             }
 
@@ -478,19 +478,11 @@ final class ScheduleRunCoordinator {
         try? modelContext.save()
     }
 
-    private func makeFreeformAgentConfig(workingDirectory: String) -> AgentConfig {
-        AgentConfig(
-            name: "Claude",
-            systemPrompt: "You are a helpful assistant. Be concise and clear.",
-            allowedTools: [],
-            mcpServers: [],
-            model: "claude-sonnet-4-6",
-            maxTurns: 5,
-            maxBudget: nil,
-            maxThinkingTokens: 10000,
-            workingDirectory: workingDirectory,
-            skills: [],
-            interactive: true
+    private func makeFreeformAgentConfig(for session: Session) -> AgentConfig {
+        AgentDefaults.makeFreeformAgentConfig(
+            provider: session.provider,
+            model: session.model,
+            workingDirectory: session.workingDirectory
         )
     }
 }

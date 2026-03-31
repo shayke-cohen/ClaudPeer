@@ -189,7 +189,7 @@ struct ClaudeStudioApp: App {
 
         let agentParticipant = Participant(
             type: .agentSession(sessionId: testSession.id),
-            displayName: "Claude"
+            displayName: AgentDefaults.displayName(forProvider: testSession.provider)
         )
         agentParticipant.conversation = conversation
         conversation.participants.append(agentParticipant)
@@ -212,17 +212,12 @@ struct ClaudeStudioApp: App {
         }
 
         let sessionId = testSession.id.uuidString
-        let config = AgentConfig(
-            name: "Claude",
-            systemPrompt: "You are a helpful assistant. Be concise and clear.",
-            allowedTools: [],
-            mcpServers: [],
-            model: "claude-sonnet-4-6",
-            maxTurns: 1,
-            maxBudget: nil,
-            maxThinkingTokens: 10000,
+        let config = AgentDefaults.makeFreeformAgentConfig(
+            provider: testSession.provider,
+            model: testSession.model,
             workingDirectory: projectPath,
-            skills: []
+            maxTurns: 1,
+            interactive: nil
         )
 
         appState.streamingText.removeValue(forKey: sessionId)

@@ -32,16 +32,16 @@ final class BlackboardSnapshotClientTests: XCTestCase {
                 "value": "{\\"state\\":\\"waiting\\"}",
                 "writtenBy": "Coder",
                 "workspaceId": null,
-                "createdAt": "2026-03-31T09:00:00Z",
-                "updatedAt": "2026-03-31T10:00:00Z"
+                "createdAt": "2026-03-31T09:00:00.000Z",
+                "updatedAt": "2026-03-31T10:00:00.000Z"
               },
               {
                 "key": "research.findings",
                 "value": "Done",
                 "writtenBy": "Researcher",
                 "workspaceId": null,
-                "createdAt": "2026-03-31T08:00:00Z",
-                "updatedAt": "2026-03-31T11:00:00Z"
+                "createdAt": "2026-03-31T08:00:00.000Z",
+                "updatedAt": "2026-03-31T11:00:00.000Z"
               }
             ]
             """
@@ -75,6 +75,37 @@ final class BlackboardSnapshotClientTests: XCTestCase {
 
         let entries = try await client.fetchAllEntries()
         XCTAssertTrue(entries.isEmpty)
+    }
+
+    func testFetchAllEntriesDecodesObjectValuesAndMissingWorkspaceId() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let body = """
+            [
+              {
+                "key": "research.findings",
+                "value": {"summary":"done","items":["a","b"]},
+                "writtenBy": "Researcher",
+                "createdAt": "2026-03-31T08:00:00.000Z",
+                "updatedAt": "2026-03-31T11:00:00.000Z"
+              }
+            ]
+            """
+            return (
+                HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                Data(body.utf8)
+            )
+        }
+
+        let client = BlackboardSnapshotClient(
+            baseURL: URL(string: "http://127.0.0.1:9850")!,
+            session: session
+        )
+
+        let entries = try await client.fetchAllEntries()
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(entries[0].workspaceId, nil)
+        XCTAssertTrue(entries[0].value.contains("\"summary\":\"done\""))
+        XCTAssertTrue(entries[0].value.contains("\"items\":[\"a\",\"b\"]"))
     }
 
     func testFetchAllEntriesThrowsOnMalformedResponse() async {

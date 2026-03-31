@@ -229,7 +229,7 @@ final class AppState: ObservableObject {
                 conversation.sessions.append(freeformSession)
                 let agentParticipant = Participant(
                     type: .agentSession(sessionId: freeformSession.id),
-                    displayName: "Claude"
+                    displayName: AgentDefaults.displayName(forProvider: freeformSession.provider)
                 )
                 agentParticipant.conversation = conversation
                 conversation.participants.append(agentParticipant)
