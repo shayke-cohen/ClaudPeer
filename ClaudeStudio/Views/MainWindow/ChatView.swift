@@ -529,6 +529,7 @@ struct ChatView: View {
             checkForPendingResponse()
         }
         .onReceive(appState.$lastSessionEvent) { events in
+            restoreStreamingStateFromAppState()
             checkForCompletion(events: events)
         }
         .onReceive(appState.$streamingText) { texts in
@@ -540,6 +541,10 @@ struct ChatView: View {
                 }
                 lastStreamingTextLengths[key] = newCount
             }
+            restoreStreamingStateFromAppState()
+        }
+        .onReceive(appState.$thinkingText) { _ in
+            restoreStreamingStateFromAppState()
         }
         .onReceive(appState.$sidecarStatus) { status in
             if status != .connected && isProcessing {
@@ -569,8 +574,12 @@ struct ChatView: View {
             }
         }
         .onChange(of: windowState.autoSendText) { _, _ in consumeAutoSendText() }
-        .onAppear { consumeAutoSendText() }
+        .onAppear {
+            consumeAutoSendText()
+            restoreStreamingStateFromAppState()
+        }
         .onChange(of: appState.sessionActivity) { _, _ in
+            restoreStreamingStateFromAppState()
             if let convo = conversation {
                 let summary = appState.conversationActivity(for: convo)
                 if case .allDone = summary.aggregate, summary.totalSessions > 0, !showAllDoneBanner {
@@ -1240,7 +1249,11 @@ struct ChatView: View {
 
     private var canSend: Bool {
         let hasText = !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return (hasText || !pendingAttachments.isEmpty) && !isProcessing
+        let canAnswerPendingQuestion =
+            hasText &&
+            pendingAttachments.isEmpty &&
+            conversation.flatMap(singlePendingQuestionForComposerAnswer(in:)) != nil
+        return (hasText || !pendingAttachments.isEmpty) && (!isProcessing || canAnswerPendingQuestion)
     }
 
     @ViewBuilder
@@ -2290,6 +2303,17 @@ struct ChatView: View {
             return
         }
 
+        if attachments.isEmpty, let pendingQuestion = singlePendingQuestionForComposerAnswer(in: convo), !text.isEmpty {
+            inputText = ""
+            pendingAttachments = []
+            appState.answerQuestion(
+                sessionId: pendingQuestion.sessionId,
+                questionId: pendingQuestion.id,
+                answer: text
+            )
+            return
+        }
+
         if text.first == "/", !text.hasPrefix("//"), let slash = ChatSendRouting.parseSlashCommand(rawInput) {
             switch slash {
             case .help:
@@ -2444,6 +2468,14 @@ struct ChatView: View {
         }
     }
 
+    private func singlePendingQuestionForComposerAnswer(in convo: Conversation) -> AppState.AgentQuestion? {
+        let pending = convo.sessions.compactMap { session in
+            appState.pendingQuestions[session.id.uuidString]
+        }
+        guard pending.count == 1 else { return nil }
+        return pending[0]
+    }
+
     private struct PendingGroupCompletion: Sendable {
         let sessionId: UUID
         let sidecarKey: String
@@ -2532,7 +2564,7 @@ struct ChatView: View {
         appState.streamingText.removeValue(forKey: sidecarKey)
         appState.thinkingText.removeValue(forKey: sidecarKey)
         appState.lastSessionEvent.removeValue(forKey: sidecarKey)
-        appState.sessionActivity[sidecarKey] = .idle
+        appState.sessionActivity[sidecarKey] = .waitingForResult
         processingStartTimes[sidecarKey] = Date()
         lastTokenTimes.removeValue(forKey: sidecarKey)
         lastStreamingTextLengths[sidecarKey] = 0
@@ -2918,6 +2950,58 @@ struct ChatView: View {
         if let text = appState.streamingText[key], !text.isEmpty, !isProcessing {
             isProcessing = true
         }
+    }
+
+    @MainActor
+    private func restoreStreamingStateFromAppState() {
+        guard let convo = conversation else {
+            isProcessing = false
+            activeStreamingSessionKeys.removeAll()
+            activeStreamingDisplayNames.removeAll()
+            processingStartTimes.removeAll()
+            lastTokenTimes.removeAll()
+            lastStreamingTextLengths.removeAll()
+            expandedStreamingThinkingSessionKeys.removeAll()
+            return
+        }
+
+        let now = Date()
+        var restoredKeys: Set<String> = []
+        var restoredDisplayNames: [String: String] = [:]
+
+        for session in convo.sessions {
+            let sidecarKey = session.id.uuidString
+            let hasStreamingText = !(appState.streamingText[sidecarKey]?.isEmpty ?? true)
+            let hasThinkingText = !(appState.thinkingText[sidecarKey]?.isEmpty ?? true)
+            let hasPendingEvent = appState.lastSessionEvent[sidecarKey] != nil
+
+            let shouldTrack: Bool
+            switch appState.sessionActivity[sidecarKey] ?? .idle {
+            case .thinking, .streaming, .callingTool, .waitingForResult:
+                shouldTrack = true
+            case .idle, .done, .error, .askingUser:
+                shouldTrack = hasStreamingText || hasThinkingText || hasPendingEvent
+            }
+
+            guard shouldTrack else { continue }
+
+            restoredKeys.insert(sidecarKey)
+            restoredDisplayNames[sidecarKey] = session.agent?.name ?? AgentDefaults.displayName(forProvider: session.provider)
+            processingStartTimes[sidecarKey] = processingStartTimes[sidecarKey] ?? now
+            lastStreamingTextLengths[sidecarKey] = appState.streamingText[sidecarKey]?.count ?? 0
+        }
+
+        let removedKeys = activeStreamingSessionKeys.subtracting(restoredKeys)
+        for key in removedKeys {
+            processingStartTimes.removeValue(forKey: key)
+            lastTokenTimes.removeValue(forKey: key)
+            lastStreamingTextLengths.removeValue(forKey: key)
+            expandedStreamingThinkingSessionKeys.remove(key)
+        }
+
+        activeStreamingSessionKeys = restoredKeys
+        activeStreamingDisplayNames = restoredDisplayNames
+        isProcessing = !restoredKeys.isEmpty
     }
 
     private func checkForCompletion(events: [String: AppState.SessionEventKind]? = nil) {
