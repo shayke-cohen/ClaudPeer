@@ -62,6 +62,15 @@ final class SidebarSectionTests: XCTestCase {
         roots.filter { $0.isPinned && !$0.isArchived }
     }
 
+    private func sortedProjects(_ projects: [Project]) -> [Project] {
+        projects.sorted { lhs, rhs in
+            if lhs.isPinned != rhs.isPinned {
+                return lhs.isPinned && !rhs.isPinned
+            }
+            return lhs.createdAt > rhs.createdAt
+        }
+    }
+
     // MARK: - Tests
 
     func testFewConversations_allInActive_noneInHistory() throws {
@@ -296,6 +305,31 @@ final class SidebarSectionTests: XCTestCase {
         // Total should account for everything
         let total = pinnedItems(roots).count + activeItems(roots).count + historyItems(roots).count + archivedItems(roots).count
         XCTAssertEqual(total, 50)
+    }
+
+    func testPinnedProjectsSortAboveUnpinnedWhileKeepingBucketOrder() {
+        let oldestPinned = Project(name: "Old pinned", rootPath: "/tmp/old-pinned", canonicalRootPath: "/tmp/old-pinned")
+        oldestPinned.isPinned = true
+        oldestPinned.createdAt = Date().addingTimeInterval(-300)
+
+        let newestPinned = Project(name: "New pinned", rootPath: "/tmp/new-pinned", canonicalRootPath: "/tmp/new-pinned")
+        newestPinned.isPinned = true
+        newestPinned.createdAt = Date().addingTimeInterval(-60)
+
+        let newestUnpinned = Project(name: "New unpinned", rootPath: "/tmp/new-unpinned", canonicalRootPath: "/tmp/new-unpinned")
+        newestUnpinned.createdAt = Date().addingTimeInterval(-30)
+
+        let oldestUnpinned = Project(name: "Old unpinned", rootPath: "/tmp/old-unpinned", canonicalRootPath: "/tmp/old-unpinned")
+        oldestUnpinned.createdAt = Date().addingTimeInterval(-600)
+
+        let sorted = sortedProjects([oldestUnpinned, oldestPinned, newestUnpinned, newestPinned])
+
+        XCTAssertEqual(sorted.map(\.name), [
+            "New pinned",
+            "Old pinned",
+            "New unpinned",
+            "Old unpinned"
+        ])
     }
 
     func testSidebarMetadataTreatsDelegationAsThreadKindOnly() throws {

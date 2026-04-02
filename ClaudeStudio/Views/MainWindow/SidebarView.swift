@@ -136,7 +136,7 @@ struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(WindowState.self) private var windowState: WindowState
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Project.lastOpenedAt, order: .reverse) private var projects: [Project]
+    @Query(sort: \Project.createdAt, order: .reverse) private var projects: [Project]
     @Query(sort: \Conversation.startedAt, order: .reverse) private var conversations: [Conversation]
     @Query(sort: \Agent.name) private var agents: [Agent]
     @Query(sort: \AgentGroup.sortOrder) private var groups: [AgentGroup]
@@ -317,9 +317,10 @@ struct SidebarView: View {
 
     private var sortedProjects: [Project] {
         projects.sorted { lhs, rhs in
-            if lhs.id == windowState.selectedProjectId { return true }
-            if rhs.id == windowState.selectedProjectId { return false }
-            return lhs.lastOpenedAt > rhs.lastOpenedAt
+            if lhs.isPinned != rhs.isPinned {
+                return lhs.isPinned && !rhs.isPinned
+            }
+            return lhs.createdAt > rhs.createdAt
         }
     }
 
@@ -540,6 +541,12 @@ struct SidebarView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+            }
+            if project.isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(tint.opacity(isSelectedProject ? 0.9 : 0.7))
+                    .accessibilityHidden(true)
             }
             Spacer()
             if showsProjectActions {
@@ -787,6 +794,12 @@ struct SidebarView: View {
                 openProjectInFinder(project)
             } label: {
                 Label("Open in Finder", systemImage: "folder")
+            }
+
+            Button {
+                toggleProjectPin(project)
+            } label: {
+                Label(project.isPinned ? "Unpin project" : "Pin project", systemImage: project.isPinned ? "pin.slash" : "pin")
             }
 
             Button {
@@ -1712,6 +1725,11 @@ struct SidebarView: View {
 
     private func togglePin(_ convo: Conversation) {
         convo.isPinned.toggle()
+        try? modelContext.save()
+    }
+
+    private func toggleProjectPin(_ project: Project) {
+        project.isPinned.toggle()
         try? modelContext.save()
     }
 

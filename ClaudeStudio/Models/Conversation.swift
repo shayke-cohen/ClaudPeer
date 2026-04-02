@@ -23,6 +23,7 @@ final class Project {
     var canonicalRootPath: String
     var createdAt: Date
     var lastOpenedAt: Date
+    var isPinned: Bool = false
     var icon: String
     var color: String
     var pinnedAgentIds: [UUID]
