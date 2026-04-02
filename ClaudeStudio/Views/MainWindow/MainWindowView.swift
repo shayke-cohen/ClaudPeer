@@ -227,10 +227,10 @@ struct MainWindowView: View {
             }
         }
         .sheet(isPresented: $ws.showNewSessionSheet) {
-            NewSessionSheet()
+            NewSessionSheet(initialStartKind: .agents)
         }
         .sheet(isPresented: $ws.showNewGroupThreadSheet) {
-            NewGroupThreadSheet()
+            NewSessionSheet(initialStartKind: .groups)
         }
         .sheet(isPresented: $ws.showLibraryHub) {
             IntentLibraryHubView(

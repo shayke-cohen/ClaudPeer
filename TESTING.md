@@ -371,29 +371,39 @@ Legacy comparison mode also exposes:
 ### 5.4 NewSessionSheet
 
 **File:** `Views/MainWindow/NewSessionSheet.swift`
-**Access:** Toolbar "New Session" (Cmd+N) or sidebar bottom bar.
+**Access:** `New Thread` opens this sheet on the `Agents` tab. `Group Thread` opens the same sheet on the `Groups` tab.
 
 | Control | Identifier | Label | Selector |
 |---------|-----------|-------|----------|
 | Title | `newSession.title` | — | `@testId("newSession.title")` |
 | Close button | `newSession.closeButton` | `Close` | `@testId("newSession.closeButton")` |
+| Start kind: Blank | `newSession.startKind.blank` | `Blank` | `@testId("newSession.startKind.blank")` |
+| Start kind: Agents | `newSession.startKind.agents` | `Agents` | `@testId("newSession.startKind.agents")` |
+| Start kind: Groups | `newSession.startKind.groups` | `Groups` | `@testId("newSession.startKind.groups")` |
+| Blank starter card | `newSession.blankStateCard` | — | `@testId("newSession.blankStateCard")` |
 | Recent agent chip | `newSession.recentAgent.{uuid}` | — | `@testId("newSession.recentAgent.{uuid}")` |
+| Recent group chip | `newSession.recentGroup.{uuid}` | — | `@testId("newSession.recentGroup.{uuid}")` |
 | Selected agents summary (multi-select) | `newSession.selectedAgentsSummary` | — | `@testId("newSession.selectedAgentsSummary")` |
-| Freeform agent card | `newSession.agentCard.freeform` | — | `@testId("newSession.agentCard.freeform")` |
+| Agent search field | `newSession.agentSearchField` | — | `@testId("newSession.agentSearchField")` |
+| Group search field | `newSession.groupSearchField` | — | `@testId("newSession.groupSearchField")` |
+| Agent picker: List | `newSession.agentPickerStyle.list` | — | `@testId("newSession.agentPickerStyle.list")` |
+| Agent picker: Cards | `newSession.agentPickerStyle.cards` | — | `@testId("newSession.agentPickerStyle.cards")` |
+| Group picker: List | `newSession.groupPickerStyle.list` | — | `@testId("newSession.groupPickerStyle.list")` |
+| Group picker: Cards | `newSession.groupPickerStyle.cards` | — | `@testId("newSession.groupPickerStyle.cards")` |
 | Agent card | `newSession.agentCard.{uuid}` | — | `@testId("newSession.agentCard.{uuid}")` |
+| Agent row | `newSession.agentRow.{uuid}` | — | `@testId("newSession.agentRow.{uuid}")` |
+| Group card | `newSession.groupCard.{uuid}` | — | `@testId("newSession.groupCard.{uuid}")` |
+| Group row | `newSession.groupRow.{uuid}` | — | `@testId("newSession.groupRow.{uuid}")` |
+| Expanded group members | `newSession.groupMembers.{groupUuid}` | — | `@testId("newSession.groupMembers.{groupUuid}")` |
+| Expanded group member | `newSession.groupMember.{groupUuid}.{agentUuid}` | — | `@testId("newSession.groupMember.{groupUuid}.{agentUuid}")` |
 | Model picker | `newSession.modelPicker` | — | `@testId("newSession.modelPicker")` |
-| Mode picker (segmented) | `newSession.modePicker` | — | `@testId("newSession.modePicker")` |
 | Mission field | `newSession.missionField` | — | `@testId("newSession.missionField")` |
-| Working directory field | `newSession.workingDirectoryField` | — | `@testId("newSession.workingDirectoryField")` |
-| Browse directory | `newSession.browseDirectoryButton` | `Browse for directory` | `@testId("newSession.browseDirectoryButton")` |
-| GitHub workspace mode (segmented) | `newSession.githubWorkspaceModePicker` | — | `@testId("newSession.githubWorkspaceModePicker")` |
-| GitHub status summary | `newSession.githubStatusSummary` | — | `@testId("newSession.githubStatusSummary")` |
-| GitHub workspace error | `newSession.githubWorkspaceError` | — | `@testId("newSession.githubWorkspaceError")` |
-| GitHub validate/update clone | `newSession.githubValidateButton` | — | `@testId("newSession.githubValidateButton")` |
 | Options disclosure | `newSession.optionsDisclosure` | — | `@testId("newSession.optionsDisclosure")` |
-| Mode description | `newSession.modeDescription` | — | `@testId("newSession.modeDescription")` |
 | Quick Chat button | `newSession.quickChatButton` | — | `@testId("newSession.quickChatButton")` |
 | Start Session button | `newSession.startSessionButton` | — | `@testId("newSession.startSessionButton")` |
+| Group mode constraint | `newSession.groupModeConstraint` | — | `@testId("newSession.groupModeConstraint")` |
+
+The unified sheet now covers the former group-thread entry as well. `NewGroupThreadSheet` remains in the repo, but the main window routes new group creation into `NewSessionSheet` on the `Groups` tab.
 
 #### Add agents to chat (`/agents`)
 
@@ -1054,7 +1064,7 @@ steps:
       selector: "newSession.title"
   - act:
       action: tap
-      selector: "newSession.agentCard.freeform"
+      selector: "newSession.startKind.blank"
   - act:
       action: tap
       selector: "newSession.startSessionButton"
@@ -1095,8 +1105,8 @@ assert({ type: "ai", prompt: "The sidecar status pill shows Connected" })
 act({ action: "tap", selector: "mainWindow.newSessionButton" })
 wait({ for: "element", selector: "newSession.title" })
 
-// 4. Select freeform agent and start
-act({ action: "tap", selector: "newSession.agentCard.freeform" })
+// 4. Switch to Blank and start
+act({ action: "tap", selector: "newSession.startKind.blank" })
 act({ action: "tap", selector: "newSession.startSessionButton" })
 wait({ for: "element", selector: "chat.messageInput" })
 
@@ -1128,6 +1138,14 @@ Used for any SwiftData entity row/card. The UUID is the entity's `id.uuidString`
 | `sidebar.conversationRow.{uuid}` | SidebarView |
 | `sidebar.agentRow.{uuid}` | SidebarView |
 | `sidebar.agentRow.startSession.{uuid}` | SidebarView context menu |
+| `newSession.recentAgent.{uuid}` | NewSessionSheet recent chips |
+| `newSession.recentGroup.{uuid}` | NewSessionSheet recent chips |
+| `newSession.agentRow.{uuid}` | NewSessionSheet list picker |
+| `newSession.agentCard.{uuid}` | NewSessionSheet card picker |
+| `newSession.groupRow.{uuid}` | NewSessionSheet list picker |
+| `newSession.groupCard.{uuid}` | NewSessionSheet card picker |
+| `newSession.groupMembers.{groupUuid}` | NewSessionSheet expanded group panel |
+| `newSession.groupMember.{groupUuid}.{agentUuid}` | NewSessionSheet expanded group member |
 | `agentLibrary.card.{uuid}` | AgentLibraryView |
 | `agentLibrary.card.context.{action}.{uuid}` | AgentLibraryView context menu |
 | `newSession.recentAgent.{uuid}` | NewSessionSheet |
