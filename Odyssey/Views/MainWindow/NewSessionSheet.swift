@@ -61,7 +61,6 @@ struct NewSessionSheet: View {
     @State private var modelOverride = AgentDefaults.inheritMarker
     @State private var sessionMode: SessionMode = .interactive
     @State private var mission = ""
-    @State private var showAdvancedOptions = false
     @State private var showCreateFromPrompt = false
     @State private var createFromPromptText = ""
     @State private var agentSearchText = ""
@@ -163,10 +162,6 @@ struct NewSessionSheet: View {
         }
     }
 
-    private var allowsSessionOverrides: Bool {
-        selectedStartKind == .agents && selectedSingleAgent != nil
-    }
-
     private var effectiveProviderForOverrides: String {
         AgentDefaults.resolveEffectiveProvider(
             sessionOverride: providerOverride,
@@ -187,6 +182,21 @@ struct NewSessionSheet: View {
         default:
             return nil
         }
+    }
+
+    private var providerDefaultLabel: String {
+        guard let selectedSingleAgent else { return "Default" }
+        let provider = AgentDefaults.resolveEffectiveProvider(agentSelection: selectedSingleAgent.provider)
+        return "Default (\(AgentDefaults.displayName(forProvider: provider)))"
+    }
+
+    private var modelDefaultLabel: String {
+        guard let selectedSingleAgent else { return "Default" }
+        let model = AgentDefaults.resolveEffectiveModel(
+            agentSelection: selectedSingleAgent.model,
+            provider: effectiveProviderForOverrides
+        )
+        return "Default (\(AgentDefaults.label(for: model)))"
     }
 
     private var modePromptLabel: String {
@@ -340,7 +350,7 @@ struct NewSessionSheet: View {
             Divider()
             footer
         }
-        .frame(width: 720, height: 720)
+        .frame(width: 860, height: 720)
         .onAppear {
             selectedStartKind = initialStartKind
             ensureSelectionDefaults(for: initialStartKind)
@@ -732,46 +742,59 @@ struct NewSessionSheet: View {
     @ViewBuilder
     private func agentListRow(_ agent: Agent) -> some View {
         let isSelected = selectedAgentIds.contains(agent.id)
-        Button {
-            toggleAgent(agent)
-        } label: {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: agent.icon)
-                    .font(.headline)
-                    .foregroundStyle(Color.fromAgentColor(agent.color))
-                    .frame(width: 32, height: 32)
-                    .background(Color.fromAgentColor(agent.color).opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+        let showInlineOverrides = selectedSingleAgent?.id == agent.id
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(agent.name)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                        Spacer(minLength: 8)
-                        Text(AgentDefaults.label(for: agent.model))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+        HStack(alignment: .top, spacing: showInlineOverrides ? 14 : 0) {
+            Button {
+                toggleAgent(agent)
+            } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: agent.icon)
+                        .font(.headline)
+                        .foregroundStyle(Color.fromAgentColor(agent.color))
+                        .frame(width: 32, height: 32)
+                        .background(Color.fromAgentColor(agent.color).opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(agent.name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                            Spacer(minLength: 8)
+                            Text(AgentDefaults.label(for: agent.model))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        let description = agent.systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+                        Text(description.isEmpty ? "No description yet" : description)
+                            .font(.caption)
+                            .foregroundStyle(description.isEmpty ? .tertiary : .secondary)
+                            .lineLimit(2)
                     }
-
-                    let description = agent.systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
-                    Text(description.isEmpty ? "No description yet" : description)
-                        .font(.caption)
-                        .foregroundStyle(description.isEmpty ? .tertiary : .secondary)
-                        .lineLimit(2)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isSelected ? Color.fromAgentColor(agent.color).opacity(0.10) : Color(nsColor: .controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(isSelected ? Color.fromAgentColor(agent.color) : Color.secondary.opacity(0.15), lineWidth: isSelected ? 2 : 1)
+            .buttonStyle(.plain)
+
+            if showInlineOverrides {
+                selectedAgentOverridesPanel(for: agent, compact: false)
+                    .frame(width: 280)
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
         }
-        .buttonStyle(.plain)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(isSelected ? Color.fromAgentColor(agent.color).opacity(0.10) : Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(isSelected ? Color.fromAgentColor(agent.color) : Color.secondary.opacity(0.15), lineWidth: isSelected ? 2 : 1)
+        }
+        .animation(.easeInOut(duration: 0.18), value: showInlineOverrides)
         .xrayId("newSession.agentRow.\(agent.id.uuidString)")
         .accessibilityIdentifier("newSession.agentRow.\(agent.id.uuidString)")
         .accessibilityLabel(agent.name)
@@ -780,44 +803,56 @@ struct NewSessionSheet: View {
     @ViewBuilder
     private func agentCard(_ agent: Agent) -> some View {
         let isSelected = selectedAgentIds.contains(agent.id)
-        Button {
-            toggleAgent(agent)
-        } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
-                    Image(systemName: agent.icon)
-                        .font(.title3)
-                        .foregroundStyle(Color.fromAgentColor(agent.color))
-                        .frame(width: 32, height: 32)
-                        .background(Color.fromAgentColor(agent.color).opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(agent.name)
-                            .font(.headline)
-                            .lineLimit(1)
-                        Text(AgentDefaults.label(for: agent.model))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                }
+        let showInlineOverrides = selectedSingleAgent?.id == agent.id
 
-                let description = agent.systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
-                Text(description.isEmpty ? "No description yet" : description)
-                    .font(.caption)
-                    .foregroundStyle(description.isEmpty ? .tertiary : .secondary)
-                    .lineLimit(3)
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                toggleAgent(agent)
+            } label: {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 10) {
+                        Image(systemName: agent.icon)
+                            .font(.title3)
+                            .foregroundStyle(Color.fromAgentColor(agent.color))
+                            .frame(width: 32, height: 32)
+                            .background(Color.fromAgentColor(agent.color).opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(agent.name)
+                                .font(.headline)
+                                .lineLimit(1)
+                            Text(AgentDefaults.label(for: agent.model))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+
+                    let description = agent.systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+                    Text(description.isEmpty ? "No description yet" : description)
+                        .font(.caption)
+                        .foregroundStyle(description.isEmpty ? .tertiary : .secondary)
+                        .lineLimit(3)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isSelected ? Color.fromAgentColor(agent.color).opacity(0.10) : Color(nsColor: .controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay {
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.fromAgentColor(agent.color) : Color.secondary.opacity(0.15), lineWidth: isSelected ? 2 : 1)
+            .buttonStyle(.plain)
+
+            if showInlineOverrides {
+                selectedAgentOverridesPanel(for: agent, compact: true)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .buttonStyle(.plain)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(isSelected ? Color.fromAgentColor(agent.color).opacity(0.10) : Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isSelected ? Color.fromAgentColor(agent.color) : Color.secondary.opacity(0.15), lineWidth: isSelected ? 2 : 1)
+        }
+        .animation(.easeInOut(duration: 0.18), value: showInlineOverrides)
         .xrayId("newSession.agentCard.\(agent.id.uuidString)")
         .accessibilityIdentifier("newSession.agentCard.\(agent.id.uuidString)")
         .accessibilityLabel(agent.name)
@@ -1169,9 +1204,6 @@ struct NewSessionSheet: View {
                     .xrayId("newSession.goalHelp")
             }
 
-            if allowsSessionOverrides {
-                advancedOverridesSection
-            }
         }
         .padding(18)
         .background(Color(nsColor: .controlBackgroundColor))
@@ -1273,51 +1305,97 @@ struct NewSessionSheet: View {
     }
 
     @ViewBuilder
-    private var advancedOverridesSection: some View {
-        DisclosureGroup("Advanced agent overrides", isExpanded: $showAdvancedOptions) {
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Provider")
-                        .font(.subheadline.weight(.semibold))
-                    Picker("", selection: $providerOverride) {
-                        Text("Inherit from Agent").tag(AgentDefaults.inheritMarker)
-                        Text("Claude").tag(ProviderSelection.claude.rawValue)
-                        Text("Codex").tag(ProviderSelection.codex.rawValue)
-                        Text("Foundation").tag(ProviderSelection.foundation.rawValue)
-                        Text("MLX").tag(ProviderSelection.mlx.rawValue)
-                    }
-                    .labelsHidden()
-                    .xrayId("newSession.providerPicker")
-                }
+    private func selectedAgentOverridesPanel(for agent: Agent, compact: Bool) -> some View {
+        VStack(alignment: .leading, spacing: compact ? 10 : 12) {
+            Text("Launch Defaults")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Model")
-                        .font(.subheadline.weight(.semibold))
-                    Picker("", selection: $modelOverride) {
-                        ForEach(
-                            AgentDefaults.availableThreadModelChoices(
-                                for: effectiveProviderForOverrides,
-                                inheritLabel: "Inherit from Agent"
-                            )
-                        ) { choice in
-                            Text(choice.label).tag(choice.id)
-                        }
-                    }
-                    .labelsHidden()
-                    .xrayId("newSession.modelPicker")
+            if compact {
+                VStack(alignment: .leading, spacing: 10) {
+                    overridePickerColumn(
+                        title: "Provider",
+                        selection: $providerOverride,
+                        options: [
+                            ModelChoice(id: AgentDefaults.inheritMarker, label: providerDefaultLabel),
+                            ModelChoice(id: ProviderSelection.claude.rawValue, label: ProviderSelection.claude.label),
+                            ModelChoice(id: ProviderSelection.codex.rawValue, label: ProviderSelection.codex.label),
+                            ModelChoice(id: ProviderSelection.foundation.rawValue, label: ProviderSelection.foundation.label),
+                            ModelChoice(id: ProviderSelection.mlx.rawValue, label: ProviderSelection.mlx.label)
+                        ],
+                        xrayId: "newSession.providerPicker"
+                    )
+                    overridePickerColumn(
+                        title: "Model",
+                        selection: $modelOverride,
+                        options: AgentDefaults.availableThreadModelChoices(
+                            for: effectiveProviderForOverrides,
+                            inheritLabel: modelDefaultLabel
+                        ),
+                        xrayId: "newSession.modelPicker"
+                    )
                 }
-
-                if let localProviderSummary {
-                    Text(localProviderSummary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .xrayId("newSession.localProviderSummary")
+            } else {
+                HStack(alignment: .top, spacing: 10) {
+                    overridePickerColumn(
+                        title: "Provider",
+                        selection: $providerOverride,
+                        options: [
+                            ModelChoice(id: AgentDefaults.inheritMarker, label: providerDefaultLabel),
+                            ModelChoice(id: ProviderSelection.claude.rawValue, label: ProviderSelection.claude.label),
+                            ModelChoice(id: ProviderSelection.codex.rawValue, label: ProviderSelection.codex.label),
+                            ModelChoice(id: ProviderSelection.foundation.rawValue, label: ProviderSelection.foundation.label),
+                            ModelChoice(id: ProviderSelection.mlx.rawValue, label: ProviderSelection.mlx.label)
+                        ],
+                        xrayId: "newSession.providerPicker"
+                    )
+                    overridePickerColumn(
+                        title: "Model",
+                        selection: $modelOverride,
+                        options: AgentDefaults.availableThreadModelChoices(
+                            for: effectiveProviderForOverrides,
+                            inheritLabel: modelDefaultLabel
+                        ),
+                        xrayId: "newSession.modelPicker"
+                    )
                 }
             }
-            .padding(.top, 10)
+
+            if let localProviderSummary {
+                Text(localProviderSummary)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .xrayId("newSession.localProviderSummary")
+            }
         }
-        .xrayId("newSession.advancedOptionsDisclosure")
+        .padding(compact ? 12 : 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.fromAgentColor(agent.color).opacity(compact ? 0.08 : 0.06))
+        .clipShape(RoundedRectangle(cornerRadius: compact ? 10 : 12))
+    }
+
+    private func overridePickerColumn(
+        title: String,
+        selection: Binding<String>,
+        options: [ModelChoice],
+        xrayId: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Picker(title, selection: selection) {
+                ForEach(options) { option in
+                    Text(option.label).tag(option.id)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .xrayId(xrayId)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder

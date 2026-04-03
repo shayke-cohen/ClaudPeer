@@ -263,7 +263,7 @@ private func buildConfig(from arguments: [String]) -> LocalAgentConfig {
     let model = argumentValue(
         "--model",
         from: arguments,
-        default: provider == .foundation ? "foundation.system" : "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+        default: provider == .foundation ? "foundation.system" : "mlx-community/Qwen3-14B-4bit"
     ) ?? "foundation.system"
     let cwd = argumentValue("--cwd", from: arguments, default: FileManager.default.currentDirectoryPath) ?? FileManager.default.currentDirectoryPath
     let prompt = argumentValue("--system-prompt", from: arguments, default: "You are a local coding agent.") ?? "You are a local coding agent."

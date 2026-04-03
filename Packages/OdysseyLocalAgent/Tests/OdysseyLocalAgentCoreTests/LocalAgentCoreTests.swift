@@ -64,13 +64,12 @@ final class LocalAgentCoreTests: XCTestCase {
         XCTAssertEqual(
             ManagedMLXModels.presets().map(\.modelIdentifier),
             [
-                "mlx-community/Qwen3-4B-Instruct-2507-4bit",
-                "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
-                "mlx-community/Qwen3-0.6B-4bit",
+                "mlx-community/Qwen3-14B-4bit",
                 "mlx-community/Qwen2.5-7B-Instruct-4bit",
+                "mlx-community/Qwen3-30B-A3B-4bit-DWQ-053125",
                 "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
-                "mlx-community/Llama-3.2-3B-Instruct-4bit",
-                "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit",
+                "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit",
+                "mlx-community/Qwen3-Coder-Next-4bit",
             ]
         )
     }
@@ -177,7 +176,7 @@ final class LocalAgentCoreTests: XCTestCase {
 
     func testSanitizeMLXOutputRemovesLoadingLine() {
         let output = """
-        Loading mlx-community/Qwen2.5-1.5B-Instruct-4bit...
+        Loading mlx-community/Qwen2.5-7B-Instruct-4bit...
         1 + 1 = 2
         """
 
@@ -186,7 +185,7 @@ final class LocalAgentCoreTests: XCTestCase {
 
     func testSanitizeMLXOutputExtractsStructuredResult() {
         let output = """
-        Loading mlx-community/Qwen2.5-1.5B-Instruct-4bit...
+        Loading mlx-community/Qwen2.5-7B-Instruct-4bit...
         {"result": "2"}
         """
 
@@ -353,6 +352,71 @@ final class LocalAgentCoreTests: XCTestCase {
 
         XCTAssertEqual(summary.configuredServers, ["filesystem", "docs"])
         XCTAssertEqual(summary.discoveredTools.count, 2)
+        await bridge.shutdown()
+    }
+
+    func testMCPBridgeDiscoversAndCallsWorkingServer() async throws {
+        let server = try makeStubMCPServer(
+            in: tempDirectory,
+            name: "working-mcp",
+            toolName: "mcp_echo",
+            responsePrefix: "MCP"
+        )
+        let bridge = MCPBridge()
+
+        let summary = await bridge.summarize(servers: [server])
+        XCTAssertEqual(summary.configuredServers, ["working-mcp"])
+        XCTAssertEqual(summary.discoveredTools.map(\.name), ["mcp_echo"])
+
+        let result = try await bridge.callTool(
+            named: "mcp_echo",
+            arguments: ["text": .string("hello")],
+            servers: [server]
+        )
+
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.output, "MCP: hello")
+        await bridge.shutdown()
+    }
+
+    func testCreateSessionMergesLocalRemoteAndMCPTools() async throws {
+        let server = try makeStubMCPServer(
+            in: tempDirectory,
+            name: "merge-mcp",
+            toolName: "mcp_lookup",
+            responsePrefix: "LOOKUP"
+        )
+        let core = LocalAgentCore()
+
+        _ = await core.createSession(
+            .init(
+                sessionId: "merged-tools-session",
+                config: .init(
+                    name: "Merged Tools",
+                    provider: .foundation,
+                    model: "foundation.system",
+                    systemPrompt: "prompt",
+                    workingDirectory: tempDirectory.path,
+                    allowedTools: ["Read"],
+                    mcpServers: [server],
+                    toolDefinitions: [
+                        LocalAgentToolDefinition(
+                            name: "remote_lookup",
+                            description: "Remote lookup"
+                        )
+                    ]
+                )
+            )
+        )
+
+        let tools = await core.tools(for: "merged-tools-session")
+        let toolNames = tools.map(\.name)
+
+        XCTAssertTrue(toolNames.contains("read_file"))
+        XCTAssertTrue(toolNames.contains("remote_lookup"))
+        XCTAssertTrue(toolNames.contains("mcp_lookup"))
+        XCTAssertEqual(toolNames.filter { $0 == "read_file" }.count, 1)
+        await core.shutdown()
     }
 
     func testManagedMLXInstallWritesManifest() throws {
@@ -482,7 +546,7 @@ final class LocalAgentCoreTests: XCTestCase {
         let runnerPath = try makeStubRunner()
         let downloadDirectory = tempDirectory.appendingPathComponent("huggingface").path
         _ = try ManagedMLXModels.installModel(
-            modelIdentifier: "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+            modelIdentifier: "mlx-community/Qwen2.5-7B-Instruct-4bit",
             downloadDirectory: downloadDirectory,
             runnerPath: runnerPath
         )
@@ -492,8 +556,8 @@ final class LocalAgentCoreTests: XCTestCase {
             runnerPath: runnerPath
         )
 
-        XCTAssertTrue(result.presets.contains(where: { $0.modelIdentifier == "mlx-community/Qwen2.5-1.5B-Instruct-4bit" }))
-        XCTAssertEqual(result.installed.map(\.modelIdentifier), ["mlx-community/Qwen2.5-1.5B-Instruct-4bit"])
+        XCTAssertTrue(result.presets.contains(where: { $0.modelIdentifier == "mlx-community/Qwen2.5-7B-Instruct-4bit" }))
+        XCTAssertEqual(result.installed.map(\.modelIdentifier), ["mlx-community/Qwen2.5-7B-Instruct-4bit"])
         XCTAssertEqual(result.runnerPath, runnerPath)
     }
 

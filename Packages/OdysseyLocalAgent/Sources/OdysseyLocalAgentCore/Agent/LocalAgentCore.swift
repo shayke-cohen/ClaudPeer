@@ -185,6 +185,11 @@ public actor LocalAgentCore {
         sessions[sessionId]?.config.toolDefinitions ?? []
     }
 
+    public func shutdown() async {
+        sessions.removeAll()
+        await mcpBridge.shutdown()
+    }
+
     private func accessPolicy(for config: LocalAgentConfig) async -> LocalToolAccessPolicy {
         LocalToolAccessPolicy(rules: config.allowedTools)
     }

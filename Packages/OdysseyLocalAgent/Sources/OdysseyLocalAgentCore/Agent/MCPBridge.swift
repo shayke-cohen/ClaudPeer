@@ -82,6 +82,16 @@ public actor MCPBridge {
         return ToolExecutionResult(success: false, output: "No MCP server exposes tool \(toolName)")
     }
 
+
+    public func shutdown() async {
+        let activeClients = Array(clients.values)
+        clients.removeAll()
+        toolIndex.removeAll()
+        for client in activeClients {
+            await client.shutdown()
+        }
+    }
+
     private func client(for server: LocalAgentMCPServer) async throws -> MCPClient {
         let key = serverKey(for: server)
         if let existing = clients[key] {

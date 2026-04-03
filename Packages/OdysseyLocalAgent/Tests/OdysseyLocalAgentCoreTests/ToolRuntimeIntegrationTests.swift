@@ -174,6 +174,78 @@ final class ToolRuntimeIntegrationTests: XCTestCase {
         XCTAssertEqual(result.output, "hello from bash")
     }
 
+    func testToolExecutorRoutesConfiguredRemoteToolToRemoteCaller() async throws {
+        let registry = ToolRegistry(tools: BuiltInTools.makeDefaultTools())
+        let executor = ToolExecutor(
+            registry: registry,
+            remoteToolCaller: StubRemoteToolCaller { name, arguments, context in
+                XCTAssertEqual(name, "peer_send")
+                XCTAssertEqual(arguments["message"], .string("hello peer"))
+                XCTAssertEqual(context.sessionId, "remote-tool-test")
+                return ToolExecutionResult(success: true, output: "REMOTE: hello peer")
+            }
+        )
+        let context = ToolExecutionContext(
+            sessionId: "remote-tool-test",
+            workingDirectory: tempDirectory.path,
+            configuredRemoteTools: ["peer_send"]
+        )
+
+        let result = try await executor.execute(
+            toolName: "peer_send",
+            arguments: ["message": .string("hello peer")],
+            context: context
+        )
+
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.output, "REMOTE: hello peer")
+    }
+
+    func testToolExecutorCallsMCPToolThroughBridge() async throws {
+        let server = try makeStubMCPServer(
+            in: tempDirectory,
+            name: "tools-mcp",
+            toolName: "mcp_echo",
+            responsePrefix: "MCP"
+        )
+        let registry = ToolRegistry(tools: BuiltInTools.makeDefaultTools())
+        let bridge = MCPBridge()
+        let executor = ToolExecutor(registry: registry, mcpBridge: bridge)
+        let context = ToolExecutionContext(
+            sessionId: "mcp-tool-test",
+            workingDirectory: tempDirectory.path,
+            configuredMCPServers: [server]
+        )
+
+        let result = try await executor.execute(
+            toolName: "mcp_echo",
+            arguments: ["text": .string("hello from mcp")],
+            context: context
+        )
+
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.output, "MCP: hello from mcp")
+        await bridge.shutdown()
+    }
+
+    func testToolExecutorReturnsUnknownToolForMissingTool() async throws {
+        let registry = ToolRegistry(tools: BuiltInTools.makeDefaultTools())
+        let executor = ToolExecutor(registry: registry)
+        let context = ToolExecutionContext(
+            sessionId: "unknown-tool-test",
+            workingDirectory: tempDirectory.path
+        )
+
+        let result = try await executor.execute(
+            toolName: "missing_tool",
+            arguments: [:],
+            context: context
+        )
+
+        XCTAssertFalse(result.success)
+        XCTAssertEqual(result.output, "Unknown tool: missing_tool")
+    }
+
     func testToolExecutorWritesHTMLAndOpensItViaBrowserCommand() async throws {
         let fakeBin = tempDirectory.appendingPathComponent("bin", isDirectory: true)
         try FileManager.default.createDirectory(at: fakeBin, withIntermediateDirectories: true)

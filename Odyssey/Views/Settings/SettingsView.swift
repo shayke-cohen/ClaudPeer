@@ -58,6 +58,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
     @State private var selectedSection: SettingsSection
+    @StateObject private var modelsState = ModelsSettingsState()
 
     private let onBackToApp: (() -> Void)?
 
@@ -166,7 +167,7 @@ struct SettingsView: View {
             case .general:
                 GeneralSettingsTab()
             case .models:
-                ModelsSettingsTab()
+                ModelsSettingsTab(state: modelsState)
             case .connection:
                 ConnectionSettingsTab()
             case .connectors:
@@ -269,6 +270,85 @@ private struct GeneralSettingsTab: View {
 
 // MARK: - Models
 
+private struct ModelsInstallProgress: Equatable {
+    let installToken: String
+    let modelIdentifier: String
+    let title: String
+    let startedAt: Date
+    let expectedBytes: Int64?
+    var downloadedBytes: Int64
+
+    var fractionCompleted: Double? {
+        guard let expectedBytes, expectedBytes > 0 else { return nil }
+        let fraction = Double(downloadedBytes) / Double(expectedBytes)
+        return min(max(fraction, 0), 0.95)
+    }
+}
+
+@MainActor
+private final class ModelsSettingsState: ObservableObject {
+    @Published var modelsCatalog: ManagedMLXModelsCatalog?
+    @Published var isLoadingCatalog = false
+    @Published var catalogMessage: String?
+    @Published var customModelInput = ""
+    @Published var showCustomDefaultMLXInput = false
+    @Published var isInstallingMLXRunner = false
+    @Published var installingModelId: String?
+    @Published var deletingModelId: String?
+    @Published var deleteConfirmationModel: ManagedInstalledMLXModel?
+    @Published var smokeTestingModelId: String?
+    @Published var smokeTestResults: [String: ManagedMLXSmokeTestResult] = [:]
+    @Published var installProgress: ModelsInstallProgress?
+
+    private var installProgressTask: Task<Void, Never>?
+
+    deinit {
+        installProgressTask?.cancel()
+    }
+
+    func beginInstallProgress(
+        installToken: String,
+        modelIdentifier: String,
+        title: String,
+        expectedBytes: Int64?,
+        dataDirectory: String
+    ) {
+        installProgressTask?.cancel()
+        installProgress = ModelsInstallProgress(
+            installToken: installToken,
+            modelIdentifier: modelIdentifier,
+            title: title,
+            startedAt: Date(),
+            expectedBytes: expectedBytes,
+            downloadedBytes: LocalProviderInstaller.managedMLXDownloadedBytes(
+                for: modelIdentifier,
+                dataDirectoryPath: dataDirectory
+            )
+        )
+
+        installProgressTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard let self else { return }
+                let bytes = LocalProviderInstaller.managedMLXDownloadedBytes(
+                    for: modelIdentifier,
+                    dataDirectoryPath: dataDirectory
+                )
+                await MainActor.run {
+                    guard self.installProgress?.installToken == installToken else { return }
+                    self.installProgress?.downloadedBytes = max(self.installProgress?.downloadedBytes ?? 0, bytes)
+                }
+            }
+        }
+    }
+
+    func endInstallProgress() {
+        installProgressTask?.cancel()
+        installProgressTask = nil
+        installProgress = nil
+    }
+}
+
 private struct ModelsSettingsTab: View {
     private struct MLXModelDescriptor: Identifiable {
         let id: String
@@ -297,18 +377,7 @@ private struct ModelsSettingsTab: View {
     @AppStorage(AppSettings.localAgentHostPathOverrideKey, store: AppSettings.store) private var localAgentHostPathOverride = ""
     @AppStorage(AppSettings.mlxRunnerPathOverrideKey, store: AppSettings.store) private var mlxRunnerPathOverride = ""
     @AppStorage(AppSettings.dataDirectoryKey, store: AppSettings.store) private var dataDirectory = AppSettings.defaultDataDirectory
-
-    @State private var modelsCatalog: ManagedMLXModelsCatalog?
-    @State private var isLoadingCatalog = false
-    @State private var catalogMessage: String?
-    @State private var customModelInput = ""
-    @State private var showCustomDefaultMLXInput = false
-    @State private var isInstallingMLXRunner = false
-    @State private var installingModelId: String?
-    @State private var deletingModelId: String?
-    @State private var deleteConfirmationModel: ManagedInstalledMLXModel?
-    @State private var smokeTestingModelId: String?
-    @State private var smokeTestResults: [String: ManagedMLXSmokeTestResult] = [:]
+    @ObservedObject var state: ModelsSettingsState
 
     private var selectedProvider: Binding<ProviderSelection> {
         Binding(
@@ -349,11 +418,11 @@ private struct ModelsSettingsTab: View {
     }
 
     private var catalogPresets: [ManagedMLXModelPreset] {
-        modelsCatalog?.presets ?? LocalProviderInstaller.recommendedMLXPresets()
+        state.modelsCatalog?.presets ?? LocalProviderInstaller.recommendedMLXPresets()
     }
 
     private var installedModels: [ManagedInstalledMLXModel] {
-        modelsCatalog?.installed ?? localProviderReport.installedMLXModels
+        state.modelsCatalog?.installed ?? localProviderReport.installedMLXModels
     }
 
     private var installedModelLookup: [String: ManagedInstalledMLXModel] {
@@ -395,8 +464,8 @@ private struct ModelsSettingsTab: View {
 
     private var customDefaultDisclosure: Binding<Bool> {
         Binding(
-            get: { showCustomDefaultMLXInput || !isUsingDownloadedDefaultMLXModel || installedModels.isEmpty },
-            set: { showCustomDefaultMLXInput = $0 }
+            get: { state.showCustomDefaultMLXInput || !isUsingDownloadedDefaultMLXModel || installedModels.isEmpty },
+            set: { state.showCustomDefaultMLXInput = $0 }
         )
     }
 
@@ -405,11 +474,11 @@ private struct ModelsSettingsTab: View {
     }
 
     private var customModelSource: ManagedMLXInstallSource? {
-        LocalProviderInstaller.installSource(from: customModelInput)
+        LocalProviderInstaller.installSource(from: state.customModelInput)
     }
 
     private var customModelValidation: (text: String, isError: Bool) {
-        let trimmed = customModelInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = state.customModelInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return ("Accepts Hugging Face repo ids, Hugging Face URLs, and direct archive URLs.", false)
         }
@@ -444,9 +513,9 @@ private struct ModelsSettingsTab: View {
         .task(id: reloadToken) {
             await refreshCatalog()
         }
-        .alert("Delete downloaded model?", isPresented: deleteConfirmationPresented, presenting: deleteConfirmationModel) { model in
+        .alert("Delete downloaded model?", isPresented: deleteConfirmationPresented, presenting: state.deleteConfirmationModel) { model in
             Button("Cancel", role: .cancel) {
-                deleteConfirmationModel = nil
+                state.deleteConfirmationModel = nil
             }
             Button("Delete", role: .destructive) {
                 deleteManagedModel(model)
@@ -458,8 +527,8 @@ private struct ModelsSettingsTab: View {
 
     private var deleteConfirmationPresented: Binding<Bool> {
         Binding(
-            get: { deleteConfirmationModel != nil },
-            set: { if !$0 { deleteConfirmationModel = nil } }
+            get: { state.deleteConfirmationModel != nil },
+            set: { if !$0 { state.deleteConfirmationModel = nil } }
         )
     }
 
@@ -550,7 +619,7 @@ private struct ModelsSettingsTab: View {
 
                 DisclosureGroup("Use a custom MLX model id or local path", isExpanded: customDefaultDisclosure) {
                     VStack(alignment: .leading, spacing: 8) {
-                        TextField("mlx-community/Qwen3-4B-Instruct-2507-4bit or /path/to/model", text: $defaultMLXModel)
+                        TextField("mlx-community/Qwen3-14B-4bit or /path/to/model", text: $defaultMLXModel)
                             .textFieldStyle(.roundedBorder)
                             .xrayId("settings.models.defaultMLXModelField")
 
@@ -613,16 +682,21 @@ private struct ModelsSettingsTab: View {
                                 .xrayId("settings.models.mlxDownloadDirectory")
 
                             HStack {
-                                Button(isInstallingMLXRunner ? "Installing MLX Support…" : "Install MLX Support") {
+                                Button(state.isInstallingMLXRunner ? "Installing MLX Support…" : "Install MLX Support") {
                                     installMLXRunner()
                                 }
-                                .disabled(isInstallingMLXRunner)
+                                .disabled(state.isInstallingMLXRunner)
                                 .xrayId("settings.models.installMLXRunnerButton")
 
                                 Button("Open Cache in Finder") {
                                     openPathInFinder(localProviderReport.mlxDownloadDirectory)
                                 }
                                 .xrayId("settings.models.openMLXCacheButton")
+
+                                Button("Open Models Folder") {
+                                    openPathInFinder(LocalProviderInstaller.managedMLXModelsDirectory(dataDirectoryPath: dataDirectory))
+                                }
+                                .xrayId("settings.models.openMLXModelsDirectoryButton")
                             }
                         }
                     }
@@ -646,6 +720,10 @@ private struct ModelsSettingsTab: View {
                     }
                 }
 
+                if let installProgress = state.installProgress {
+                    downloadProgressCard(installProgress)
+                }
+
                 ForEach(recommendedModelDescriptors) { descriptor in
                     recommendedModelCard(descriptor)
                 }
@@ -655,13 +733,13 @@ private struct ModelsSettingsTab: View {
                         Text("Add from URL")
                             .font(.headline)
                         HStack {
-                            TextField("https://huggingface.co/owner/model or https://host/model.tar.gz or owner/model", text: $customModelInput)
+                            TextField("https://huggingface.co/owner/model or https://host/model.tar.gz or owner/model", text: $state.customModelInput)
                                 .textFieldStyle(.roundedBorder)
                                 .xrayId("settings.models.customMLXModelField")
-                            Button(installingModelId == "__custom__" ? "Adding…" : "Add") {
+                            Button(state.installingModelId == "__custom__" ? "Adding…" : "Add") {
                                 installCustomModel()
                             }
-                            .disabled(customModelSource == nil || installingModelId != nil)
+                            .disabled(customModelSource == nil || state.installingModelId != nil)
                             .xrayId("settings.models.installCustomMLXModelButton")
                         }
                         Text(customModelValidation.text)
@@ -671,12 +749,12 @@ private struct ModelsSettingsTab: View {
                 }
             }
 
-            if isLoadingCatalog {
+            if state.isLoadingCatalog {
                 ProgressView("Refreshing MLX model library…")
                     .xrayId("settings.models.loadingCatalog")
             }
 
-            if let catalogMessage {
+            if let catalogMessage = state.catalogMessage {
                 Text(catalogMessage)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -689,6 +767,14 @@ private struct ModelsSettingsTab: View {
     private var installedMLXModelsSection: some View {
         Section("Installed MLX Models") {
             VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Spacer()
+                    Button("Open Models Folder") {
+                        openPathInFinder(LocalProviderInstaller.managedMLXModelsDirectory(dataDirectoryPath: dataDirectory))
+                    }
+                    .xrayId("settings.models.openMLXModelsDirectoryButtonInstalled")
+                }
+
                 if installedModels.isEmpty {
                     modelSurface {
                         VStack(alignment: .leading, spacing: 4) {
@@ -876,16 +962,20 @@ private struct ModelsSettingsTab: View {
                     .foregroundStyle(.secondary)
 
                 HStack {
-                    Button(installingModelId == descriptor.modelIdentifier ? "Downloading…" : (descriptor.isInstalled ? "Downloaded" : "Download")) {
+                    Button(state.installingModelId == descriptor.modelIdentifier ? "Downloading…" : (descriptor.isInstalled ? "Downloaded" : "Download")) {
                         installManagedModel(descriptor.modelIdentifier)
                     }
-                    .disabled(installingModelId != nil || descriptor.isInstalled)
+                    .disabled(state.installingModelId != nil || descriptor.isInstalled)
                     .xrayId("settings.models.downloadPreset.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
 
                     Button("Set as Default") {
                         defaultMLXModel = descriptor.modelIdentifier
                     }
                     .xrayId("settings.models.setDefaultPreset.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+                }
+
+                if let installProgress = state.installProgress, installProgress.installToken == descriptor.modelIdentifier {
+                    downloadProgressSummary(installProgress)
                 }
             }
         }
@@ -942,12 +1032,12 @@ private struct ModelsSettingsTab: View {
                     }
                     .xrayId("settings.models.setDefaultInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
 
-                    Button(smokeTestingModelId == descriptor.id ? "Testing…" : "Smoke Test") {
+                    Button(state.smokeTestingModelId == descriptor.id ? "Testing…" : "Smoke Test") {
                         if let installedModel = installedModelLookup[descriptor.modelIdentifier] {
                             smokeTestManagedModel(installedModel, descriptor: descriptor)
                         }
                     }
-                    .disabled(smokeTestingModelId != nil)
+                    .disabled(state.smokeTestingModelId != nil)
                     .xrayId("settings.models.smokeTestInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
 
                     if let revealPath = descriptor.managedPath {
@@ -957,17 +1047,17 @@ private struct ModelsSettingsTab: View {
                         .xrayId("settings.models.revealInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
                     }
 
-                    Button(deletingModelId == descriptor.id ? "Deleting…" : "Delete") {
+                    Button(state.deletingModelId == descriptor.id ? "Deleting…" : "Delete") {
                         if let installedModel = installedModelLookup[descriptor.modelIdentifier] {
-                            deleteConfirmationModel = installedModel
+                            state.deleteConfirmationModel = installedModel
                         }
                     }
-                    .disabled(deletingModelId != nil)
+                    .disabled(state.deletingModelId != nil)
                     .foregroundStyle(.red)
                     .xrayId("settings.models.deleteInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
                 }
 
-                if let smokeTestResult = smokeTestResults[descriptor.modelIdentifier] {
+                if let smokeTestResult = state.smokeTestResults[descriptor.modelIdentifier] {
                     smokeTestResultView(smokeTestResult)
                 }
             }
@@ -976,11 +1066,11 @@ private struct ModelsSettingsTab: View {
     }
 
     private func refreshCatalog() async {
-        isLoadingCatalog = true
-        defer { isLoadingCatalog = false }
+        state.isLoadingCatalog = true
+        defer { state.isLoadingCatalog = false }
 
         do {
-            modelsCatalog = try await LocalProviderInstaller.listMLXModels(
+            state.modelsCatalog = try await LocalProviderInstaller.listMLXModels(
                 dataDirectoryPath: dataDirectory,
                 bundleResourcePath: Bundle.main.resourcePath,
                 currentDirectoryPath: FileManager.default.currentDirectoryPath,
@@ -988,50 +1078,58 @@ private struct ModelsSettingsTab: View {
                 hostOverride: localAgentHostPathOverride.isEmpty ? nil : localAgentHostPathOverride,
                 runnerOverride: mlxRunnerPathOverride.isEmpty ? nil : mlxRunnerPathOverride
             )
-            catalogMessage = nil
+            state.catalogMessage = nil
         } catch {
-            modelsCatalog = ManagedMLXModelsCatalog(
+            state.modelsCatalog = ManagedMLXModelsCatalog(
                 downloadDirectory: localProviderReport.mlxDownloadDirectory,
                 manifestPath: LocalProviderInstaller.managedMLXManifestPath(dataDirectoryPath: dataDirectory),
                 runnerPath: localProviderReport.mlxRunnerPath,
                 presets: LocalProviderInstaller.recommendedMLXPresets(),
                 installed: localProviderReport.installedMLXModels
             )
-            catalogMessage = error.localizedDescription
+            state.catalogMessage = error.localizedDescription
         }
     }
 
     private func installMLXRunner() {
-        isInstallingMLXRunner = true
-        catalogMessage = "Downloading and building the MLX runner…"
+        state.isInstallingMLXRunner = true
+        state.catalogMessage = "Downloading and building the MLX runner…"
 
         Task {
             do {
                 let installedPath = try await LocalProviderInstaller.installMLXRunner(dataDirectoryPath: dataDirectory)
                 await MainActor.run {
-                    isInstallingMLXRunner = false
-                    catalogMessage = "Installed MLX runner at \(installedPath)."
+                    state.isInstallingMLXRunner = false
+                    state.catalogMessage = "Installed MLX runner at \(installedPath)."
                     mlxRunnerPathOverride = ""
                 }
                 await refreshCatalog()
             } catch {
                 await MainActor.run {
-                    isInstallingMLXRunner = false
-                    catalogMessage = error.localizedDescription
+                    state.isInstallingMLXRunner = false
+                    state.catalogMessage = error.localizedDescription
                 }
             }
         }
     }
 
     private func installCustomModel() {
-        installManagedModel(customModelInput, installToken: "__custom__")
+        installManagedModel(state.customModelInput, installToken: "__custom__")
     }
 
     private func installManagedModel(_ modelIdentifier: String, installToken: String? = nil) {
         let trimmed = modelIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        installingModelId = installToken ?? trimmed
-        catalogMessage = "Adding \(trimmed)…"
+        let resolvedToken = installToken ?? trimmed
+        state.installingModelId = resolvedToken
+        state.catalogMessage = "Adding \(trimmed)…"
+        state.beginInstallProgress(
+            installToken: resolvedToken,
+            modelIdentifier: trimmed,
+            title: descriptor(for: trimmed)?.title ?? inferredMLXModelTitle(from: trimmed),
+            expectedBytes: expectedDownloadBytes(for: descriptor(for: trimmed)?.downloadSize),
+            dataDirectory: dataDirectory
+        )
 
         Task {
             do {
@@ -1045,24 +1143,26 @@ private struct ModelsSettingsTab: View {
                     runnerOverride: mlxRunnerPathOverride.isEmpty ? nil : mlxRunnerPathOverride
                 )
                 await MainActor.run {
-                    installingModelId = nil
-                    customModelInput = ""
+                    state.installingModelId = nil
+                    state.customModelInput = ""
+                    state.endInstallProgress()
                     let verb = result.alreadyInstalled ? "Already installed" : "Installed"
-                    catalogMessage = "\(verb) \(result.modelIdentifier) in \(result.downloadDirectory)."
+                    state.catalogMessage = "\(verb) \(result.modelIdentifier) in \(result.downloadDirectory)."
                 }
                 await refreshCatalog()
             } catch {
                 await MainActor.run {
-                    installingModelId = nil
-                    catalogMessage = error.localizedDescription
+                    state.installingModelId = nil
+                    state.endInstallProgress()
+                    state.catalogMessage = error.localizedDescription
                 }
             }
         }
     }
 
     private func smokeTestManagedModel(_ model: ManagedInstalledMLXModel, descriptor: MLXModelDescriptor) {
-        smokeTestingModelId = model.id
-        catalogMessage = "Testing \(descriptor.title)…"
+        state.smokeTestingModelId = model.id
+        state.catalogMessage = "Testing \(descriptor.title)…"
 
         Task {
             do {
@@ -1076,29 +1176,29 @@ private struct ModelsSettingsTab: View {
                     runnerOverride: mlxRunnerPathOverride.isEmpty ? nil : mlxRunnerPathOverride
                 )
                 await MainActor.run {
-                    smokeTestingModelId = nil
-                    smokeTestResults[model.modelIdentifier] = result
-                    catalogMessage = result.success ? "Smoke test passed for \(descriptor.title)." : (result.errorMessage ?? "Smoke test failed.")
+                    state.smokeTestingModelId = nil
+                    state.smokeTestResults[model.modelIdentifier] = result
+                    state.catalogMessage = result.success ? "Smoke test passed for \(descriptor.title)." : (result.errorMessage ?? "Smoke test failed.")
                 }
             } catch {
                 await MainActor.run {
-                    smokeTestingModelId = nil
-                    smokeTestResults[model.modelIdentifier] = ManagedMLXSmokeTestResult(
+                    state.smokeTestingModelId = nil
+                    state.smokeTestResults[model.modelIdentifier] = ManagedMLXSmokeTestResult(
                         modelReference: descriptor.managedPath ?? descriptor.modelIdentifier,
                         durationSeconds: 0,
                         success: false,
                         outputPreview: nil,
                         errorMessage: error.localizedDescription
                     )
-                    catalogMessage = error.localizedDescription
+                    state.catalogMessage = error.localizedDescription
                 }
             }
         }
     }
 
     private func deleteManagedModel(_ model: ManagedInstalledMLXModel) {
-        deletingModelId = model.id
-        catalogMessage = "Deleting \(model.modelIdentifier)…"
+        state.deletingModelId = model.id
+        state.catalogMessage = "Deleting \(model.modelIdentifier)…"
 
         Task {
             do {
@@ -1112,21 +1212,21 @@ private struct ModelsSettingsTab: View {
                     hostOverride: localAgentHostPathOverride.isEmpty ? nil : localAgentHostPathOverride
                 )
                 await MainActor.run {
-                    deletingModelId = nil
-                    deleteConfirmationModel = nil
-                    smokeTestResults.removeValue(forKey: model.modelIdentifier)
+                    state.deletingModelId = nil
+                    state.deleteConfirmationModel = nil
+                    state.smokeTestResults.removeValue(forKey: model.modelIdentifier)
                     if defaultMLXModel == currentSelectionValue {
                         defaultMLXModel = AppSettings.defaultMLXModel
                     }
                     let verb = result.alreadyRemoved ? "Already removed" : "Removed"
-                    catalogMessage = "\(verb) \(result.modelIdentifier)."
+                    state.catalogMessage = "\(verb) \(result.modelIdentifier)."
                 }
                 await refreshCatalog()
             } catch {
                 await MainActor.run {
-                    deletingModelId = nil
-                    deleteConfirmationModel = nil
-                    catalogMessage = error.localizedDescription
+                    state.deletingModelId = nil
+                    state.deleteConfirmationModel = nil
+                    state.catalogMessage = error.localizedDescription
                 }
             }
         }
@@ -1169,6 +1269,78 @@ private struct ModelsSettingsTab: View {
             parts.append("This is your current MLX default. Odyssey will fall back to \(AppSettings.defaultMLXModel).")
         }
         return parts.joined(separator: "\n\n")
+    }
+
+    @ViewBuilder
+    private func downloadProgressCard(_ progress: ModelsInstallProgress) -> some View {
+        modelSurface {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Download in progress")
+                    .font(.headline)
+                downloadProgressSummary(progress)
+                Text("This download keeps running while you switch between settings sections.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .xrayId("settings.models.installProgressCard")
+    }
+
+    @ViewBuilder
+    private func downloadProgressSummary(_ progress: ModelsInstallProgress) -> some View {
+        if let fraction = progress.fractionCompleted {
+            ProgressView(value: fraction) {
+                Text("Downloading \(progress.title)…")
+                    .font(.subheadline.weight(.semibold))
+            } currentValueLabel: {
+                Text(downloadProgressLabel(for: progress))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                ProgressView()
+                Text("Downloading \(progress.title)…")
+                    .font(.subheadline.weight(.semibold))
+                Text(downloadProgressLabel(for: progress))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func downloadProgressLabel(for progress: ModelsInstallProgress) -> String {
+        let downloaded = ByteCountFormatter.string(fromByteCount: progress.downloadedBytes, countStyle: .file)
+        if let expectedBytes = progress.expectedBytes {
+            let expected = ByteCountFormatter.string(fromByteCount: expectedBytes, countStyle: .file)
+            return "\(downloaded) of about \(expected)"
+        }
+        return downloaded
+    }
+
+    private func expectedDownloadBytes(for value: String?) -> Int64? {
+        guard let value else { return nil }
+        let pattern = #"([0-9]+(?:\.[0-9]+)?)\s*(KB|MB|GB|TB)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+            return nil
+        }
+        let range = NSRange(value.startIndex..<value.endIndex, in: value)
+        guard let match = regex.firstMatch(in: value, options: [], range: range),
+              let numberRange = Range(match.range(at: 1), in: value),
+              let unitRange = Range(match.range(at: 2), in: value),
+              let number = Double(value[numberRange]) else {
+            return nil
+        }
+
+        let multiplier: Double
+        switch value[unitRange].uppercased() {
+        case "KB": multiplier = 1_000
+        case "MB": multiplier = 1_000_000
+        case "GB": multiplier = 1_000_000_000
+        case "TB": multiplier = 1_000_000_000_000
+        default: return nil
+        }
+        return Int64(number * multiplier)
     }
 
     private func defaultSelectionValue(for installedModel: ManagedInstalledMLXModel?, modelIdentifier: String) -> String {

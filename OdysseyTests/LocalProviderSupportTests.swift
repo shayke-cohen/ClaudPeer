@@ -188,6 +188,30 @@ final class LocalProviderSupportTests: XCTestCase {
         XCTAssertNil(resolved)
     }
 
+    func testManagedMLXModelsDirectoryUsesManagedRoot() {
+        XCTAssertEqual(
+            LocalProviderInstaller.managedMLXModelsDirectory(dataDirectoryPath: tempDirectory.path),
+            tempDirectory.appendingPathComponent("local-agent/models").path
+        )
+    }
+
+    func testManagedMLXDownloadedBytesReadsCurrentManagedPathLayout() throws {
+        let modelPath = tempDirectory
+            .appendingPathComponent("local-agent/models/huggingface/models/mlx-community/Qwen3-14B-4bit", isDirectory: true)
+        try FileManager.default.createDirectory(at: modelPath, withIntermediateDirectories: true)
+        let weightsURL = modelPath.appendingPathComponent("weights.safetensors")
+        let payload = Data(repeating: 7, count: 4_096)
+        FileManager.default.createFile(atPath: weightsURL.path, contents: payload)
+
+        XCTAssertEqual(
+            LocalProviderInstaller.managedMLXDownloadedBytes(
+                for: "mlx-community/Qwen3-14B-4bit",
+                dataDirectoryPath: tempDirectory.path
+            ),
+            Int64(payload.count)
+        )
+    }
+
     func testNormalizedMLXModelIdentifierAcceptsHuggingFaceURL() {
         let normalized = LocalProviderInstaller.normalizedMLXModelIdentifier(
             "https://huggingface.co/mlx-community/Qwen2.5-1.5B-Instruct-4bit"
@@ -250,13 +274,12 @@ final class LocalProviderSupportTests: XCTestCase {
         XCTAssertEqual(
             LocalProviderInstaller.recommendedMLXPresets().map(\.modelIdentifier),
             [
-                "mlx-community/Qwen3-4B-Instruct-2507-4bit",
-                "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
-                "mlx-community/Qwen3-0.6B-4bit",
+                "mlx-community/Qwen3-14B-4bit",
                 "mlx-community/Qwen2.5-7B-Instruct-4bit",
+                "mlx-community/Qwen3-30B-A3B-4bit-DWQ-053125",
                 "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
-                "mlx-community/Llama-3.2-3B-Instruct-4bit",
-                "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit",
+                "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit",
+                "mlx-community/Qwen3-Coder-Next-4bit",
             ]
         )
     }

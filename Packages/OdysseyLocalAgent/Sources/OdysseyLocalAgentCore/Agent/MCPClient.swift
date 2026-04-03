@@ -17,6 +17,10 @@ actor MCPClient {
     private var buffer = Data()
     private var started = false
 
+    deinit {
+        cleanupProcess()
+    }
+
     init(server: LocalAgentMCPServer) async throws {
         self.server = server
         self.process = Process()
@@ -100,6 +104,11 @@ actor MCPClient {
                 "version": "0.1.0",
             ],
         ])
+    }
+
+    func shutdown() {
+        cleanupProcess()
+        started = false
     }
 
     private func request(method: String, params: [String: Any]) async throws -> [String: Any] {
@@ -206,6 +215,18 @@ actor MCPClient {
 
     private func mergedEnvironment(custom: [String: String]) -> [String: String] {
         ProcessInfo.processInfo.environment.merging(custom) { _, new in new }
+    }
+
+    nonisolated private func cleanupProcess() {
+        stdoutPipe.fileHandleForReading.readabilityHandler = nil
+        stderrPipe.fileHandleForReading.readabilityHandler = nil
+        try? stdinPipe.fileHandleForWriting.close()
+        try? stdoutPipe.fileHandleForReading.close()
+        try? stderrPipe.fileHandleForReading.close()
+        if process.isRunning {
+            process.terminate()
+            process.waitUntilExit()
+        }
     }
 
     private func dictionary(from values: [String: DynamicValue]) throws -> [String: Any] {
