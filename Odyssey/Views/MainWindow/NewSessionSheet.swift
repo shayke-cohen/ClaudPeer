@@ -57,6 +57,8 @@ struct NewSessionSheet: View {
     @State private var selectedStartKind: CreateThreadStartKind
     @State private var selectedAgentIds: Set<UUID> = []
     @State private var selectedGroupId: UUID?
+    @State private var blankProviderOverride = AgentDefaults.inheritMarker
+    @State private var blankModelOverride = AgentDefaults.inheritMarker
     @State private var providerOverridesByAgentId: [UUID: String] = [:]
     @State private var modelOverridesByAgentId: [UUID: String] = [:]
     @State private var sessionMode: SessionMode = .interactive
@@ -157,6 +159,18 @@ struct NewSessionSheet: View {
         case .groups:
             return canStartSelectedGroup
         }
+    }
+
+    private var blankEffectiveProvider: String {
+        AgentDefaults.resolveEffectiveProvider(sessionOverride: blankProviderOverride)
+    }
+
+    private var blankProviderDefaultLabel: String {
+        "Default (\(AgentDefaults.displayName(forProvider: AgentDefaults.defaultProvider())))"
+    }
+
+    private var blankModelDefaultLabel: String {
+        "Default (\(AgentDefaults.label(for: AgentDefaults.defaultModel(for: blankEffectiveProvider))))"
     }
 
     private func providerOverrideSelection(for agent: Agent) -> String {
@@ -434,6 +448,16 @@ struct NewSessionSheet: View {
                 mission = ""
             }
         }
+        .onChange(of: blankProviderOverride) { _, _ in
+            let normalizedModel = AgentDefaults.normalizedModelSelection(blankModelOverride)
+            let availableModels = AgentDefaults.availableThreadModelChoices(
+                for: blankEffectiveProvider,
+                inheritLabel: "Use Provider Default"
+            )
+            blankModelOverride = availableModels.contains(where: { $0.id == normalizedModel })
+                ? normalizedModel
+                : AgentDefaults.inheritMarker
+        }
     }
 
     @ViewBuilder
@@ -532,17 +556,49 @@ struct NewSessionSheet: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 10) {
-                Button("Quick Chat") {
-                    createQuickChat()
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Launch Defaults")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    HStack(alignment: .top, spacing: 10) {
+                        overridePickerColumn(
+                            title: "Provider",
+                            selection: $blankProviderOverride,
+                            options: [
+                                ModelChoice(id: AgentDefaults.inheritMarker, label: blankProviderDefaultLabel),
+                                ModelChoice(id: ProviderSelection.claude.rawValue, label: ProviderSelection.claude.label),
+                                ModelChoice(id: ProviderSelection.codex.rawValue, label: ProviderSelection.codex.label),
+                                ModelChoice(id: ProviderSelection.foundation.rawValue, label: ProviderSelection.foundation.label),
+                                ModelChoice(id: ProviderSelection.mlx.rawValue, label: ProviderSelection.mlx.label)
+                            ],
+                            xrayId: "newSession.blankProviderPicker"
+                        )
+                        overridePickerColumn(
+                            title: "Model",
+                            selection: $blankModelOverride,
+                            options: AgentDefaults.availableThreadModelChoices(
+                                for: blankEffectiveProvider,
+                                inheritLabel: blankModelDefaultLabel
+                            ),
+                            xrayId: "newSession.blankModelPicker"
+                        )
+                    }
                 }
-                .xrayId("newSession.quickChatButton")
 
-                Spacer()
+                Spacer(minLength: 0)
 
-                Text("Use this when you want the calmest possible start.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                VStack(alignment: .trailing, spacing: 10) {
+                    Button("Quick Chat") {
+                        createQuickChat()
+                    }
+                    .xrayId("newSession.quickChatButton")
+
+                    Text("Use this when you want the calmest possible start.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
         .padding(18)
@@ -1586,6 +1642,11 @@ struct NewSessionSheet: View {
             mode: sessionMode,
             workingDirectory: projectDir
         )
+        session.provider = AgentDefaults.resolveEffectiveProvider(sessionOverride: blankProviderOverride)
+        session.model = AgentDefaults.resolveEffectiveModel(
+            sessionOverride: blankModelOverride,
+            provider: session.provider
+        )
         session.conversations = [conversation]
         conversation.sessions.append(session)
 
@@ -1702,14 +1763,40 @@ struct NewSessionSheet: View {
     }
 
     private func createQuickChat() {
+        let projectDir = windowState.projectDirectory
         let conversation = Conversation(
             topic: "New Thread",
             projectId: windowState.selectedProjectId,
             threadKind: .freeform
         )
+        conversation.executionMode = .interactive
+
         let userParticipant = Participant(type: .user, displayName: "You")
         userParticipant.conversation = conversation
         conversation.participants.append(userParticipant)
+
+        let session = Session(
+            agent: nil,
+            mission: nil,
+            mode: .interactive,
+            workingDirectory: projectDir
+        )
+        session.provider = AgentDefaults.resolveEffectiveProvider(sessionOverride: blankProviderOverride)
+        session.model = AgentDefaults.resolveEffectiveModel(
+            sessionOverride: blankModelOverride,
+            provider: session.provider
+        )
+        session.conversations = [conversation]
+        conversation.sessions.append(session)
+
+        let agentParticipant = Participant(
+            type: .agentSession(sessionId: session.id),
+            displayName: AgentDefaults.displayName(forProvider: session.provider)
+        )
+        agentParticipant.conversation = conversation
+        conversation.participants.append(agentParticipant)
+
+        modelContext.insert(session)
         modelContext.insert(conversation)
         try? modelContext.save()
         windowState.selectedConversationId = conversation.id
