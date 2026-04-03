@@ -1,5 +1,6 @@
 import type { AgentConfig } from "../types.js";
 import { createPeerBusToolDefinitions } from "../tools/peerbus-server.js";
+import { logger } from "../logger.js";
 import type {
   ProviderRuntime,
   RuntimeDependencies,
@@ -22,6 +23,7 @@ interface LocalAgentEvent {
 export class LocalAgentRuntime implements ProviderRuntime {
   readonly provider: LocalAgentProvider;
   private readonly client: LocalAgentHostClient;
+  private turnQueue: Promise<void> = Promise.resolve();
 
   constructor(
     provider: LocalAgentProvider,
@@ -54,6 +56,10 @@ export class LocalAgentRuntime implements ProviderRuntime {
       throw new Error(probe?.reason ?? `${this.provider} provider is unavailable`);
     }
 
+    logger.info(
+      "local-agent",
+      `[${sessionId}] createSession provider=${this.provider} model=${config.model} toolDefs=${this.hostToolDefinitions(sessionId, config).length}`,
+    );
     await this.client.call("session.create", {
       sessionId,
       config: this.toHostConfig(sessionId, config),
@@ -65,20 +71,48 @@ export class LocalAgentRuntime implements ProviderRuntime {
       throw new Error(`Provider ${this.provider} does not support attachments yet`);
     }
 
-    const result = await this.client.call("session.message", {
-      sessionId: args.sessionId,
-      text: args.text,
-    });
-    this.emitEvents(result.events ?? []);
-
-    return {
-      backendSessionId: result.backendSessionId,
-      resultText: result.resultText ?? "",
-      costDelta: 0,
-      inputTokens: result.inputTokens ?? 0,
-      outputTokens: result.outputTokens ?? 0,
-      numTurns: result.numTurns ?? 1,
+    const abortHandler = () => {
+      this.pauseSession(args.sessionId).catch((error) => {
+        logger.warn(
+          "local-agent",
+          `[${args.sessionId}] Failed to interrupt local ${this.provider} turn: ${error?.message ?? error}`,
+        );
+      });
     };
+    args.abortController.signal.addEventListener("abort", abortHandler, { once: true });
+
+    try {
+      return await this.enqueueTurn(async () => {
+        if (args.abortController.signal.aborted) {
+          throw new Error(`Local ${this.provider} turn was aborted before reaching the host`);
+        }
+        const startedAt = Date.now();
+        logger.info(
+          "local-agent",
+          `[${args.sessionId}] session.message -> host provider=${this.provider} textLength=${args.text.length}`,
+        );
+        const result = await this.client.call("session.message", {
+          sessionId: args.sessionId,
+          text: args.text,
+        });
+        logger.info(
+          "local-agent",
+          `[${args.sessionId}] host response in ${Date.now() - startedAt}ms events=${result.events?.length ?? 0} resultLength=${result.resultText?.length ?? 0}`,
+        );
+        this.emitEvents(result.events ?? []);
+
+        return {
+          backendSessionId: result.backendSessionId,
+          resultText: result.resultText ?? "",
+          costDelta: 0,
+          inputTokens: result.inputTokens ?? 0,
+          outputTokens: result.outputTokens ?? 0,
+          numTurns: result.numTurns ?? 1,
+        };
+      });
+    } finally {
+      args.abortController.signal.removeEventListener("abort", abortHandler);
+    }
   }
 
   async resumeSession(sessionId: string, backendSessionId: string, config?: AgentConfig): Promise<void> {
@@ -245,5 +279,20 @@ export class LocalAgentRuntime implements ProviderRuntime {
     return process.env.ODYSSEY_LOCAL_AGENT_PACKAGE_PATH?.trim()
       || process.env.CLAUDESTUDIO_LOCAL_AGENT_PACKAGE_PATH?.trim()
       || `${import.meta.dir}/../../../Packages/OdysseyLocalAgent`;
+  }
+
+  private enqueueTurn<T>(work: () => Promise<T>): Promise<T> {
+    const prior = this.turnQueue;
+    let release!: () => void;
+    this.turnQueue = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    return prior
+      .catch(() => undefined)
+      .then(work)
+      .finally(() => {
+        release();
+      });
   }
 }

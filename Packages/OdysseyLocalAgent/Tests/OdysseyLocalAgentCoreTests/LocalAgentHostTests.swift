@@ -363,6 +363,84 @@ final class LocalAgentHostTests: XCTestCase {
         XCTAssertTrue(transcript.contains(where: { $0["role"] as? String == "assistant" }))
     }
 
+    func testStdioPauseInterruptsActiveMLXTurn() throws {
+        let process = Process()
+        let inputPipe = Pipe()
+        let outputPipe = Pipe()
+        process.executableURL = try hostBinaryURL
+        process.arguments = ["stdio"]
+        process.standardInput = inputPipe
+        process.standardOutput = outputPipe
+        process.standardError = outputPipe
+        process.environment = ProcessInfo.processInfo.environment.merging([
+            "ODYSSEY_MLX_RUNNER": try makeHangingRunner(),
+            "ODYSSEY_MLX_DOWNLOAD_DIR": tempDirectory.appendingPathComponent("huggingface").path,
+        ]) { _, new in new }
+        try process.run()
+        defer {
+            inputPipe.fileHandleForWriting.closeFile()
+            if process.isRunning {
+                process.terminate()
+            }
+        }
+
+        _ = try sendStdioRequest(
+            id: 1,
+            method: "session.create",
+            params: [
+                "sessionId": "pause-session",
+                "config": [
+                    "name": "Pause Agent",
+                    "provider": "mlx",
+                    "model": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+                    "systemPrompt": "You are a local coding agent.",
+                    "workingDirectory": packageRoot.path,
+                    "allowedTools": [],
+                    "mcpServers": [],
+                    "skills": [],
+                    "toolDefinitions": [],
+                ],
+            ],
+            input: inputPipe.fileHandleForWriting,
+            output: outputPipe.fileHandleForReading
+        )
+
+        try writeStdioRequest(
+            id: 2,
+            method: "session.message",
+            params: [
+                "sessionId": "pause-session",
+                "text": "hi",
+            ],
+            input: inputPipe.fileHandleForWriting
+        )
+        Thread.sleep(forTimeInterval: 0.2)
+        try writeStdioRequest(
+            id: 3,
+            method: "session.pause",
+            params: [
+                "sessionId": "pause-session",
+            ],
+            input: inputPipe.fileHandleForWriting
+        )
+
+        var responses: [Int: [String: Any]] = [:]
+        let deadline = Date().addingTimeInterval(3)
+        while Date() < deadline, responses[2] == nil || responses[3] == nil {
+            let response = try readAnyStdioResponse(from: outputPipe.fileHandleForReading)
+            if let id = response["id"] as? Int {
+                responses[id] = response
+            }
+        }
+
+        let pauseResponse = try XCTUnwrap(responses[3])
+        XCTAssertNotNil((pauseResponse["result"] as? [String: Any])?["backendSessionId"])
+
+        let messageResponse = try XCTUnwrap(responses[2])
+        XCTAssertNotNil(messageResponse["error"])
+        XCTAssertNil(messageResponse["result"])
+    }
+
     func testRESTAgentAPIEndpointsMirrorSessionLifecycle() async throws {
         let port = Int.random(in: 48001...53000)
         let runnerPath = try makeStubRunner()
@@ -640,6 +718,12 @@ final class LocalAgentHostTests: XCTestCase {
         packageRoot.deletingLastPathComponent().deletingLastPathComponent()
     }
 
+    private var hostBinaryURL: URL {
+        get throws {
+            try hostExecutableURL()
+        }
+    }
+
     private func requireLiveLocalAgentEnvironment() throws -> LiveLocalAgentEnvironment {
         let environment = ProcessInfo.processInfo.environment
         guard environment["ODYSSEY_LIVE_LOCAL_AGENT"] == "1" else {
@@ -799,6 +883,16 @@ final class LocalAgentHostTests: XCTestCase {
         input: FileHandle,
         output: FileHandle
     ) throws -> [String: Any] {
+        try writeStdioRequest(id: id, method: method, params: params, input: input)
+        return try readAnyStdioResponse(from: output)
+    }
+
+    private func writeStdioRequest(
+        id: Int,
+        method: String,
+        params: [String: Any],
+        input: FileHandle
+    ) throws {
         let payload: [String: Any] = [
             "id": id,
             "method": method,
@@ -807,7 +901,9 @@ final class LocalAgentHostTests: XCTestCase {
         let data = try JSONSerialization.data(withJSONObject: payload)
         input.write(data)
         input.write(Data("\n".utf8))
+    }
 
+    private func readAnyStdioResponse(from output: FileHandle) throws -> [String: Any] {
         let responseData = try readStdioLine(from: output)
         return (try JSONSerialization.jsonObject(with: responseData) as? [String: Any]) ?? [:]
     }
@@ -831,6 +927,17 @@ final class LocalAgentHostTests: XCTestCase {
         try """
         #!/bin/zsh
         echo "$@"
+        """.write(to: scriptURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
+        return scriptURL.path
+    }
+
+    private func makeHangingRunner() throws -> String {
+        let scriptURL = tempDirectory.appendingPathComponent("llm-tool-hang")
+        try """
+        #!/bin/zsh
+        trap "exit 130" TERM INT
+        sleep 5
         """.write(to: scriptURL, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
         return scriptURL.path

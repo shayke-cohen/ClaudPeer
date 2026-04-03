@@ -170,7 +170,7 @@ struct NewSessionSheet: View {
     }
 
     private var blankModelDefaultLabel: String {
-        "Default (\(AgentDefaults.label(for: AgentDefaults.defaultModel(for: blankEffectiveProvider))))"
+        AgentDefaults.defaultModelChoiceLabel(for: blankEffectiveProvider)
     }
 
     private func providerOverrideSelection(for agent: Agent) -> String {

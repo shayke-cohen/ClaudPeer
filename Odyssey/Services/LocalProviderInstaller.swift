@@ -168,26 +168,6 @@ enum LocalProviderInstaller {
                 recommended: true
             ),
             ManagedMLXModelPreset(
-                modelIdentifier: "mlx-community/Qwen3-0.6B-4bit",
-                label: "Qwen3 0.6B",
-                summary: "Tiny Qwen3 option for fast downloads and quick local experiments.",
-                parameterSize: "0.6B params",
-                downloadSize: "~0.5 GB",
-                bestFor: "Quick smoke tests, tiny laptops, and ultra-fast local replies.",
-                agentSuitability: "Light for agents",
-                recommended: false
-            ),
-            ManagedMLXModelPreset(
-                modelIdentifier: "mlx-community/Qwen3-1.7B-4bit",
-                label: "Qwen3 1.7B",
-                summary: "Compact Qwen3 model with a better quality-to-size balance than the tiny tier.",
-                parameterSize: "1.7B params",
-                downloadSize: "~1.1 GB",
-                bestFor: "Everyday chat, lightweight repo help, and smaller Macs.",
-                agentSuitability: "Okay for agents",
-                recommended: false
-            ),
-            ManagedMLXModelPreset(
                 modelIdentifier: "mlx-community/Qwen3-8B-4bit",
                 label: "Qwen3 8B",
                 summary: "A stronger Qwen3 option when you want better reasoning and can afford more memory.",
@@ -195,26 +175,6 @@ enum LocalProviderInstaller {
                 downloadSize: "~4.9 GB",
                 bestFor: "Heavier local agent sessions, stronger reasoning, and longer tasks.",
                 agentSuitability: "Very strong for agents",
-                recommended: false
-            ),
-            ManagedMLXModelPreset(
-                modelIdentifier: "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
-                label: "Qwen2.5 1.5B Instruct",
-                summary: "Lightweight fallback for quick local chat and faster first-time setup.",
-                parameterSize: "1.5B params",
-                downloadSize: "~1.0 GB",
-                bestFor: "Quick chats, lightweight edits, and smaller laptops.",
-                agentSuitability: "Okay for agents",
-                recommended: false
-            ),
-            ManagedMLXModelPreset(
-                modelIdentifier: "mlx-community/Qwen2.5-3B-Instruct-4bit",
-                label: "Qwen2.5 3B Instruct",
-                summary: "Mid-size Qwen2.5 pick for users who want a lighter general-purpose local assistant.",
-                parameterSize: "3B params",
-                downloadSize: "~1.9 GB",
-                bestFor: "General local assistance, medium-size projects, and lower-memory Macs.",
-                agentSuitability: "Good for agents",
                 recommended: false
             ),
             ManagedMLXModelPreset(
@@ -235,26 +195,6 @@ enum LocalProviderInstaller {
                 downloadSize: "~4.3 GB",
                 bestFor: "Code edits, debugging, and coding-focused local sessions.",
                 agentSuitability: "Strong for coding agents",
-                recommended: false
-            ),
-            ManagedMLXModelPreset(
-                modelIdentifier: "mlx-community/Llama-3.2-1B-Instruct-4bit",
-                label: "Llama 3.2 1B Instruct",
-                summary: "Very small Llama option for quick installs and lightweight local chat.",
-                parameterSize: "1B params",
-                downloadSize: "~0.7 GB",
-                bestFor: "Tiny downloads, light experimentation, and smaller machines.",
-                agentSuitability: "Light for agents",
-                recommended: false
-            ),
-            ManagedMLXModelPreset(
-                modelIdentifier: "mlx-community/Llama-3.2-3B-Instruct-4bit",
-                label: "Llama 3.2 3B Instruct",
-                summary: "Alternative medium-size general model for local assistant tasks.",
-                parameterSize: "3B params",
-                downloadSize: "~2.0 GB",
-                bestFor: "General local assistant work and an alternative instruction tune.",
-                agentSuitability: "Good for agents",
                 recommended: false
             ),
         ]

@@ -65,15 +65,9 @@ final class LocalAgentCoreTests: XCTestCase {
             ManagedMLXModels.presets().map(\.modelIdentifier),
             [
                 "mlx-community/Qwen3-4B-Instruct-2507-4bit",
-                "mlx-community/Qwen3-0.6B-4bit",
-                "mlx-community/Qwen3-1.7B-4bit",
                 "mlx-community/Qwen3-8B-4bit",
-                "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
-                "mlx-community/Qwen2.5-3B-Instruct-4bit",
                 "mlx-community/Qwen2.5-7B-Instruct-4bit",
                 "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
-                "mlx-community/Llama-3.2-1B-Instruct-4bit",
-                "mlx-community/Llama-3.2-3B-Instruct-4bit",
             ]
         )
     }
@@ -220,6 +214,67 @@ final class LocalAgentCoreTests: XCTestCase {
                 availableTools: ["read_file", "run_command"]
             )
         )
+    }
+
+    func testExtractActionableUserTextFromGroupPrompt() {
+        let prompt = """
+        [Group Communication Protocol]
+        Mention teammates and use the blackboard if needed.
+        --- Group thread (new since your last reply) ---
+        User: hi
+        --- End ---
+
+        You are @Coder. Respond to the latest user message in this group.
+
+        Latest user message:
+        \"\"\"
+        hi
+        \"\"\"
+        """
+
+        XCTAssertEqual(extractActionableUserText(from: prompt), "hi")
+    }
+
+    func testShouldPreferDirectChatResponseForGroupPromptWithToolWordsInWrapper() {
+        let prompt = """
+        [Group Communication Protocol]
+        Use workspace tools, task board tools, and the blackboard when needed.
+        You are @Coder. Respond to the latest user message in this group.
+
+        Latest user message:
+        \"\"\"
+        hi
+        \"\"\"
+        """
+
+        XCTAssertTrue(
+            shouldPreferDirectChatResponse(
+                for: extractActionableUserText(from: prompt),
+                availableTools: ["read_file", "run_command", "blackboard_write"]
+            )
+        )
+    }
+
+    func testPlansToolCallFromGroupPromptUsingLatestUserMessage() {
+        let prompt = """
+        [Group Communication Protocol]
+        Use workspace tools, task board tools, and the blackboard when needed.
+        You are @Coder. Respond to the latest user message in this group.
+
+        Latest user message:
+        \"\"\"
+        list files here
+        \"\"\"
+        """
+
+        let toolCall = planConversationalToolCall(
+            in: extractActionableUserText(from: prompt),
+            availableTools: ["list_directory", "read_file"],
+            workingDirectory: "/tmp"
+        )
+
+        XCTAssertEqual(toolCall?.name, "list_directory")
+        XCTAssertEqual(toolCall?.arguments["path"]?.stringValue, ".")
     }
 
     func testDetectsDegenerateAssistantResponses() {
@@ -590,6 +645,43 @@ final class LocalAgentCoreTests: XCTestCase {
         }
     }
 
+    func testPauseSessionCancelsActiveMLXTurn() async throws {
+        let runnerPath = try makeHangingRunner()
+        setenv("ODYSSEY_MLX_RUNNER", runnerPath, 1)
+        setenv("CLAUDESTUDIO_MLX_RUNNER", runnerPath, 1)
+
+        let core = LocalAgentCore()
+        _ = await core.createSession(
+            .init(
+                sessionId: "pause-mlx-session",
+                config: .init(
+                    name: "Pause MLX",
+                    provider: .mlx,
+                    model: "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+                    systemPrompt: "You are a local coding agent.",
+                    workingDirectory: tempDirectory.path,
+                    allowedTools: []
+                )
+            )
+        )
+
+        let startedAt = Date()
+        let sendTask = Task {
+            try await core.sendMessage(
+                .init(sessionId: "pause-mlx-session", text: "hi")
+            )
+        }
+
+        try await Task.sleep(for: .milliseconds(200))
+        _ = await core.pauseSession(sessionId: "pause-mlx-session")
+
+        await XCTAssertThrowsErrorAsync(try await sendTask.value) { error in
+            let message = error.localizedDescription.lowercased()
+            XCTAssertTrue(message.contains("cancel") || message.contains("terminate") || message.contains("failed"))
+        }
+        XCTAssertLessThan(Date().timeIntervalSince(startedAt), 2.5)
+    }
+
     private func makeStubRunner() throws -> String {
         let scriptURL = tempDirectory.appendingPathComponent("llm-tool")
         try """
@@ -604,6 +696,7 @@ final class LocalAgentCoreTests: XCTestCase {
         let scriptURL = tempDirectory.appendingPathComponent("llm-tool-hang")
         try """
         #!/bin/zsh
+        trap "exit 130" TERM INT
         sleep 5
         """.write(to: scriptURL, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
@@ -630,5 +723,19 @@ final class LocalAgentCoreTests: XCTestCase {
         let output = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
         XCTAssertEqual(process.terminationStatus, 0, output)
         return archiveURL
+    }
+}
+
+private func XCTAssertThrowsErrorAsync<T>(
+    _ expression: @autoclosure () async throws -> T,
+    _ errorHandler: (Error) -> Void = { _ in },
+    file: StaticString = #filePath,
+    line: UInt = #line
+) async {
+    do {
+        _ = try await expression()
+        XCTFail("Expected expression to throw an error", file: file, line: line)
+    } catch {
+        errorHandler(error)
     }
 }

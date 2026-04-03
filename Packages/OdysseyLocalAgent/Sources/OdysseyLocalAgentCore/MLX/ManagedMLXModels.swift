@@ -164,6 +164,7 @@ public enum ManagedMLXModelsError: LocalizedError {
     case invalidModelIdentifier
     case installFailed(String)
     case removeFailed(String)
+    case cancelled
 
     public var errorDescription: String? {
         switch self {
@@ -175,7 +176,32 @@ public enum ManagedMLXModelsError: LocalizedError {
             return output.isEmpty ? "Failed to install the MLX model." : output
         case .removeFailed(let output):
             return output.isEmpty ? "Failed to remove the MLX model." : output
+        case .cancelled:
+            return "MLX generation was cancelled."
         }
+    }
+}
+
+actor ManagedMLXProcessRegistry {
+    static let shared = ManagedMLXProcessRegistry()
+
+    private var processes: [String: Process] = [:]
+
+    func register(sessionId: String, process: Process) {
+        processes[sessionId] = process
+    }
+
+    func unregister(sessionId: String, process: Process) {
+        guard let current = processes[sessionId], current === process else { return }
+        processes.removeValue(forKey: sessionId)
+    }
+
+    func cancel(sessionId: String) {
+        guard let process = processes[sessionId] else { return }
+        if process.isRunning {
+            process.terminate()
+        }
+        processes.removeValue(forKey: sessionId)
     }
 }
 
@@ -226,26 +252,6 @@ public enum ManagedMLXModels {
                 recommended: true
             ),
             ManagedMLXModelPreset(
-                modelIdentifier: "mlx-community/Qwen3-0.6B-4bit",
-                label: "Qwen3 0.6B",
-                summary: "Tiny Qwen3 option for fast downloads and quick local experiments.",
-                parameterSize: "0.6B params",
-                downloadSize: "~0.5 GB",
-                bestFor: "Quick smoke tests, tiny laptops, and ultra-fast local replies.",
-                agentSuitability: "Light for agents",
-                recommended: false
-            ),
-            ManagedMLXModelPreset(
-                modelIdentifier: "mlx-community/Qwen3-1.7B-4bit",
-                label: "Qwen3 1.7B",
-                summary: "Compact Qwen3 model with a better quality-to-size balance than the tiny tier.",
-                parameterSize: "1.7B params",
-                downloadSize: "~1.1 GB",
-                bestFor: "Everyday chat, lightweight repo help, and smaller Macs.",
-                agentSuitability: "Okay for agents",
-                recommended: false
-            ),
-            ManagedMLXModelPreset(
                 modelIdentifier: "mlx-community/Qwen3-8B-4bit",
                 label: "Qwen3 8B",
                 summary: "A stronger Qwen3 option when you want better reasoning and can afford more memory.",
@@ -253,26 +259,6 @@ public enum ManagedMLXModels {
                 downloadSize: "~4.9 GB",
                 bestFor: "Heavier local agent sessions, stronger reasoning, and longer tasks.",
                 agentSuitability: "Very strong for agents",
-                recommended: false
-            ),
-            ManagedMLXModelPreset(
-                modelIdentifier: "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
-                label: "Qwen2.5 1.5B Instruct",
-                summary: "Lightweight fallback for quick local chat and faster first-time setup.",
-                parameterSize: "1.5B params",
-                downloadSize: "~1.0 GB",
-                bestFor: "Quick chats, lightweight edits, and smaller laptops.",
-                agentSuitability: "Okay for agents",
-                recommended: false
-            ),
-            ManagedMLXModelPreset(
-                modelIdentifier: "mlx-community/Qwen2.5-3B-Instruct-4bit",
-                label: "Qwen2.5 3B Instruct",
-                summary: "Mid-size Qwen2.5 pick for users who want a lighter general-purpose local assistant.",
-                parameterSize: "3B params",
-                downloadSize: "~1.9 GB",
-                bestFor: "General local assistance, medium-size projects, and lower-memory Macs.",
-                agentSuitability: "Good for agents",
                 recommended: false
             ),
             ManagedMLXModelPreset(
@@ -293,26 +279,6 @@ public enum ManagedMLXModels {
                 downloadSize: "~4.3 GB",
                 bestFor: "Code edits, debugging, and coding-focused local sessions.",
                 agentSuitability: "Strong for coding agents",
-                recommended: false
-            ),
-            ManagedMLXModelPreset(
-                modelIdentifier: "mlx-community/Llama-3.2-1B-Instruct-4bit",
-                label: "Llama 3.2 1B Instruct",
-                summary: "Very small Llama option for quick installs and lightweight local chat.",
-                parameterSize: "1B params",
-                downloadSize: "~0.7 GB",
-                bestFor: "Tiny downloads, light experimentation, and smaller machines.",
-                agentSuitability: "Light for agents",
-                recommended: false
-            ),
-            ManagedMLXModelPreset(
-                modelIdentifier: "mlx-community/Llama-3.2-3B-Instruct-4bit",
-                label: "Llama 3.2 3B Instruct",
-                summary: "Alternative medium-size general model for local assistant tasks.",
-                parameterSize: "3B params",
-                downloadSize: "~2.0 GB",
-                bestFor: "General local assistant work and an alternative instruction tune.",
-                agentSuitability: "Good for agents",
                 recommended: false
             ),
         ]
@@ -693,6 +659,84 @@ public enum ManagedMLXModels {
             throw ManagedMLXModelsError.installFailed(output)
         }
         return output
+    }
+
+    @discardableResult
+    public static func runProcessForSession(
+        executable: String,
+        arguments: [String],
+        sessionId: String,
+        currentDirectory: String? = nil,
+        extraEnvironment: [String: String] = [:],
+        timeout: TimeInterval? = 60
+    ) async throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+        if let currentDirectory {
+            process.currentDirectoryURL = URL(fileURLWithPath: currentDirectory)
+        }
+
+        var environment = ProcessInfo.processInfo.environment
+        environment["PATH"] = environment["PATH"]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? environment["PATH"]
+            : "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        for (key, value) in extraEnvironment {
+            environment[key] = value
+        }
+        process.environment = environment
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        final class OutputBox: @unchecked Sendable {
+            var data = Data()
+        }
+        let outputBox = OutputBox()
+        let readerGroup = DispatchGroup()
+        readerGroup.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            outputBox.data = pipe.fileHandleForReading.readDataToEndOfFile()
+            readerGroup.leave()
+        }
+
+        try process.run()
+        await ManagedMLXProcessRegistry.shared.register(sessionId: sessionId, process: process)
+        defer {
+            Task {
+                await ManagedMLXProcessRegistry.shared.unregister(sessionId: sessionId, process: process)
+            }
+        }
+
+        let startedAt = Date()
+        while process.isRunning {
+            try Task.checkCancellation()
+
+            if let timeout, Date().timeIntervalSince(startedAt) >= timeout {
+                process.terminate()
+                _ = readerGroup.wait(timeout: .now() + 2)
+                throw ManagedMLXModelsError.installFailed(
+                    "Process timed out after \(Int(timeout))s: \(URL(fileURLWithPath: executable).lastPathComponent) \(arguments.joined(separator: " "))"
+                )
+            }
+
+            try await Task.sleep(for: .milliseconds(50))
+        }
+
+        readerGroup.wait()
+        let output = String(decoding: outputBox.data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        if Task.isCancelled {
+            throw ManagedMLXModelsError.cancelled
+        }
+        guard process.terminationStatus == 0 else {
+            throw ManagedMLXModelsError.installFailed(output)
+        }
+        return output
+    }
+
+    public static func cancelSessionProcess(sessionId: String) async {
+        await ManagedMLXProcessRegistry.shared.cancel(sessionId: sessionId)
     }
 
     private static func installArchiveModel(

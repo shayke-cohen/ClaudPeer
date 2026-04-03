@@ -43,7 +43,10 @@ final class AgentProvisioner {
 
     private func buildConfig(agent: Agent, session: Session) -> AgentConfig {
         let skills = resolveSkills(ids: agent.skillIds)
-        let mcpServers = resolveMCPServers(ids: resolveEffectiveMCPServerIDs(agent: agent, skills: skills))
+        let mcpServers = filteredMCPServers(
+            resolveMCPServers(ids: resolveEffectiveMCPServerIDs(agent: agent, skills: skills)),
+            provider: session.provider
+        )
         let permissions = resolvePermissions(id: agent.permissionSetId)
 
         let allowedTools = permissions?.allowRules ?? ["Read", "Write", "Bash", "Grep", "Glob"]
@@ -148,6 +151,17 @@ final class AgentProvisioner {
         }
 
         return ordered
+    }
+
+    private func filteredMCPServers(_ servers: [MCPServer], provider: String) -> [MCPServer] {
+        guard provider == ProviderSelection.mlx.rawValue || provider == ProviderSelection.foundation.rawValue else {
+            return servers
+        }
+
+        // Local providers keep built-in tools, but we skip the heavyweight ambient MCPs that can
+        // block local session startup while they bootstrap external runtimes.
+        let blockedNames = Set(["Argus", "AppXray", "Octocode"])
+        return servers.filter { !blockedNames.contains($0.name) }
     }
 
     private func resolvePermissions(id: UUID?) -> PermissionSet? {

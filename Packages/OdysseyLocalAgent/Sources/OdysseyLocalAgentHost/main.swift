@@ -179,16 +179,20 @@ private final class StdioServer {
     func run() async {
         while let line = readLine(strippingNewline: true) {
             guard !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
-            await handle(line: line)
+            Task {
+                await self.handle(line: line)
+            }
         }
     }
 
     private func handle(line: String) async {
+        var requestID: Any?
         do {
             guard let root = try JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
                   let id = root["id"] else {
                 return
             }
+            requestID = id
 
             if let method = root["method"] as? String {
                 let result = try await service.handle(method: method, params: root["params"])
@@ -210,7 +214,7 @@ private final class StdioServer {
             }
         } catch {
             try? await writer.write([
-                "id": NSNull(),
+                "id": requestID ?? NSNull(),
                 "error": [
                     "code": -32000,
                     "message": error.localizedDescription,

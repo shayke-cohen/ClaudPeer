@@ -137,6 +137,16 @@ final class AgentDefaultsTests: XCTestCase {
         XCTAssertTrue(AgentDefaults.isModel("   ", compatibleWith: ProviderSelection.mlx.rawValue))
     }
 
+    func testMLXProviderRejectsClaudeDefaultSelection() {
+        AppSettings.store.set(ClaudeModel.sonnet.rawValue, forKey: AppSettings.defaultMLXModelKey)
+
+        XCTAssertEqual(AgentDefaults.defaultModel(for: ProviderSelection.mlx.rawValue), AppSettings.defaultMLXModel)
+        XCTAssertEqual(
+            AgentDefaults.defaultModelChoiceLabel(for: ProviderSelection.mlx.rawValue),
+            "Default (\(AgentDefaults.label(for: AppSettings.defaultMLXModel)))"
+        )
+    }
+
     func testAvailableThreadModelChoicesIncludeDownloadedMLXModels() throws {
         let tempDataDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: tempDataDirectory, withIntermediateDirectories: true)
@@ -166,6 +176,48 @@ final class AgentDefaultsTests: XCTestCase {
 
         XCTAssertTrue(choices.contains(where: { $0.id == "mlx-community/Qwen3-8B-4bit" }))
         XCTAssertTrue(choices.contains(where: { $0.label.contains("Qwen3 8B") }))
+    }
+
+    func testAvailableThreadModelChoicesForMLXExcludeTinyInstalledModels() throws {
+        let tempDataDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDataDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDataDirectory) }
+
+        AppSettings.store.set(tempDataDirectory.path, forKey: AppSettings.dataDirectoryKey)
+
+        let downloadDirectory = LocalProviderInstaller.managedMLXDownloadDirectory(dataDirectoryPath: tempDataDirectory.path)
+        let manifestURL = URL(fileURLWithPath: LocalProviderInstaller.managedMLXManifestPath(dataDirectoryPath: tempDataDirectory.path))
+        try FileManager.default.createDirectory(at: manifestURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+
+        let tinyManagedPath = URL(fileURLWithPath: downloadDirectory)
+            .appendingPathComponent("models/mlx-community/Llama-3.2-3B-Instruct-4bit", isDirectory: true)
+        let strongManagedPath = URL(fileURLWithPath: downloadDirectory)
+            .appendingPathComponent("models/mlx-community/Qwen3-8B-4bit", isDirectory: true)
+        try FileManager.default.createDirectory(at: tinyManagedPath, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: strongManagedPath, withIntermediateDirectories: true)
+
+        let manifest = ManagedInstalledMLXManifest(installed: [
+            ManagedInstalledMLXModel(
+                modelIdentifier: "mlx-community/Llama-3.2-3B-Instruct-4bit",
+                downloadDirectory: downloadDirectory,
+                installedAt: Date(),
+                sourceURL: "https://huggingface.co/mlx-community/Llama-3.2-3B-Instruct-4bit",
+                managedPath: tinyManagedPath.path
+            ),
+            ManagedInstalledMLXModel(
+                modelIdentifier: "mlx-community/Qwen3-8B-4bit",
+                downloadDirectory: downloadDirectory,
+                installedAt: Date(),
+                sourceURL: "https://huggingface.co/mlx-community/Qwen3-8B-4bit",
+                managedPath: strongManagedPath.path
+            )
+        ])
+        try JSONEncoder().encode(manifest).write(to: manifestURL)
+
+        let choices = AgentDefaults.availableThreadModelChoices(for: ProviderSelection.mlx.rawValue)
+
+        XCTAssertFalse(choices.contains(where: { $0.id == "mlx-community/Llama-3.2-3B-Instruct-4bit" }))
+        XCTAssertTrue(choices.contains(where: { $0.id == "mlx-community/Qwen3-8B-4bit" }))
     }
 
     func testLabelUsesDownloadedManagedPathModelName() throws {
@@ -440,6 +492,25 @@ final class AgentDefaultsTests: XCTestCase {
         XCTAssertEqual(Set(provisioner.provision(agent: tester, mission: nil).0.mcpServers.map(\.name)), Set(["Argus", "AppXray", "Octocode"]))
         XCTAssertEqual(provisioner.provision(agent: reviewer, mission: nil).0.mcpServers.map(\.name), ["Octocode"])
         XCTAssertTrue(provisioner.provision(agent: devOps, mission: nil).0.mcpServers.isEmpty)
+    }
+
+    func testProvisionerSkipsHeavyAmbientMCPsForLocalProviders() {
+        let argus = MCPServer(name: "Argus", transport: .stdio(command: "node", args: ["argus.js"], env: [:]))
+        let appXray = MCPServer(name: "AppXray", transport: .stdio(command: "node", args: ["appxray.js"], env: [:]))
+        let octocode = MCPServer(name: "Octocode", transport: .stdio(command: "npx", args: ["-y", "octocode-mcp@latest"], env: [:]))
+        let blackboard = MCPServer(name: "Blackboard", transport: .stdio(command: "node", args: ["blackboard.js"], env: [:]))
+        [argus, appXray, octocode, blackboard].forEach(context.insert)
+
+        let agent = Agent(name: "Local Coder")
+        agent.extraMCPServerIds = [argus.id, appXray.id, octocode.id, blackboard.id]
+        context.insert(agent)
+
+        let session = Session(agent: agent, mission: nil, workingDirectory: "/tmp/work")
+        session.provider = ProviderSelection.mlx.rawValue
+
+        let config = AgentProvisioner(modelContext: context).config(for: session)
+
+        XCTAssertEqual(config?.mcpServers.map(\.name), ["Blackboard"])
     }
 
     func testProvisionerDoesNotInjectPeerBusToolNamesIntoAllowedTools() {

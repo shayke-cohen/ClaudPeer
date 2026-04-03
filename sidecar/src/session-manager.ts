@@ -19,6 +19,7 @@ type EventEmitter = (event: SidecarEvent) => void;
 export class SessionManager {
   private readonly activeAborts = new Map<string, AbortController>();
   private readonly autonomousResults = new Map<string, { resolve: (result: string) => void }>();
+  private readonly pendingCreates = new Map<string, Promise<void>>();
   private readonly runtimes: Record<"claude" | "codex" | "foundation" | "mlx", ProviderRuntime>;
 
   constructor(
@@ -55,11 +56,23 @@ export class SessionManager {
     };
     this.registry.create(conversationId, normalizedConfig);
     this.logMCPPreflight(conversationId, normalizedConfig);
-    await this.runtimeFor(normalizedConfig).createSession(conversationId, normalizedConfig);
-    logger.info(
-      "session",
-      `Created session ${conversationId} for "${normalizedConfig.name}" (provider: ${normalizedConfig.provider}, model: ${normalizedConfig.model})`,
-    );
+    const createPromise = this.runtimeFor(normalizedConfig)
+      .createSession(conversationId, normalizedConfig)
+      .then(() => {
+        logger.info(
+          "session",
+          `Created session ${conversationId} for "${normalizedConfig.name}" (provider: ${normalizedConfig.provider}, model: ${normalizedConfig.model})`,
+        );
+      });
+    this.pendingCreates.set(conversationId, createPromise);
+
+    try {
+      await createPromise;
+    } finally {
+      if (this.pendingCreates.get(conversationId) === createPromise) {
+        this.pendingCreates.delete(conversationId);
+      }
+    }
   }
 
   async sendMessage(
@@ -68,6 +81,16 @@ export class SessionManager {
     attachments?: FileAttachment[],
     planMode?: boolean,
   ): Promise<void> {
+    const turnStartedAt = Date.now();
+    const pendingCreate = this.pendingCreates.get(sessionId);
+    if (pendingCreate) {
+      try {
+        await pendingCreate;
+      } catch {
+        // Let the normal config/state checks below surface the failure.
+      }
+    }
+
     const config = this.registry.getConfig(sessionId);
     if (!config) {
       this.emit({ type: "session.error", sessionId, error: "Session not found" });
@@ -92,6 +115,10 @@ export class SessionManager {
 
     try {
       const runtime = this.runtimeFor(config);
+      logger.info(
+        "session",
+        `[${sessionId}] Starting turn via ${config.provider ?? "claude"} (textLength=${text.length}, attachments=${attachments?.length ?? 0}, planMode=${planMode === true})`,
+      );
       const result = await runtime.sendMessage({
         sessionId,
         config,
@@ -101,6 +128,10 @@ export class SessionManager {
         planMode,
         abortController,
       });
+      logger.info(
+        "session",
+        `[${sessionId}] Runtime completed in ${Date.now() - turnStartedAt}ms (resultLength=${result.resultText.length}, inputTokens=${result.inputTokens}, outputTokens=${result.outputTokens})`,
+      );
 
       if (abortController.signal.aborted) {
         this.registry.update(sessionId, { status: "paused" });

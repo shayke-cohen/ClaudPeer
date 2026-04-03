@@ -211,6 +211,35 @@ final class AppStateEventTests: XCTestCase {
         XCTAssertEqual(appState.sessionActivity[sid], .done)
     }
 
+    func testEH5d_markSessionPausedLocallyClearsLiveActivity() {
+        let sid = makeSessionWithConversation()
+        guard let uuid = UUID(uuidString: sid) else {
+            return XCTFail("Expected valid UUID session id")
+        }
+
+        appState.activeSessions[uuid] = AppState.SessionInfo(id: uuid, agentName: "Bot", isStreaming: true)
+        appState.sessionActivity[sid] = .streaming
+        appState.thinkingText[sid] = "thinking..."
+        appState.pendingQuestions[sid] = AppState.AgentQuestion(
+            id: "question-1",
+            sessionId: sid,
+            question: "Proceed?",
+            options: nil,
+            multiSelect: false,
+            isPrivate: true,
+            timestamp: Date(),
+            inputType: "text",
+            inputConfig: nil
+        )
+
+        appState.markSessionPausedLocally(sid)
+
+        XCTAssertEqual(appState.sessionActivity[sid], .idle)
+        XCTAssertFalse(appState.activeSessions[uuid]?.isStreaming ?? true)
+        XCTAssertNil(appState.thinkingText[sid])
+        XCTAssertNil(appState.pendingQuestions[sid])
+    }
+
     func testEH6_sessionErrorEvent_capturesError() {
         let sid = UUID()
         appState.activeSessions[sid] = AppState.SessionInfo(id: sid, agentName: "Bot", isStreaming: true)

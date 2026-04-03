@@ -154,6 +154,7 @@ public actor LocalAgentCore {
     }
 
     public func pauseSession(sessionId: String) async -> SessionOperationResult {
+        await ManagedMLXModels.cancelSessionProcess(sessionId: sessionId)
         let backendSessionId = sessions[sessionId]?.backendSessionId ?? sessionId
         return SessionOperationResult(backendSessionId: backendSessionId)
     }

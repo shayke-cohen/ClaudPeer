@@ -4288,7 +4288,7 @@ struct ChatView: View {
         for session in convo.sessions {
             let key = session.id.uuidString
             appState.sendToSidecar(.sessionPause(sessionId: key))
-            appState.pendingQuestions.removeValue(forKey: key)
+            appState.markSessionPausedLocally(key)
             session.status = .paused
         }
         try? modelContext.save()
@@ -4379,7 +4379,7 @@ struct ChatView: View {
         for session in convo.sessions {
             let key = session.id.uuidString
             appState.sendToSidecar(.sessionPause(sessionId: key))
-            appState.pendingQuestions.removeValue(forKey: key)
+            appState.markSessionPausedLocally(key)
             session.status = .paused
         }
         try? modelContext.save()

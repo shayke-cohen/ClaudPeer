@@ -7,6 +7,10 @@ struct MCPListedTool: Sendable, Equatable {
 }
 
 actor MCPClient {
+    private static let initializeTimeout: Duration = .seconds(2)
+    private static let listToolsTimeout: Duration = .seconds(2)
+    private static let callToolTimeout: Duration = .seconds(20)
+
     private let server: LocalAgentMCPServer
     private let process: Process
     private let stdinPipe: Pipe
@@ -31,7 +35,11 @@ actor MCPClient {
     }
 
     func listTools() async throws -> [MCPListedTool] {
-        let payload = try await request(method: "tools/list", params: [:])
+        let payload = try await request(
+            method: "tools/list",
+            params: [:],
+            timeout: Self.listToolsTimeout
+        )
         let tools = payload["tools"] as? [[String: Any]] ?? []
         return tools.map { tool in
             let schema = tool["inputSchema"] as? [String: Any]
@@ -53,7 +61,8 @@ actor MCPClient {
             params: [
                 "name": name,
                 "arguments": try dictionary(from: arguments),
-            ]
+            ],
+            timeout: Self.callToolTimeout
         )
 
         let content = payload["content"] as? [[String: Any]] ?? []
@@ -103,6 +112,11 @@ actor MCPClient {
                 "name": "OdysseyLocalAgent",
                 "version": "0.1.0",
             ],
+        ], timeout: Self.initializeTimeout)
+
+        try send([
+            "jsonrpc": "2.0",
+            "method": "notifications/initialized",
         ])
     }
 
@@ -111,9 +125,29 @@ actor MCPClient {
         started = false
     }
 
-    private func request(method: String, params: [String: Any]) async throws -> [String: Any] {
+    private func request(
+        method: String,
+        params: [String: Any],
+        timeout: Duration
+    ) async throws -> [String: Any] {
         let id = nextID
         nextID += 1
+        let serverName = server.name
+        let timeoutTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: timeout)
+                await self?.cancelPendingRequest(
+                    id: id,
+                    message: "Timed out waiting for MCP response to \(method) from \(serverName)"
+                )
+            } catch {
+                return
+            }
+        }
+
+        defer {
+            timeoutTask.cancel()
+        }
 
         return try await withCheckedThrowingContinuation { continuation in
             pending[id] = continuation
@@ -129,6 +163,15 @@ actor MCPClient {
                 continuation.resume(throwing: error)
             }
         }
+    }
+
+    private func cancelPendingRequest(id: Int, message: String) {
+        guard let continuation = pending.removeValue(forKey: id) else { return }
+        continuation.resume(throwing: NSError(
+            domain: "OdysseyLocalAgent.MCPClient",
+            code: 408,
+            userInfo: [NSLocalizedDescriptionKey: message]
+        ))
     }
 
     private func send(_ payload: [String: Any]) throws {

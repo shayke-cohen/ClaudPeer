@@ -129,7 +129,7 @@ struct MLXModelAdapter: LocalModelAdapter {
     ) async throws -> AdapterTurnResult {
         let generator: any LocalAgentTextGenerating = {
             if let command = ManagedMLXModels.resolveRunner() {
-                return MLXCommandGenerator(command: command)
+                return MLXCommandGenerator(command: command, sessionId: sessionId)
             }
             return FallbackGenerator(prefix: "[mlx-fallback]")
         }()
@@ -159,6 +159,7 @@ private struct FallbackGenerator: LocalAgentTextGenerating {
 
 private struct MLXCommandGenerator: LocalAgentTextGenerating {
     let command: String?
+    let sessionId: String
 
     func generate(prompt: String, config: LocalAgentConfig) async throws -> String {
         guard let command else {
@@ -167,7 +168,12 @@ private struct MLXCommandGenerator: LocalAgentTextGenerating {
             ])
         }
 
-        return try runMLXCommand(command: command, model: config.model, prompt: prompt)
+        return try await runMLXCommand(
+            command: command,
+            model: config.model,
+            prompt: prompt,
+            sessionId: sessionId
+        )
     }
 }
 
@@ -183,6 +189,7 @@ private func executePromptLoop(
     var loopTranscript = transcript
     var events = [LocalAgentEvent]()
     let maxSteps = max(1, config.maxTurns ?? 6)
+    let actionableText = extractActionableUserText(from: text)
 
     let toolExecutionContext = ToolExecutionContext(
         sessionId: sessionId,
@@ -193,9 +200,9 @@ private func executePromptLoop(
         allowedBuiltInTools: context.allowedBuiltInTools
     )
 
-    if let directToolCall = parseLegacyToolInvocation(in: text)
+    if let directToolCall = parseLegacyToolInvocation(in: actionableText)
         ?? planConversationalToolCall(
-            in: text,
+            in: actionableText,
             availableTools: Set(config.toolDefinitions.map(\.name)),
             workingDirectory: context.workingDirectory
         ) {
@@ -219,14 +226,14 @@ private func executePromptLoop(
     }
 
     if shouldPreferDirectChatResponse(
-        for: text,
+        for: actionableText,
         availableTools: Set(config.toolDefinitions.map(\.name))
     ) {
         let prompt = buildDirectChatPrompt(config: config, transcript: loopTranscript)
         let generated = try await generator.generate(prompt: prompt, config: config)
         let finalAnswer: String
-        if isDegenerateAssistantResponse(generated, userText: text) {
-            let retryPrompt = buildDirectRetryPrompt(config: config, latestUserText: text)
+        if isDegenerateAssistantResponse(generated, userText: actionableText) {
+            let retryPrompt = buildDirectRetryPrompt(config: config, latestUserText: actionableText)
             let retried = try await generator.generate(prompt: retryPrompt, config: config)
             finalAnswer = retried
         } else {
@@ -301,6 +308,29 @@ private func parseLegacyToolInvocation(in text: String) -> ParsedToolCall? {
     }
 
     return ParsedToolCall(name: toolName, arguments: json.mapValues(DynamicValue.from(any:)))
+}
+
+func extractActionableUserText(from text: String) -> String {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return trimmed }
+
+    let blockPatterns = [
+        #"Latest user message:\s*"""\s*([\s\S]*?)\s*"""#,
+        #"User message to respond to:\s*([\s\S]*?)$"#,
+        #"--- Group chat: peer message ---\s*([\s\S]*?)\s*--- End ---"#,
+    ]
+
+    for pattern in blockPatterns {
+        if let match = firstCapture(
+            pattern: pattern,
+            in: trimmed,
+            options: [.dotMatchesLineSeparators]
+        ), !match.isEmpty {
+            return match.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+
+    return trimmed
 }
 
 private func buildAgentLoopPrompt(config: LocalAgentConfig, transcript: [TranscriptItem]) -> String {
@@ -439,7 +469,7 @@ func isDegenerateAssistantResponse(_ response: String, userText: String) -> Bool
     return false
 }
 
-private struct ParsedToolCall {
+struct ParsedToolCall {
     var name: String
     var arguments: [String: DynamicValue]
 }
@@ -512,7 +542,7 @@ private func renderToolCompletion(
     }
 }
 
-private func planConversationalToolCall(
+func planConversationalToolCall(
     in text: String,
     availableTools: Set<String>,
     workingDirectory: String
@@ -714,7 +744,23 @@ private func firstCapture(pattern: String, in text: String) -> String? {
 }
 
 private func captureGroups(pattern: String, in text: String) -> [String]? {
-    guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+    captureGroups(pattern: pattern, in: text, options: [])
+}
+
+private func firstCapture(
+    pattern: String,
+    in text: String,
+    options: NSRegularExpression.Options
+) -> String? {
+    captureGroups(pattern: pattern, in: text, options: options)?.first
+}
+
+private func captureGroups(
+    pattern: String,
+    in text: String,
+    options: NSRegularExpression.Options
+) -> [String]? {
+    guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else {
         return nil
     }
     let range = NSRange(location: 0, length: text.utf16.count)
@@ -758,7 +804,7 @@ private func tokenEvents(for text: String, sessionId: String) -> [LocalAgentEven
     }
 }
 
-private func runMLXCommand(command: String, model: String, prompt: String) throws -> String {
+private func runMLXCommand(command: String, model: String, prompt: String, sessionId: String) async throws -> String {
     var arguments = [
         "eval",
         "--model", model,
@@ -769,9 +815,10 @@ private func runMLXCommand(command: String, model: String, prompt: String) throw
     if !ManagedMLXModels.looksLikeLocalModelPath(model) {
         arguments.append(contentsOf: ["--download", ManagedMLXModels.resolveDownloadDirectory()])
     }
-    let output = try ManagedMLXModels.runProcess(
+    let output = try await ManagedMLXModels.runProcessForSession(
         executable: command,
         arguments: arguments,
+        sessionId: sessionId,
         extraEnvironment: [
             ManagedMLXModels.downloadDirectoryEnvironmentKey: ManagedMLXModels.resolveDownloadDirectory()
         ]

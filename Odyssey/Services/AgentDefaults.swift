@@ -86,7 +86,7 @@ enum AgentDefaults {
         case ProviderSelection.mlx.rawValue:
             let stored = AppSettings.store.string(forKey: AppSettings.defaultMLXModelKey)
             let normalized = normalizedModelSelection(stored ?? AppSettings.defaultMLXModel)
-            return isModel(normalized, compatibleWith: provider) ? normalized : AppSettings.defaultMLXModel
+            return isAgentSuitableMLXSelection(normalized) ? normalized : AppSettings.defaultMLXModel
         default:
             let stored = AppSettings.store.string(forKey: AppSettings.defaultClaudeModelKey)
             let normalized = normalizedModelSelection(stored ?? AppSettings.defaultClaudeModel)
@@ -150,10 +150,14 @@ enum AgentDefaults {
         case ProviderSelection.foundation.rawValue:
             return FoundationModel.allCases.contains { $0.rawValue == normalized }
         case ProviderSelection.mlx.rawValue:
-            return !normalized.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return isCompatibleMLXModelSelection(normalized)
         default:
             return ClaudeModel.allCases.contains { $0.rawValue == normalized }
         }
+    }
+
+    static func defaultModelChoiceLabel(for provider: String) -> String {
+        "Default (\(label(for: defaultModel(for: provider))))"
     }
 
     static func availableAgentModelChoices(for providerSelection: String) -> [ModelChoice] {
@@ -288,16 +292,24 @@ enum AgentDefaults {
         let configured = normalizedModelSelection(
             AppSettings.store.string(forKey: AppSettings.defaultMLXModelKey) ?? AppSettings.defaultMLXModel
         )
-        let installedChoices = installedMLXModelChoices()
+        let installedChoices = installedMLXModelChoices(agentSuitableOnly: true)
+        let fallbackChoice = ModelChoice(
+            id: AppSettings.defaultMLXModel,
+            label: label(forInstalledOrKnownMLXSelection: AppSettings.defaultMLXModel)
+        )
 
         guard configured != inheritMarker else {
             return installedChoices.isEmpty
-                ? [ModelChoice(id: MLXModel.defaultModel.rawValue, label: MLXModel.defaultModel.label)]
+                ? [fallbackChoice]
                 : installedChoices
         }
 
         if let matchingInstalledChoice = installedChoices.first(where: { $0.id == configured }) {
             return uniqueModelChoices(installedChoices, appending: matchingInstalledChoice)
+        }
+
+        guard isAgentSuitableMLXSelection(configured) else {
+            return installedChoices.isEmpty ? [fallbackChoice] : installedChoices
         }
 
         let configuredChoice = ModelChoice(
@@ -310,22 +322,85 @@ enum AgentDefaults {
     static func isLikelyMLXModelSelection(_ value: String?) -> Bool {
         let normalized = normalizedModelSelection(value)
         guard normalized != inheritMarker else { return false }
-        return mlxModelChoice(for: normalized) != nil || inferredMLXPathLabel(for: normalized) != nil
+        return isCompatibleMLXModelSelection(normalized)
     }
 
-    private static func installedMLXModelChoices() -> [ModelChoice] {
+    private static func installedMLXModelChoices(agentSuitableOnly: Bool = false) -> [ModelChoice] {
         let dataDirectory = AppSettings.store.string(forKey: AppSettings.dataDirectoryKey) ?? AppSettings.defaultDataDirectory
         let presetLookup = Dictionary(
             uniqueKeysWithValues: LocalProviderInstaller.recommendedMLXPresets().map { ($0.modelIdentifier, $0) }
         )
 
         return LocalProviderInstaller.installedMLXModels(dataDirectoryPath: dataDirectory)
+            .filter { installedModel in
+                !agentSuitableOnly || isAgentSuitableInstalledMLXModel(installedModel, presetLookup: presetLookup)
+            }
             .map { installedModel in
                 let choiceId = mlxSelectionValue(for: installedModel)
                 let label = label(forInstalledModel: installedModel, presetLookup: presetLookup)
                 return ModelChoice(id: choiceId, label: label)
             }
             .sorted { $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending }
+    }
+
+    private static func isCompatibleMLXModelSelection(_ selection: String) -> Bool {
+        let trimmed = selection.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+
+        if mlxModelChoice(for: trimmed) != nil || inferredMLXPathLabel(for: trimmed) != nil {
+            return true
+        }
+
+        let lowercased = trimmed.lowercased()
+        if lowercased == FoundationModel.system.rawValue {
+            return false
+        }
+
+        if ClaudeModel.allCases.contains(where: { $0.rawValue == trimmed }) || CodexModel.allCases.contains(where: { $0.rawValue == trimmed }) {
+            return false
+        }
+
+        // Treat Hugging Face-style repo identifiers and local-style paths as valid MLX selections.
+        if trimmed.contains("/") {
+            return true
+        }
+
+        return false
+    }
+
+    private static func isAgentSuitableMLXSelection(_ selection: String) -> Bool {
+        let trimmed = selection.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isCompatibleMLXModelSelection(trimmed) else { return false }
+
+        if let preset = LocalProviderInstaller.recommendedMLXPresets().first(where: { $0.modelIdentifier == trimmed }) {
+            return isAgentSuitableMLXPreset(preset)
+        }
+
+        if let pathLabel = inferredMLXPathLabel(for: trimmed), !pathLabel.isEmpty {
+            return true
+        }
+
+        return !looksTooSmallForAgentUse(trimmed.lowercased())
+    }
+
+    private static func isAgentSuitableInstalledMLXModel(
+        _ installedModel: ManagedInstalledMLXModel,
+        presetLookup: [String: ManagedMLXModelPreset]
+    ) -> Bool {
+        if let preset = presetLookup[installedModel.modelIdentifier] {
+            return isAgentSuitableMLXPreset(preset)
+        }
+
+        return isAgentSuitableMLXSelection(mlxSelectionValue(for: installedModel))
+    }
+
+    private static func isAgentSuitableMLXPreset(_ preset: ManagedMLXModelPreset) -> Bool {
+        !looksTooSmallForAgentUse(preset.modelIdentifier.lowercased())
+    }
+
+    private static func looksTooSmallForAgentUse(_ lowercasedSelection: String) -> Bool {
+        let tinySizeMarkers = ["-0.5b", "-0.6b", "-1b", "-1.5b", "-1.7b", "-2b", "-3b"]
+        return tinySizeMarkers.contains(where: { lowercasedSelection.contains($0) })
     }
 
     private static func mlxModelChoice(for selection: String) -> ModelChoice? {

@@ -838,6 +838,19 @@ final class AppState: ObservableObject {
         }
     }
 
+    func markSessionPausedLocally(_ sessionId: String) {
+        if let uuid = UUID(uuidString: sessionId) {
+            if activeSessions[uuid] == nil {
+                _ = ensureActiveSessionInfo(sessionId: sessionId)
+            }
+            activeSessions[uuid]?.isStreaming = false
+        }
+        thinkingText.removeValue(forKey: sessionId)
+        clearPendingUserInput(for: sessionId)
+        workerStandbySessions.remove(sessionId)
+        sessionActivity[sessionId] = .idle
+    }
+
     private func listenForEvents(from manager: SidecarManager) {
         eventTask = Task {
             for await event in manager.events {
