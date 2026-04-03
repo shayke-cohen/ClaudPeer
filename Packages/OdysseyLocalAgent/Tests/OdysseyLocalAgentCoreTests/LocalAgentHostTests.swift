@@ -2,6 +2,11 @@ import Foundation
 import XCTest
 
 final class LocalAgentHostTests: XCTestCase {
+    private struct HostServerHandle {
+        let process: Process
+        let outputPipe: Pipe
+    }
+
     private var tempDirectory: URL!
 
     override func setUp() {
@@ -19,12 +24,16 @@ final class LocalAgentHostTests: XCTestCase {
     }
 
     func testCLIInvocationSupportsMLXRunMode() throws {
+        let runnerPath = try makeStubRunner()
         let output = try runHost(arguments: [
             "run",
             "--provider", "mlx",
             "--allow", "Read",
             "--prompt", "list files here",
             "--json",
+        ], environment: [
+            "ODYSSEY_MLX_RUNNER": runnerPath,
+            "ODYSSEY_MLX_DOWNLOAD_DIR": tempDirectory.appendingPathComponent("huggingface").path,
         ])
 
         XCTAssertTrue(output.contains(#""resultText":"[mlx] directory listing for .:"#))
@@ -111,12 +120,19 @@ final class LocalAgentHostTests: XCTestCase {
 
     func testRESTServerSupportsMLXRunEndpoint() async throws {
         let port = Int.random(in: 32000...38000)
-        let process = try startHostServer(port: port)
+        let runnerPath = try makeStubRunner()
+        let server = try startHostServer(
+            port: port,
+            environment: [
+                "ODYSSEY_MLX_RUNNER": runnerPath,
+                "ODYSSEY_MLX_DOWNLOAD_DIR": tempDirectory.appendingPathComponent("huggingface").path,
+            ]
+        )
         defer {
-            process.terminate()
+            server.process.terminate()
         }
 
-        try await waitForHealth(port: port)
+        try await waitForHealth(port: port, server: server)
 
         let response = try await request(
             url: URL(string: "http://127.0.0.1:\(port)/v1/run")!,
@@ -143,7 +159,7 @@ final class LocalAgentHostTests: XCTestCase {
     func testRESTServerSupportsManagedMLXInstallEndpoint() async throws {
         let port = Int.random(in: 38001...43000)
         let runnerPath = try makeStubRunner()
-        let process = try startHostServer(
+        let server = try startHostServer(
             port: port,
             environment: [
                 "ODYSSEY_MLX_RUNNER": runnerPath,
@@ -151,10 +167,10 @@ final class LocalAgentHostTests: XCTestCase {
             ]
         )
         defer {
-            process.terminate()
+            server.process.terminate()
         }
 
-        try await waitForHealth(port: port)
+        try await waitForHealth(port: port, server: server)
 
         let response = try await request(
             url: URL(string: "http://127.0.0.1:\(port)/v1/mlx/models/install")!,
@@ -173,7 +189,7 @@ final class LocalAgentHostTests: XCTestCase {
         let port = Int.random(in: 43001...48000)
         let runnerPath = try makeStubRunner()
         let downloadDirectory = tempDirectory.appendingPathComponent("huggingface").path
-        let process = try startHostServer(
+        let server = try startHostServer(
             port: port,
             environment: [
                 "ODYSSEY_MLX_RUNNER": runnerPath,
@@ -181,10 +197,10 @@ final class LocalAgentHostTests: XCTestCase {
             ]
         )
         defer {
-            process.terminate()
+            server.process.terminate()
         }
 
-        try await waitForHealth(port: port)
+        try await waitForHealth(port: port, server: server)
 
         _ = try await request(
             url: URL(string: "http://127.0.0.1:\(port)/v1/mlx/models/install")!,
@@ -215,6 +231,252 @@ final class LocalAgentHostTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: managedPath.path))
     }
 
+    func testStdioAgentAPIAliasesSupportSessionLifecycle() throws {
+        let process = Process()
+        let inputPipe = Pipe()
+        let outputPipe = Pipe()
+        process.executableURL = try hostExecutableURL()
+        process.standardInput = inputPipe
+        process.standardOutput = outputPipe
+        process.standardError = outputPipe
+        process.environment = ProcessInfo.processInfo.environment.merging([
+            "ODYSSEY_MLX_RUNNER": try makeStubRunner(),
+            "ODYSSEY_MLX_DOWNLOAD_DIR": tempDirectory.appendingPathComponent("huggingface").path,
+        ]) { _, new in new }
+        try process.run()
+        defer {
+            inputPipe.fileHandleForWriting.closeFile()
+            if process.isRunning {
+                process.terminate()
+            }
+        }
+
+        let createResponse = try sendStdioRequest(
+            id: 1,
+            method: "agent.createSession",
+            params: [
+                "sessionId": "stdio-agent-session",
+                "config": [
+                    "name": "Stdio Agent",
+                    "provider": "mlx",
+                    "model": "mlx-test",
+                    "systemPrompt": "You are a local coding agent.",
+                    "workingDirectory": packageRoot.path,
+                    "allowedTools": ["Read"],
+                    "mcpServers": [],
+                    "skills": [],
+                    "toolDefinitions": [],
+                ],
+            ],
+            input: inputPipe.fileHandleForWriting,
+            output: outputPipe.fileHandleForReading
+        )
+        let createResult = try XCTUnwrap(createResponse["result"] as? [String: Any])
+        XCTAssertNotNil(createResult["backendSessionId"] as? String)
+
+        let messageResponse = try sendStdioRequest(
+            id: 2,
+            method: "agent.sendMessage",
+            params: [
+                "sessionId": "stdio-agent-session",
+                "text": "list files here",
+            ],
+            input: inputPipe.fileHandleForWriting,
+            output: outputPipe.fileHandleForReading
+        )
+        let messageResult = try XCTUnwrap(messageResponse["result"] as? [String: Any])
+        XCTAssertTrue((messageResult["resultText"] as? String)?.contains("directory listing") == true)
+
+        let transcriptResponse = try sendStdioRequest(
+            id: 3,
+            method: "agent.getTranscript",
+            params: [
+                "sessionId": "stdio-agent-session",
+            ],
+            input: inputPipe.fileHandleForWriting,
+            output: outputPipe.fileHandleForReading
+        )
+        let transcriptResult = try XCTUnwrap(transcriptResponse["result"] as? [String: Any])
+        let transcript = try XCTUnwrap(transcriptResult["transcript"] as? [[String: Any]])
+        XCTAssertTrue(transcript.contains(where: { $0["role"] as? String == "user" && $0["text"] as? String == "list files here" }))
+        XCTAssertTrue(transcript.contains(where: { $0["role"] as? String == "assistant" }))
+    }
+
+    func testRESTAgentAPIEndpointsMirrorSessionLifecycle() async throws {
+        let port = Int.random(in: 48001...53000)
+        let runnerPath = try makeStubRunner()
+        let server = try startHostServer(
+            port: port,
+            environment: [
+                "ODYSSEY_MLX_RUNNER": runnerPath,
+                "ODYSSEY_MLX_DOWNLOAD_DIR": tempDirectory.appendingPathComponent("huggingface").path,
+            ]
+        )
+        defer {
+            server.process.terminate()
+        }
+
+        try await waitForHealth(port: port, server: server)
+
+        let createResponse = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions")!,
+            method: "POST",
+            body: [
+                "sessionId": "rest-agent-session",
+                "config": [
+                    "name": "REST Agent",
+                    "provider": "mlx",
+                    "model": "mlx-test",
+                    "systemPrompt": "You are a local coding agent.",
+                    "workingDirectory": packageRoot.path,
+                    "allowedTools": ["Read"],
+                    "mcpServers": [],
+                    "skills": [],
+                    "toolDefinitions": [],
+                ],
+            ]
+        )
+        XCTAssertNotNil(createResponse["backendSessionId"] as? String)
+
+        let messageResponse = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions/rest-agent-session/messages")!,
+            method: "POST",
+            body: [
+                "text": "list files here",
+            ]
+        )
+        XCTAssertTrue((messageResponse["resultText"] as? String)?.contains("directory listing") == true)
+
+        let transcriptResponse = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions/rest-agent-session/transcript")!,
+            method: "GET"
+        )
+        let transcript = try XCTUnwrap(transcriptResponse["transcript"] as? [[String: Any]])
+        XCTAssertTrue(transcript.contains(where: { $0["role"] as? String == "user" && $0["text"] as? String == "list files here" }))
+    }
+
+    func testRESTAgentAPIExposeProviderProbeAndTools() async throws {
+        let port = Int.random(in: 53001...58000)
+        let runnerPath = try makeStubRunner()
+        let server = try startHostServer(
+            port: port,
+            environment: [
+                "ODYSSEY_MLX_RUNNER": runnerPath,
+                "ODYSSEY_MLX_DOWNLOAD_DIR": tempDirectory.appendingPathComponent("huggingface").path,
+            ]
+        )
+        defer {
+            server.process.terminate()
+        }
+
+        try await waitForHealth(port: port, server: server)
+
+        let providersResponse = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/providers")!,
+            method: "GET"
+        )
+        let providers = try XCTUnwrap(providersResponse["providers"] as? [[String: Any]])
+        XCTAssertTrue(providers.contains(where: { $0["provider"] as? String == "mlx" }))
+        XCTAssertTrue(providers.contains(where: { $0["provider"] as? String == "foundation" }))
+
+        _ = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions")!,
+            method: "POST",
+            body: [
+                "sessionId": "rest-tools-session",
+                "config": [
+                    "name": "REST Tools Agent",
+                    "provider": "mlx",
+                    "model": "mlx-test",
+                    "systemPrompt": "You are a local coding agent.",
+                    "workingDirectory": packageRoot.path,
+                    "allowedTools": ["Read", "Bash(pwd)"],
+                    "mcpServers": [],
+                    "skills": [],
+                    "toolDefinitions": [],
+                ],
+            ]
+        )
+
+        let toolsResponse = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions/rest-tools-session/tools")!,
+            method: "GET"
+        )
+        let tools = try XCTUnwrap(toolsResponse["tools"] as? [[String: Any]])
+        XCTAssertTrue(tools.contains(where: { $0["name"] as? String == "list_directory" }))
+        XCTAssertTrue(tools.contains(where: { $0["name"] as? String == "read_file" }))
+    }
+
+    func testRESTAgentAPIResumeAndForkEndpoints() async throws {
+        let port = Int.random(in: 33000...36000)
+        let runnerPath = try makeStubRunner()
+        let server = try startHostServer(
+            port: port,
+            environment: [
+                "ODYSSEY_MLX_RUNNER": runnerPath,
+                "ODYSSEY_MLX_DOWNLOAD_DIR": tempDirectory.appendingPathComponent("huggingface").path,
+            ]
+        )
+        defer {
+            server.process.terminate()
+        }
+
+        try await waitForHealth(port: port, server: server)
+
+        let createResponse = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions")!,
+            method: "POST",
+            body: [
+                "sessionId": "rest-parent-session",
+                "config": [
+                    "name": "REST Parent",
+                    "provider": "mlx",
+                    "model": "mlx-test",
+                    "systemPrompt": "You are a local coding agent.",
+                    "workingDirectory": packageRoot.path,
+                    "allowedTools": ["Read"],
+                    "mcpServers": [],
+                    "skills": [],
+                    "toolDefinitions": [],
+                ],
+            ]
+        )
+        let backendSessionId = try XCTUnwrap(createResponse["backendSessionId"] as? String)
+
+        let resumeResponse = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions/rest-parent-session/resume")!,
+            method: "POST",
+            body: [
+                "backendSessionId": backendSessionId,
+            ]
+        )
+        XCTAssertEqual(resumeResponse["backendSessionId"] as? String, backendSessionId)
+
+        _ = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions/rest-parent-session/messages")!,
+            method: "POST",
+            body: [
+                "text": "hello from resume",
+            ]
+        )
+
+        let forkResponse = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions/rest-parent-session/fork")!,
+            method: "POST",
+            body: [
+                "childSessionId": "rest-child-session",
+            ]
+        )
+        XCTAssertNotNil(forkResponse["backendSessionId"] as? String)
+
+        let childTranscript = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions/rest-child-session/transcript")!,
+            method: "GET"
+        )
+        let transcript = try XCTUnwrap(childTranscript["transcript"] as? [[String: Any]])
+        XCTAssertTrue(transcript.contains(where: { $0["role"] as? String == "user" && $0["text"] as? String == "hello from resume" }))
+    }
+
     private var packageRoot: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -240,15 +502,16 @@ final class LocalAgentHostTests: XCTestCase {
         return output
     }
 
-    private func startHostServer(port: Int, environment: [String: String] = [:]) throws -> Process {
+    private func startHostServer(port: Int, environment: [String: String] = [:]) throws -> HostServerHandle {
         let process = Process()
+        let outputPipe = Pipe()
         process.executableURL = try hostExecutableURL()
         process.arguments = ["serve", "--port", String(port)]
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
+        process.standardOutput = outputPipe
+        process.standardError = outputPipe
         process.environment = ProcessInfo.processInfo.environment.merging(environment) { _, new in new }
         try process.run()
-        return process
+        return HostServerHandle(process: process, outputPipe: outputPipe)
     }
 
     private func hostExecutableURL() throws -> URL {
@@ -265,9 +528,15 @@ final class LocalAgentHostTests: XCTestCase {
         throw XCTSkip("OdysseyLocalAgentHost executable was not built yet")
     }
 
-    private func waitForHealth(port: Int) async throws {
+    private func waitForHealth(port: Int, server: HostServerHandle) async throws {
         let healthURL = URL(string: "http://127.0.0.1:\(port)/health")!
         for _ in 0..<20 {
+            if !server.process.isRunning {
+                let data = server.outputPipe.fileHandleForReading.readDataToEndOfFile()
+                let output = String(decoding: data, as: UTF8.self)
+                XCTFail("Host server exited before becoming healthy: \(output)")
+                return
+            }
             do {
                 let (_, response) = try await URLSession.shared.data(from: healthURL)
                 if let response = response as? HTTPURLResponse, response.statusCode == 200 {
@@ -277,7 +546,9 @@ final class LocalAgentHostTests: XCTestCase {
                 try await Task.sleep(for: .milliseconds(200))
             }
         }
-        XCTFail("Host server did not become healthy in time")
+        let data = server.outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(decoding: data, as: UTF8.self)
+        XCTFail("Host server did not become healthy in time: \(output)")
     }
 
     private func request(
@@ -316,6 +587,40 @@ final class LocalAgentHostTests: XCTestCase {
             }
         }
         return [:]
+    }
+
+    private func sendStdioRequest(
+        id: Int,
+        method: String,
+        params: [String: Any],
+        input: FileHandle,
+        output: FileHandle
+    ) throws -> [String: Any] {
+        let payload: [String: Any] = [
+            "id": id,
+            "method": method,
+            "params": params,
+        ]
+        let data = try JSONSerialization.data(withJSONObject: payload)
+        input.write(data)
+        input.write(Data("\n".utf8))
+
+        let responseData = try readStdioLine(from: output)
+        return (try JSONSerialization.jsonObject(with: responseData) as? [String: Any]) ?? [:]
+    }
+
+    private func readStdioLine(from handle: FileHandle) throws -> Data {
+        var buffer = Data()
+        while true {
+            let chunk = try handle.read(upToCount: 1) ?? Data()
+            if chunk.isEmpty {
+                return buffer
+            }
+            if chunk == Data("\n".utf8) {
+                return buffer
+            }
+            buffer.append(chunk)
+        }
     }
 
     private func makeStubRunner() throws -> String {

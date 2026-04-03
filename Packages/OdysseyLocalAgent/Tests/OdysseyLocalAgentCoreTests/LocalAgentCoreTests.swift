@@ -38,11 +38,11 @@ final class LocalAgentCoreTests: XCTestCase {
 
         unsetenv("ODYSSEY_MLX_RUNNER")
         unsetenv("CLAUDESTUDIO_MLX_RUNNER")
-        fakeBin.path.withCString { pointer in
+        _ = fakeBin.path.withCString { pointer in
             setenv("PATH", pointer, 1)
         }
         defer {
-            previousPath.withCString { pointer in
+            _ = previousPath.withCString { pointer in
                 setenv("PATH", pointer, 1)
             }
         }
@@ -430,11 +430,46 @@ final class LocalAgentCoreTests: XCTestCase {
         XCTAssertEqual(result.runnerPath, runnerPath)
     }
 
+    func testRunProcessReturnsOutputFromStubRunner() throws {
+        let runnerPath = try makeStubRunner()
+
+        let output = try ManagedMLXModels.runProcess(
+            executable: runnerPath,
+            arguments: ["eval", "--model", "mlx-community/Qwen3-0.6B-4bit"]
+        )
+
+        XCTAssertEqual(output, "eval --model mlx-community/Qwen3-0.6B-4bit")
+    }
+
+    func testRunProcessTimesOutHungRunner() throws {
+        let runnerPath = try makeHangingRunner()
+
+        XCTAssertThrowsError(
+            try ManagedMLXModels.runProcess(
+                executable: runnerPath,
+                arguments: ["eval", "--model", "mlx-community/Qwen3-0.6B-4bit"],
+                timeout: 0.2
+            )
+        ) { error in
+            XCTAssertTrue(error.localizedDescription.contains("Process timed out"))
+        }
+    }
+
     private func makeStubRunner() throws -> String {
         let scriptURL = tempDirectory.appendingPathComponent("llm-tool")
         try """
         #!/bin/zsh
         echo "$@"
+        """.write(to: scriptURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
+        return scriptURL.path
+    }
+
+    private func makeHangingRunner() throws -> String {
+        let scriptURL = tempDirectory.appendingPathComponent("llm-tool-hang")
+        try """
+        #!/bin/zsh
+        sleep 5
         """.write(to: scriptURL, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
         return scriptURL.path

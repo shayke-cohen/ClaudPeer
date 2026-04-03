@@ -26,8 +26,9 @@ actor HostService {
         let paramsData = try data(for: params)
         switch method {
         case LocalAgentHostMethod.initialize.rawValue:
-            return ["name": "OdysseyLocalAgentHost", "version": "0.2.0"]
-        case LocalAgentHostMethod.providerProbe.rawValue:
+            return ["name": "OdysseyLocalAgentHost", "version": "0.3.0"]
+        case LocalAgentHostMethod.providerProbe.rawValue,
+             LocalAgentHostMethod.agentProbeProvider.rawValue:
             let decoded = try decoder.decode(ProbeProviderParams.self, from: paramsData)
             return try jsonObject(from: await core.probe(decoded))
         case LocalAgentHostMethod.mlxModelsList.rawValue:
@@ -49,28 +50,36 @@ actor HostService {
                 modelIdentifier: decoded.modelIdentifier,
                 downloadDirectory: decoded.downloadDirectory
             ))
-        case LocalAgentHostMethod.sessionCreate.rawValue:
+        case LocalAgentHostMethod.sessionCreate.rawValue,
+             LocalAgentHostMethod.agentCreateSession.rawValue:
             let decoded = try decoder.decode(CreateSessionParams.self, from: paramsData)
             return try jsonObject(from: await core.createSession(decoded))
-        case LocalAgentHostMethod.sessionMessage.rawValue:
+        case LocalAgentHostMethod.sessionMessage.rawValue,
+             LocalAgentHostMethod.agentSendMessage.rawValue:
             let decoded = try decoder.decode(MessageSessionParams.self, from: paramsData)
             return try jsonObject(from: try await core.sendMessage(decoded))
-        case LocalAgentHostMethod.sessionResume.rawValue:
+        case LocalAgentHostMethod.sessionResume.rawValue,
+             LocalAgentHostMethod.agentResumeSession.rawValue:
             let decoded = try decoder.decode(ResumeSessionParams.self, from: paramsData)
             return try jsonObject(from: await core.resumeSession(decoded))
-        case LocalAgentHostMethod.sessionPause.rawValue:
+        case LocalAgentHostMethod.sessionPause.rawValue,
+             LocalAgentHostMethod.agentPauseSession.rawValue:
             let decoded = try decoder.decode(PauseSessionParams.self, from: paramsData)
             return try jsonObject(from: await core.pauseSession(sessionId: decoded.sessionId))
-        case LocalAgentHostMethod.sessionFork.rawValue:
+        case LocalAgentHostMethod.sessionFork.rawValue,
+             LocalAgentHostMethod.agentForkSession.rawValue:
             let decoded = try decoder.decode(ForkSessionParams.self, from: paramsData)
             return try jsonObject(from: try await core.forkSession(decoded))
-        case LocalAgentHostMethod.sessionRun.rawValue:
+        case LocalAgentHostMethod.sessionRun.rawValue,
+             LocalAgentHostMethod.agentRun.rawValue:
             let decoded = try decoder.decode(RunOnceParams.self, from: paramsData)
             return try jsonObject(from: try await core.runOnce(decoded))
-        case LocalAgentHostMethod.sessionTranscript.rawValue:
+        case LocalAgentHostMethod.sessionTranscript.rawValue,
+             LocalAgentHostMethod.agentGetTranscript.rawValue:
             let decoded = try decoder.decode(SessionTranscriptParams.self, from: paramsData)
             return try jsonObject(from: SessionTranscriptResult(sessionId: decoded.sessionId, transcript: await core.transcript(for: decoded.sessionId)))
-        case LocalAgentHostMethod.sessionTools.rawValue:
+        case LocalAgentHostMethod.sessionTools.rawValue,
+             LocalAgentHostMethod.agentGetTools.rawValue:
             let decoded = try decoder.decode(SessionToolsParams.self, from: paramsData)
             return try jsonObject(from: SessionToolsResult(sessionId: decoded.sessionId, tools: await core.tools(for: decoded.sessionId)))
         default:

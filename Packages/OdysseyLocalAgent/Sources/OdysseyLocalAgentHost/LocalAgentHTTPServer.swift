@@ -124,6 +124,7 @@ final class LocalAgentHTTPServer {
     private func route(request: (method: String, path: String, body: [String: Any])) async throws -> (status: Int, body: [String: Any]) {
         let path = request.path.split(separator: "?").first.map(String.init) ?? request.path
         let segments = path.split(separator: "/").map(String.init)
+        let isAgentNamespace = segments.count >= 2 && segments[0] == "v1" && segments[1] == "agent"
 
         switch (request.method, path) {
         case ("GET", "/health"):
@@ -151,7 +152,46 @@ final class LocalAgentHTTPServer {
             return (200, try await call(method: LocalAgentHostMethod.sessionCreate.rawValue, params: request.body))
         case ("POST", "/v1/run"):
             return (200, try await call(method: LocalAgentHostMethod.sessionRun.rawValue, params: request.body))
+        case ("GET", "/v1/agent/providers"):
+            var probeResults = [[String: Any]]()
+            for provider in LocalAgentProvider.allCases {
+                probeResults.append(
+                    try await call(
+                        method: LocalAgentHostMethod.agentProbeProvider.rawValue,
+                        params: ["provider": provider.rawValue]
+                    )
+                )
+            }
+            return (200, ["providers": probeResults])
+        case ("POST", "/v1/agent/providers/probe"):
+            return (200, try await call(method: LocalAgentHostMethod.agentProbeProvider.rawValue, params: request.body))
+        case ("POST", "/v1/agent/sessions"):
+            return (200, try await call(method: LocalAgentHostMethod.agentCreateSession.rawValue, params: request.body))
+        case ("POST", "/v1/agent/run"):
+            return (200, try await call(method: LocalAgentHostMethod.agentRun.rawValue, params: request.body))
         default:
+            if isAgentNamespace, segments.count == 5, segments[2] == "sessions", request.method == "GET", segments[4] == "transcript" {
+                return (200, try await call(
+                    method: LocalAgentHostMethod.agentGetTranscript.rawValue,
+                    params: ["sessionId": segments[3]]
+                ))
+            }
+
+            if isAgentNamespace, segments.count == 5, segments[2] == "sessions", request.method == "GET", segments[4] == "tools" {
+                return (200, try await call(
+                    method: LocalAgentHostMethod.agentGetTools.rawValue,
+                    params: ["sessionId": segments[3]]
+                ))
+            }
+
+            if isAgentNamespace, segments.count == 5, segments[2] == "sessions", request.method == "POST" {
+                return try await routeAgentSessionAction(
+                    sessionId: segments[3],
+                    action: segments[4],
+                    body: request.body
+                )
+            }
+
             if segments.count == 4, segments[0] == "v1", segments[1] == "sessions", request.method == "GET", segments[3] == "transcript" {
                 return (200, try await call(
                     method: LocalAgentHostMethod.sessionTranscript.rawValue,
@@ -175,6 +215,37 @@ final class LocalAgentHTTPServer {
             }
 
             return (404, ["error": "not_found", "path": path])
+        }
+    }
+
+    private func routeAgentSessionAction(
+        sessionId: String,
+        action: String,
+        body: [String: Any]
+    ) async throws -> (status: Int, body: [String: Any]) {
+        switch action {
+        case "messages":
+            return (200, try await call(
+                method: LocalAgentHostMethod.agentSendMessage.rawValue,
+                params: body.merging(["sessionId": sessionId]) { _, new in new }
+            ))
+        case "resume":
+            return (200, try await call(
+                method: LocalAgentHostMethod.agentResumeSession.rawValue,
+                params: body.merging(["sessionId": sessionId]) { _, new in new }
+            ))
+        case "pause":
+            return (200, try await call(
+                method: LocalAgentHostMethod.agentPauseSession.rawValue,
+                params: body.merging(["sessionId": sessionId]) { _, new in new }
+            ))
+        case "fork":
+            return (200, try await call(
+                method: LocalAgentHostMethod.agentForkSession.rawValue,
+                params: body.merging(["parentSessionId": sessionId]) { _, new in new }
+            ))
+        default:
+            return (404, ["error": "not_found", "path": "/v1/agent/sessions/\(sessionId)/\(action)"])
         }
     }
 

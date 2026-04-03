@@ -494,7 +494,8 @@ public enum ManagedMLXModels {
         executable: String,
         arguments: [String],
         currentDirectory: String? = nil,
-        extraEnvironment: [String: String] = [:]
+        extraEnvironment: [String: String] = [:],
+        timeout: TimeInterval = 60
     ) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
@@ -516,11 +517,33 @@ public enum ManagedMLXModels {
         process.standardOutput = pipe
         process.standardError = pipe
 
-        try process.run()
-        process.waitUntilExit()
+        final class OutputBox: @unchecked Sendable {
+            var data = Data()
+        }
+        let outputBox = OutputBox()
+        let readerGroup = DispatchGroup()
+        readerGroup.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            outputBox.data = pipe.fileHandleForReading.readDataToEndOfFile()
+            readerGroup.leave()
+        }
 
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        try process.run()
+        let deadline = Date().addingTimeInterval(timeout)
+        while process.isRunning && Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+
+        if process.isRunning {
+            process.terminate()
+            _ = readerGroup.wait(timeout: .now() + 2)
+            throw ManagedMLXModelsError.installFailed(
+                "Process timed out after \(Int(timeout))s: \(URL(fileURLWithPath: executable).lastPathComponent) \(arguments.joined(separator: " "))"
+            )
+        }
+
+        readerGroup.wait()
+        let output = String(decoding: outputBox.data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
         guard process.terminationStatus == 0 else {
             throw ManagedMLXModelsError.installFailed(output)
         }
