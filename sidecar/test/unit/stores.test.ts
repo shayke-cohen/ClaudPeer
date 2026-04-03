@@ -4,7 +4,7 @@
  * Tests: BlackboardStore, SessionRegistry, MessageStore, ChatChannelStore, WorkspaceStore
  * These run in-process with no network, no sidecar boot required.
  *
- * Usage: CLAUDESTUDIO_DATA_DIR=/tmp/claudestudio-test-$(date +%s) bun test test/unit/stores.test.ts
+ * Usage: ODYSSEY_DATA_DIR=/tmp/odyssey-test-$(date +%s) bun test test/unit/stores.test.ts
  */
 import { describe, test, expect, beforeEach } from "bun:test";
 import { BlackboardStore } from "../../src/stores/blackboard-store.js";
@@ -23,9 +23,9 @@ describe("BlackboardStore", () => {
   });
 
   test("write and read a key", () => {
-    const entry = bb.write("project.name", "ClaudeStudio", "agent-1");
+    const entry = bb.write("project.name", "Odyssey", "agent-1");
     expect(entry.key).toBe("project.name");
-    expect(entry.value).toBe("ClaudeStudio");
+    expect(entry.value).toBe("Odyssey");
     expect(entry.writtenBy).toBe("agent-1");
     expect(entry.createdAt).toBeTruthy();
 

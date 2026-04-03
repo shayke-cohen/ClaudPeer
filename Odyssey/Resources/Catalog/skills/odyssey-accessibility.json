@@ -1,0 +1,22 @@
+{
+  "catalogId": "odyssey-accessibility",
+  "name": "Odyssey Accessibility",
+  "description": "Accessibility identifier conventions for Odyssey UI — enables AppXray and UI automation",
+  "category": "Odyssey",
+  "icon": "accessibility",
+  "requiredMCPs": [],
+  "triggers": [
+    "accessibility identifier",
+    "accessibilityIdentifier",
+    "testId",
+    "appxray",
+    "UI testing",
+    "a11y identifier"
+  ],
+  "tags": [
+    "accessibility",
+    "appxray",
+    "ui-testing",
+    "odyssey"
+  ]
+}

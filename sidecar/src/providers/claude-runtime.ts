@@ -288,7 +288,7 @@ export class ClaudeRuntime implements ProviderRuntime {
       return text;
     }
 
-    const tmpDir = join(homedir(), ".claudestudio", "tmp-attachments");
+    const tmpDir = join(homedir(), ".odyssey", "tmp-attachments");
     mkdirSync(tmpDir, { recursive: true });
 
     const inlineTexts: string[] = [];

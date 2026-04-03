@@ -1,5 +1,5 @@
 /**
- * Shared test helpers for ClaudeStudio sidecar tests.
+ * Shared test helpers for Odyssey sidecar tests.
  *
  * Provides BufferedWs (race-free WebSocket wrapper), wsConnect (connect with retry),
  * and waitForHealth (HTTP health poll). Used by ws-protocol, full-flow, and scenarios tests.

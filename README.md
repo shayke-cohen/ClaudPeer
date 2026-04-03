@@ -1,12 +1,14 @@
-# ClaudeStudio
+# Odyssey
 
 A native macOS developer tool for orchestrating Claude AI agent sessions around **projects**. Each project owns its threads, tasks, schedules, and working context, while agents can still chat with users and with each other, share knowledge through a blackboard, collaborate on files through worktrees, and discover peers across the local network. Reusable agents, groups, skills, and integrations are managed through an intent-first library hub with `Run`, `Build`, and `Discover` modes.
 
-![ClaudeStudio](docs/welcome-screen.png)
+![Odyssey](docs/welcome-screen.png)
+
+The product name and internal source folders are both `Odyssey`.
 
 ## Architecture
 
-ClaudeStudio is a **two-process** app:
+Odyssey is a **two-process** app:
 
 ```
 ┌─────────────────────────────────┐     WebSocket (JSON)     ┌─────────────────────────────────┐
@@ -34,14 +36,14 @@ ClaudeStudio is a **two-process** app:
 ## Project Structure
 
 ```
-ClaudeStudio/
-├── ClaudeStudio.xcodeproj           # Xcode project
+Odyssey/
+├── Odyssey.xcodeproj           # Xcode project
 ├── project.yml                   # XcodeGen spec (macOS 14+, Swift 6)
 ├── system-plan-vision.md         # Full architecture vision & roadmap
 │
-├── ClaudeStudio/                    # Swift macOS App
+├── Odyssey/                    # Swift macOS App
 │   ├── App/
-│   │   ├── ClaudeStudioApp.swift    # @main, model container, project reset/bootstrap
+│   │   ├── OdysseyApp.swift    # @main, model container, project reset/bootstrap
 │   │   ├── AppState.swift        # Global state: sidecar status, selections, streaming
 │   │   └── Log.swift             # Centralized OSLog logger with categories
 │   ├── Models/                   # SwiftData @Model types
@@ -79,9 +81,9 @@ ClaudeStudio/
 │   │   └── Components/           # MessageBubble, ToolCallView, TreeNode, etc.
 │   └── Resources/
 │       ├── Assets.xcassets
-│       ├── ClaudeStudio.entitlements
+│       ├── Odyssey.entitlements
 │       ├── DefaultAgents/           # 7 built-in agent definitions (JSON)
-│       ├── DefaultSkills/           # 6 ClaudeStudio-specific skills (SKILL.md)
+│       ├── DefaultSkills/           # 6 Odyssey-specific skills (SKILL.md)
 │       │   ├── peer-collaboration/
 │       │   ├── blackboard-patterns/
 │       │   ├── delegation-patterns/
@@ -140,15 +142,15 @@ ClaudeStudio/
 ### 1. Clone and install sidecar dependencies
 
 ```bash
-git clone <repo-url> ClaudeStudio
-cd ClaudeStudio/sidecar
+git clone <repo-url> Odyssey
+cd Odyssey/sidecar
 bun install
 ```
 
 ### 2. Open in Xcode
 
 ```bash
-open ClaudeStudio.xcodeproj
+open Odyssey.xcodeproj
 ```
 
 Or generate via XcodeGen if needed:
@@ -159,10 +161,10 @@ xcodegen generate
 
 ### 3. Build and run
 
-Build the `ClaudeStudio` target in Xcode (Cmd+R). The app automatically:
+Build the app target in Xcode (Cmd+R). It currently lives under the `Odyssey` target name and produces `Odyssey.app`. The app automatically:
 1. Launches the Bun sidecar process
 2. Connects via WebSocket on `localhost:9849`
-3. Logs sidecar output to `~/.claudestudio/logs/sidecar.log`
+3. Logs sidecar output to `~/.odyssey/logs/sidecar.log`
 
 ### Running the sidecar standalone (development)
 
@@ -174,30 +176,30 @@ bun run start        # single run
 ```
 
 Environment variables:
-- `CLAUDESTUDIO_WS_PORT` — WebSocket port (default: `9849`)
-- `CLAUDESTUDIO_HTTP_PORT` — Blackboard HTTP API port (default: `9850`)
+- `ODYSSEY_WS_PORT` — WebSocket port (default: `9849`)
+- `ODYSSEY_HTTP_PORT` — Blackboard HTTP API port (default: `9850`)
 
 ## Launch Parameters
 
-ClaudeStudio accepts CLI arguments and a `claudestudio://` URL scheme for scripting, automation, and deeplinks.
+Odyssey accepts CLI arguments and an `odyssey://` URL scheme for scripting, automation, and deeplinks. Legacy `claudestudio://` and `claudpeer://` links are still accepted for compatibility.
 
 ### CLI arguments
 
 ```bash
 # Freeform chat (no agent)
-open ClaudeStudio.app --args --chat
+open Odyssey.app --args --chat
 
 # Start with a specific agent
-open ClaudeStudio.app --args --agent Coder
+open Odyssey.app --args --agent Coder
 
 # Agent with auto-sent prompt and custom working directory
-open ClaudeStudio.app --args --agent Coder --prompt "Fix the failing tests" --workdir ~/code/my-project
+open Odyssey.app --args --agent Coder --prompt "Fix the failing tests" --workdir ~/code/my-project
 
 # Group chat in autonomous mode
-open ClaudeStudio.app --args --group "Dev Team" --autonomous --prompt "Ship the login feature"
+open Odyssey.app --args --group "Dev Team" --autonomous --prompt "Ship the login feature"
 
 # Combined with --instance for isolated workspaces
-open -n ClaudeStudio.app --args --instance project-x --agent Coder --workdir ~/code/project-x
+open -n Odyssey.app --args --instance project-x --agent Coder --workdir ~/code/project-x
 ```
 
 | Flag | Description |
@@ -213,12 +215,12 @@ open -n ClaudeStudio.app --args --instance project-x --agent Coder --workdir ~/c
 ### URL scheme
 
 ```bash
-open "claudestudio://chat?prompt=Hello"
-open "claudestudio://agent/Coder?prompt=Fix%20the%20tests&workdir=/Users/me/project"
-open "claudestudio://group/Dev%20Team?autonomous=true"
+open "odyssey://chat?prompt=Hello"
+open "odyssey://agent/Coder?prompt=Fix%20the%20tests&workdir=/Users/me/project"
+open "odyssey://group/Dev%20Team?autonomous=true"
 ```
 
-URL format: `claudestudio://<mode>/<name>?prompt=...&workdir=...&autonomous=true`
+URL format: `odyssey://<mode>/<name>?prompt=...&workdir=...&autonomous=true`
 
 Where `<mode>` is `chat`, `agent`, or `group`. Query parameters are optional.
 
@@ -320,7 +322,7 @@ The app uses SwiftData with these core entities:
 
 ## Built-in Ecosystem
 
-ClaudeStudio ships with 7 default agents, 6 multi-agent skills, MCP integrations, permission presets, and system prompt templates -- all designed to work together out of the box. Users can modify, duplicate, or delete any default.
+Odyssey ships with 7 default agents, 6 multi-agent skills, MCP integrations, permission presets, and system prompt templates -- all designed to work together out of the box. Users can modify, duplicate, or delete any default.
 
 ### Default Agents
 
@@ -334,13 +336,13 @@ ClaudeStudio ships with 7 default agents, 6 multi-agent skills, MCP integrations
 | **DevOps** | Git workflows, CI/CD, deployment, environment setup | haiku | `.singleton` | Git Only |
 | **Writer** | Documentation, READMEs, specs, PRDs, UX copy | sonnet | `.spawn` | Read + Write Docs |
 
-### ClaudeStudio-Specific Skills
+### Odyssey-Specific Skills
 
 - **`peer-collaboration`** -- PeerBus usage: blocking chat vs async, deadlock avoidance, group chat etiquette
 - **`blackboard-patterns`** -- Key naming conventions, structured data patterns, subscription strategies
 - **`delegation-patterns`** -- Task decomposition, wait strategies, pipeline templates (sequential, parallel, iterative)
 - **`workspace-collaboration`** -- Multi-agent file conventions, locking, readiness signaling
-- **`agent-identity`** -- ClaudeStudio context injection, peer discovery, self-introduction protocol
+- **`agent-identity`** -- Odyssey context injection, peer discovery, self-introduction protocol
 - **`task-board-patterns`** -- Task polling, subtask decomposition, atomic claiming, result reporting
 
 ### MCP Integrations (pre-registered, user-enabled per agent)
@@ -378,7 +380,7 @@ See [`system-plan-vision.md` Section 11](system-plan-vision.md#11-built-in-ecosy
 - Chat export (Markdown, HTML, PDF), file/image attachments
 - Streaming images, file cards, and extended thinking from sidecar
 - Multi-instance support (isolated data, ports, settings per instance)
-- Launch parameters (CLI args + `claudestudio://` URL scheme)
+- Launch parameters (CLI args + `odyssey://` URL scheme)
 - Catalog system: 30 agents, 101 skills, 100 MCPs with cascading install, surfaced through `Discover`
 - Full accessibility coverage (347+ identifiers)
 - Rich display tools: ask_user (form/options/toggle/rating), render_content, show_progress, suggest_actions
@@ -395,11 +397,11 @@ See [`system-plan-vision.md` Section 11](system-plan-vision.md#11-built-in-ecosy
 
 | Path | Purpose |
 |---|---|
-| `~/.claudestudio/logs/` | Sidecar stdout/stderr logs |
-| `~/.claudestudio/blackboard/` | Persisted blackboard JSON files |
-| `~/.claudestudio/repos/` | Cloned GitHub repositories |
-| `~/.claudestudio/sandboxes/` | Ephemeral session working directories |
-| `~/.claudestudio/workspaces/` | Shared multi-agent workspaces |
+| `~/.odyssey/logs/` | Sidecar stdout/stderr logs |
+| `~/.odyssey/blackboard/` | Persisted blackboard JSON files |
+| `~/.odyssey/repos/` | Cloned GitHub repositories |
+| `~/.odyssey/sandboxes/` | Ephemeral session working directories |
+| `~/.odyssey/workspaces/` | Shared multi-agent workspaces |
 
 ## License
 

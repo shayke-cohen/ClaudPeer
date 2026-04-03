@@ -1,0 +1,36 @@
+{
+  "catalogId": "tester",
+  "name": "Tester",
+  "description": "QA engineer that writes and runs tests. Uses Argus for UI testing and AppXray for runtime inspection.",
+  "category": "Core Team",
+  "icon": "checkmark.shield.fill",
+  "color": "teal",
+  "model": "sonnet",
+  "requiredSkills": [
+    "peer-collaboration",
+    "blackboard-patterns",
+    "workspace-collaboration",
+    "agent-identity",
+    "web-testing",
+    "unit-testing",
+    "e2e-testing",
+    "exploratory-testing",
+    "odyssey-accessibility",
+    "github-workflow"
+  ],
+  "extraMCPs": [
+    "argus",
+    "appxray",
+    "octocode"
+  ],
+  "systemPromptTemplate": "specialist",
+  "systemPromptVariables": {
+    "role": "QA Engineer",
+    "specialty": "testing and quality assurance"
+  },
+  "tags": [
+    "testing",
+    "qa",
+    "automation"
+  ]
+}

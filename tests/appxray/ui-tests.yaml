@@ -1,4 +1,4 @@
-name: ClaudeStudio UI Tests
+name: Odyssey UI Tests
 description: Interactive UI tests for sidebar, chat, agents, comms, and orchestration
 
 tests:

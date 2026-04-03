@@ -1,19 +1,19 @@
 {
   "state": {},
   "id": "root",
-  "accessibilityLabel": "ClaudeStudio \u2014 test-prj2",
+  "accessibilityLabel": "Odyssey \u2014 test-prj2",
   "handlers": [],
   "props": {},
   "children": [
     {
       "type": "Window",
       "props": {},
-      "name": "ClaudeStudio \u2014 test-prj2",
+      "name": "Odyssey \u2014 test-prj2",
       "depth": 1,
       "id": "w71",
       "isVisible": true,
       "state": {},
-      "accessibilityLabel": "ClaudeStudio \u2014 test-prj2",
+      "accessibilityLabel": "Odyssey \u2014 test-prj2",
       "handlers": [],
       "children": [
         {
@@ -1343,6 +1343,6 @@
   ],
   "depth": 0,
   "isVisible": true,
-  "name": "ClaudeStudio \u2014 test-prj2",
+  "name": "Odyssey \u2014 test-prj2",
   "type": "Application"
 }

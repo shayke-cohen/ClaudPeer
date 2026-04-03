@@ -36,8 +36,11 @@ export class LocalAgentHostClient {
   private readonly handlers = new Map<string, RequestHandler>();
 
   constructor(options: LocalAgentHostClientOptions = {}) {
-    this.hostBinaryPath = options.hostBinaryPath || process.env.CLAUDESTUDIO_LOCAL_AGENT_HOST_BINARY;
-    this.packagePath = options.packagePath || join(import.meta.dir, "../../../Packages/ClaudeStudioLocalAgent");
+    this.hostBinaryPath =
+      options.hostBinaryPath
+      || process.env.ODYSSEY_LOCAL_AGENT_HOST_BINARY
+      || process.env.CLAUDESTUDIO_LOCAL_AGENT_HOST_BINARY;
+    this.packagePath = options.packagePath || join(import.meta.dir, "../../../Packages/OdysseyLocalAgent");
   }
 
   async start(): Promise<void> {
@@ -121,7 +124,7 @@ export class LocalAgentHostClient {
 
     await this.sendRequest("initialize", {
       clientInfo: {
-        name: "claudestudio-sidecar",
+        name: "odyssey-sidecar",
         version: "0.1.0",
       },
     });
@@ -131,7 +134,7 @@ export class LocalAgentHostClient {
     if (!this.hostBinaryPath) {
       return {
         command: "/usr/bin/xcrun",
-        args: ["swift", "run", "--package-path", this.packagePath, "ClaudeStudioLocalAgentHost"],
+        args: ["swift", "run", "--package-path", this.packagePath, "OdysseyLocalAgentHost"],
       };
     }
 

@@ -1,0 +1,435 @@
+import SwiftUI
+import SwiftData
+import Foundation
+
+enum LibrarySection: String, CaseIterable, Identifiable {
+    case run
+    case build
+    case discover
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .run: "Run"
+        case .build: "Build"
+        case .discover: "Discover"
+        }
+    }
+}
+
+enum LibraryBuildSection: String, CaseIterable, Identifiable {
+    case agents
+    case groups
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .agents: "Agents"
+        case .groups: "Groups"
+        }
+    }
+}
+
+enum LibraryDiscoverSection: String, CaseIterable, Identifiable {
+    case agentTemplates
+    case skills
+    case integrations
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .agentTemplates: "Agent Templates"
+        case .skills: "Skills"
+        case .integrations: "Integrations"
+        }
+    }
+}
+
+enum WindowInspectorTab: String, CaseIterable, Identifiable {
+    case info = "Info"
+    case files = "Files"
+    case blackboard = "Blackboard"
+    case group = "Group"
+
+    var id: String { rawValue }
+}
+
+enum WindowContentRoute: String {
+    case workspace
+    case settings
+}
+
+struct InspectorFileSelectionRequest: Equatable {
+    let id: UUID
+    let url: URL
+
+    init(id: UUID = UUID(), url: URL) {
+        self.id = id
+        self.url = url
+    }
+}
+
+enum ProjectRecords {
+    private static let workspaceMarkerPaths = [
+        "project.yml",
+        "sidecar/src/index.ts",
+        "Odyssey.xcodeproj",
+    ]
+
+    static func canonicalPath(for path: String) -> String {
+        URL(fileURLWithPath: path)
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+            .path
+    }
+
+    static func displayName(for path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "Project" }
+        return (trimmed as NSString).lastPathComponent
+    }
+
+    @discardableResult
+    static func repairMissingProjects(
+        in modelContext: ModelContext,
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath,
+        recentDirectories: [String] = RecentDirectories.load(),
+        projectRootOverride: String? = InstanceConfig.userDefaults.string(forKey: AppSettings.sidecarPathKey)
+    ) -> Bool {
+        let descriptor = FetchDescriptor<Project>()
+        let projects = (try? modelContext.fetch(descriptor)) ?? []
+        var changed = false
+
+        for project in projects {
+            changed = repairProjectIfNeeded(
+                project,
+                currentDirectoryPath: currentDirectoryPath,
+                recentDirectories: recentDirectories,
+                projectRootOverride: projectRootOverride
+            ) || changed
+        }
+
+        if changed {
+            try? modelContext.save()
+        }
+        return changed
+    }
+
+    @discardableResult
+    static func repairProjectIfNeeded(
+        _ project: Project,
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath,
+        recentDirectories: [String] = RecentDirectories.load(),
+        projectRootOverride: String? = InstanceConfig.userDefaults.string(forKey: AppSettings.sidecarPathKey)
+    ) -> Bool {
+        let currentPath = canonicalPath(for: project.canonicalRootPath.isEmpty ? project.rootPath : project.canonicalRootPath)
+        let defaultName = displayName(for: currentPath)
+        let fileManager = FileManager.default
+
+        if fileManager.fileExists(atPath: currentPath) {
+            var changed = false
+            if project.rootPath != currentPath {
+                project.rootPath = currentPath
+                changed = true
+            }
+            if project.canonicalRootPath != currentPath {
+                project.canonicalRootPath = currentPath
+                changed = true
+            }
+            if project.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                project.name = defaultName
+                changed = true
+            }
+            return changed
+        }
+
+        guard let relocatedPath = relocatedProjectPath(
+            forMissingPath: currentPath,
+            currentDirectoryPath: currentDirectoryPath,
+            recentDirectories: recentDirectories,
+            projectRootOverride: projectRootOverride
+        ) else {
+            return false
+        }
+
+        let relocatedName = displayName(for: relocatedPath)
+        let shouldRename = project.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || project.name == defaultName
+
+        project.rootPath = relocatedPath
+        project.canonicalRootPath = relocatedPath
+        project.lastOpenedAt = Date()
+        if shouldRename {
+            project.name = relocatedName
+        }
+        return true
+    }
+
+    @discardableResult
+    static func upsertProject(
+        at path: String,
+        in modelContext: ModelContext,
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath,
+        recentDirectories: [String] = RecentDirectories.load(),
+        projectRootOverride: String? = InstanceConfig.userDefaults.string(forKey: AppSettings.sidecarPathKey)
+    ) -> Project {
+        let requestedCanonical = canonicalPath(for: path)
+        let canonical = relocatedProjectPath(
+            forMissingPath: requestedCanonical,
+            currentDirectoryPath: currentDirectoryPath,
+            recentDirectories: recentDirectories,
+            projectRootOverride: projectRootOverride
+        ) ?? requestedCanonical
+        let defaultName = displayName(for: canonical)
+        let descriptor = FetchDescriptor<Project>()
+        let existing = (try? modelContext.fetch(descriptor))?.first {
+            $0.canonicalRootPath == canonical || $0.canonicalRootPath == requestedCanonical
+        }
+
+        let project = existing ?? Project(
+            name: defaultName,
+            rootPath: canonical,
+            canonicalRootPath: canonical
+        )
+        let requestedName = displayName(for: requestedCanonical)
+        if project.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || project.name == requestedName {
+            project.name = defaultName
+        }
+        project.rootPath = canonical
+        project.canonicalRootPath = canonical
+        project.lastOpenedAt = Date()
+
+        if existing == nil {
+            modelContext.insert(project)
+        }
+        try? modelContext.save()
+        return project
+    }
+
+    private static func relocatedProjectPath(
+        forMissingPath path: String,
+        currentDirectoryPath: String,
+        recentDirectories: [String],
+        projectRootOverride: String?
+    ) -> String? {
+        let canonical = canonicalPath(for: path)
+        let fileManager = FileManager.default
+        guard !fileManager.fileExists(atPath: canonical) else { return canonical }
+
+        let parentPath = URL(fileURLWithPath: canonical).deletingLastPathComponent().path
+        var candidates = [currentDirectoryPath]
+        if let projectRootOverride, !projectRootOverride.isEmpty {
+            candidates.append(projectRootOverride)
+        }
+        candidates.append(contentsOf: recentDirectories)
+
+        if fileManager.fileExists(atPath: parentPath),
+           let siblingURLs = try? fileManager.contentsOfDirectory(
+                at: URL(fileURLWithPath: parentPath),
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: [.skipsHiddenFiles]
+           ) {
+            candidates.append(contentsOf: siblingURLs.map(\.path))
+        }
+
+        let normalizedCandidates = Array(
+            Set(
+                candidates
+                    .map(canonicalPath(for:))
+                    .filter { candidate in
+                        var isDirectory: ObjCBool = false
+                        return fileManager.fileExists(atPath: candidate, isDirectory: &isDirectory) && isDirectory.boolValue
+                    }
+            )
+        )
+
+        let sameParentWorkspaceCandidates = normalizedCandidates.filter {
+            URL(fileURLWithPath: $0).deletingLastPathComponent().path == parentPath
+                && looksLikeWorkspaceRoot($0)
+        }
+        if sameParentWorkspaceCandidates.count == 1 {
+            return sameParentWorkspaceCandidates[0]
+        }
+
+        let workspaceCandidates = normalizedCandidates.filter(looksLikeWorkspaceRoot)
+        if workspaceCandidates.count == 1 {
+            return workspaceCandidates[0]
+        }
+
+        return nil
+    }
+
+    private static func looksLikeWorkspaceRoot(_ path: String) -> Bool {
+        let fileManager = FileManager.default
+        return workspaceMarkerPaths.allSatisfy { marker in
+            fileManager.fileExists(atPath: URL(fileURLWithPath: path).appendingPathComponent(marker).path)
+        }
+    }
+}
+
+/// Per-window state for the project-first shell.
+@MainActor @Observable
+final class WindowState {
+    /// Reference to the shared AppState for cross-window coordination.
+    weak var appState: AppState?
+
+    private(set) var selectedProjectId: UUID?
+    private var chatScrollAnchorIds: [UUID: UUID] = [:]
+
+    private var currentProjectDirectory: String
+    private var currentProjectDisplayName: String
+
+    var selectedConversationId: UUID? {
+        didSet {
+            if selectedConversationId != nil { selectedGroupId = nil }
+            // Update AppState's visible set for notification gating
+            if let old = oldValue { appState?.visibleConversationIds.remove(old) }
+            if let new = selectedConversationId {
+                appState?.visibleConversationIds.insert(new)
+                markConversationRead(id: new)
+            }
+        }
+    }
+    var selectedGroupId: UUID? {
+        didSet { if selectedGroupId != nil { selectedConversationId = nil } }
+    }
+
+    var inspectorVisible = true
+    var selectedInspectorTab: WindowInspectorTab = .info
+    var inspectorFileSelectionRequest: InspectorFileSelectionRequest?
+
+    var showNewSessionSheet = false
+    var showNewGroupThreadSheet = false
+    var showLibraryHub = false
+    var selectedLibrarySection: LibrarySection = .run
+    var selectedLibraryBuildSection: LibraryBuildSection = .agents
+    var selectedLibraryDiscoverSection: LibraryDiscoverSection = .agentTemplates
+    var showScheduleLibrary = false
+    var showPeerNetwork = false
+    var showAgentComms = false
+    var showSharedRoomInviteSheet = false
+    var showSharedRoomInbox = false
+    var showWorkshop = false
+    var activeRoute: WindowContentRoute = .workspace
+    var sharedRoomInviteConversationId: UUID?
+
+    var launchError: String?
+    var autoSendText: String?
+
+    init(project: Project) {
+        self.selectedProjectId = project.id
+        self.currentProjectDirectory = project.rootPath
+        self.currentProjectDisplayName = project.name
+    }
+
+    var projectName: String {
+        currentProjectDisplayName
+    }
+
+    var projectDirectory: String {
+        currentProjectDirectory
+    }
+
+    func selectProject(_ project: Project, preserveSelection: Bool = false) {
+        apply(project: project, preserveSelection: preserveSelection)
+    }
+
+    func selectProject(id: UUID, preserveSelection: Bool = false) {
+        guard let ctx = appState?.modelContext else { return }
+        let descriptor = FetchDescriptor<Project>(predicate: #Predicate { project in
+            project.id == id
+        })
+        guard let project = try? ctx.fetch(descriptor).first else { return }
+        apply(project: project, preserveSelection: preserveSelection)
+    }
+
+    private func apply(project: Project, preserveSelection: Bool) {
+        selectedProjectId = project.id
+        currentProjectDirectory = project.rootPath
+        currentProjectDisplayName = project.name
+        project.lastOpenedAt = Date()
+        try? appState?.modelContext?.save()
+
+        if !preserveSelection {
+            selectedConversationId = nil
+            selectedGroupId = nil
+        }
+        inspectorFileSelectionRequest = nil
+    }
+
+    private func markConversationRead(id: UUID) {
+        guard let ctx = appState?.modelContext else { return }
+        let descriptor = FetchDescriptor<Conversation>(predicate: #Predicate { c in c.id == id })
+        guard let convo = try? ctx.fetch(descriptor).first, convo.isUnread else { return }
+        convo.isUnread = false
+        try? ctx.save()
+    }
+
+    func openLibrary(
+        _ section: LibrarySection = .run,
+        buildSection: LibraryBuildSection? = nil,
+        discoverSection: LibraryDiscoverSection? = nil
+    ) {
+        selectedLibrarySection = section
+        if let buildSection {
+            selectedLibraryBuildSection = buildSection
+        }
+        if let discoverSection {
+            selectedLibraryDiscoverSection = discoverSection
+        }
+        showLibraryHub = true
+    }
+
+    func openSettings() {
+        activeRoute = .settings
+    }
+
+    func closeSettings() {
+        activeRoute = .workspace
+    }
+
+    func openInspector(tab: WindowInspectorTab? = nil) {
+        if let tab {
+            selectedInspectorTab = tab
+        }
+        inspectorVisible = true
+    }
+
+    func openInspectorFile(at url: URL) {
+        inspectorFileSelectionRequest = InspectorFileSelectionRequest(
+            url: url.standardizedFileURL.resolvingSymlinksInPath()
+        )
+        selectedInspectorTab = .files
+        inspectorVisible = true
+    }
+
+    func consumeInspectorFileSelectionRequest(id: UUID) {
+        guard inspectorFileSelectionRequest?.id == id else { return }
+        inspectorFileSelectionRequest = nil
+    }
+
+    func chatScrollAnchor(for conversationId: UUID) -> UUID? {
+        chatScrollAnchorIds[conversationId]
+    }
+
+    func setChatScrollAnchor(_ messageId: UUID?, for conversationId: UUID) {
+        if let messageId {
+            chatScrollAnchorIds[conversationId] = messageId
+        } else {
+            chatScrollAnchorIds.removeValue(forKey: conversationId)
+        }
+    }
+
+    func clearProjectSelection() {
+        selectedProjectId = nil
+        currentProjectDirectory = ""
+        currentProjectDisplayName = "No Project"
+        selectedConversationId = nil
+        selectedGroupId = nil
+        selectedInspectorTab = .info
+        inspectorFileSelectionRequest = nil
+        activeRoute = .workspace
+    }
+}

@@ -1,8 +1,8 @@
-# AGENTS.md — ClaudPeer / ClaudeStudio Codebase Guide
+# AGENTS.md — Odyssey Codebase Guide
 
 This file is the quick-start guide for coding agents working in this repository.
 
-Note: the workspace folder is `ClaudPeer`, but the product and docs still use the name `ClaudeStudio`. Follow the in-repo naming unless the user explicitly asks for a rename.
+Note: the workspace folder and product are both `Odyssey`. A few legacy compatibility entry points still accept older `ClaudeStudio` / `ClaudPeer` names, but new code and docs should use `Odyssey`.
 
 ## Read This First
 
@@ -17,7 +17,7 @@ Use the project docs in this order:
 
 ## Project Snapshot
 
-ClaudeStudio is a two-process macOS app:
+Odyssey is a two-process macOS app:
 
 ```text
 SwiftUI app <-> AppState <-> SidecarManager <-> WebSocket JSON <-> WsServer <-> SessionManager <-> Claude Agent SDK
@@ -30,7 +30,7 @@ SwiftUI app <-> AppState <-> SidecarManager <-> WebSocket JSON <-> WsServer <-> 
 ## Non-Negotiable Rules
 
 - Preserve the two-process boundary. Do not couple Swift and TypeScript code directly.
-- Keep wire protocol changes synchronized between `ClaudeStudio/Services/SidecarProtocol.swift` and `sidecar/src/types.ts`.
+- Keep wire protocol changes synchronized between `Odyssey/Services/SidecarProtocol.swift` and `sidecar/src/types.ts`.
 - Do not modify `system-plan-vision.md` unless the user explicitly asks.
 - Swift UI/state code must respect Swift 6 strict concurrency. UI-facing state belongs on `@MainActor`.
 - The app does not use view models. SwiftUI views use `@Query`, `@Environment(\.modelContext)`, and `AppState`.
@@ -43,18 +43,18 @@ SwiftUI app <-> AppState <-> SidecarManager <-> WebSocket JSON <-> WsServer <-> 
 
 ### Swift app
 
-- `ClaudeStudio/App/ClaudeStudioApp.swift` — app entry point, model container, sidecar connect on appear
-- `ClaudeStudio/App/AppState.swift` — global UI state, sidecar event handling, streaming buffers, sheet toggles
-- `ClaudeStudio/App/Log.swift` — centralized `OSLog` categories
-- `ClaudeStudio/Models/` — all SwiftData `@Model` types
-- `ClaudeStudio/Services/` — sidecar lifecycle, protocol, provisioning, git/workspace prep, config sync, logging, P2P
-- `ClaudeStudio/Views/MainWindow/` — main shell: welcome, sidebar, chat, inspector, library hub, new session, peer network, task sheets
-- `ClaudeStudio/Views/AgentLibrary/` — supporting agent editor/library surfaces used by the hub
-- `ClaudeStudio/Views/GroupLibrary/` — supporting group editor/library surfaces used by the hub
-- `ClaudeStudio/Views/Catalog/` — catalog detail/install surfaces backing Discover
-- `ClaudeStudio/Views/Components/` — shared UI pieces like `MessageBubble`, `ToolCallView`, `StatusBadge`
-- `ClaudeStudio/Views/Debug/DebugLogView.swift` — unified log viewer
-- `ClaudeStudio/Resources/` — default skills, prompt templates, catalogs, bundled config
+- `Odyssey/App/OdysseyApp.swift` — app entry point, model container, sidecar connect on appear
+- `Odyssey/App/AppState.swift` — global UI state, sidecar event handling, streaming buffers, sheet toggles
+- `Odyssey/App/Log.swift` — centralized `OSLog` categories
+- `Odyssey/Models/` — all SwiftData `@Model` types
+- `Odyssey/Services/` — sidecar lifecycle, protocol, provisioning, git/workspace prep, config sync, logging, P2P
+- `Odyssey/Views/MainWindow/` — main shell: welcome, sidebar, chat, inspector, library hub, new session, peer network, task sheets
+- `Odyssey/Views/AgentLibrary/` — supporting agent editor/library surfaces used by the hub
+- `Odyssey/Views/GroupLibrary/` — supporting group editor/library surfaces used by the hub
+- `Odyssey/Views/Catalog/` — catalog detail/install surfaces backing Discover
+- `Odyssey/Views/Components/` — shared UI pieces like `MessageBubble`, `ToolCallView`, `StatusBadge`
+- `Odyssey/Views/Debug/DebugLogView.swift` — unified log viewer
+- `Odyssey/Resources/` — default skills, prompt templates, catalogs, bundled config
 
 ### Sidecar
 
@@ -71,7 +71,7 @@ SwiftUI app <-> AppState <-> SidecarManager <-> WebSocket JSON <-> WsServer <-> 
 
 ### Tests and docs
 
-- `ClaudeStudioTests/` — Swift unit/integration tests
+- `OdysseyTests/` — Swift unit/integration tests
 - `sidecar/test/` — Bun unit, integration, API, and E2E tests
 - `tests/` — YAML/macOS automation coverage referenced by `TESTING.md`
 - `docs/superpowers/` — design and planning docs for newer UX work
@@ -80,49 +80,49 @@ SwiftUI app <-> AppState <-> SidecarManager <-> WebSocket JSON <-> WsServer <-> 
 
 ### Core SwiftData models
 
-- `ClaudeStudio/Models/Agent.swift` — reusable agent template: prompt, skills, MCP servers, permissions, model, instance policy, GitHub repo
-- `ClaudeStudio/Models/Session.swift` — running agent instance: status, mode, working directory, workspace type, Claude session ID, cost
-- `ClaudeStudio/Models/Conversation.swift` — persisted conversation root with participants, messages, pin/archive status, parent linkage
-- `ClaudeStudio/Models/ConversationMessage.swift` — text/tool/delegation/blackboard message unit
-- `ClaudeStudio/Models/Participant.swift` — user or agent-session participant with role
-- `ClaudeStudio/Models/Skill.swift` — reusable skill content and metadata
-- `ClaudeStudio/Models/MCPServer.swift` — MCP transport and tool/resource configuration
-- `ClaudeStudio/Models/PermissionSet.swift` — allow/deny rules and permission mode
-- `ClaudeStudio/Models/SharedWorkspace.swift` — collaboration workspace metadata
-- `ClaudeStudio/Models/BlackboardEntry.swift` — mirrored blackboard key/value record
-- `ClaudeStudio/Models/Peer.swift` — discovered LAN peer and shared agent metadata
-- `ClaudeStudio/Models/TaskItem.swift` — task board item with lifecycle, labels, assignment, result
-- `ClaudeStudio/Models/UnifiedLogEntry.swift` — normalized app/sidecar log entry
+- `Odyssey/Models/Agent.swift` — reusable agent template: prompt, skills, MCP servers, permissions, model, instance policy, GitHub repo
+- `Odyssey/Models/Session.swift` — running agent instance: status, mode, working directory, workspace type, Claude session ID, cost
+- `Odyssey/Models/Conversation.swift` — persisted conversation root with participants, messages, pin/archive status, parent linkage
+- `Odyssey/Models/ConversationMessage.swift` — text/tool/delegation/blackboard message unit
+- `Odyssey/Models/Participant.swift` — user or agent-session participant with role
+- `Odyssey/Models/Skill.swift` — reusable skill content and metadata
+- `Odyssey/Models/MCPServer.swift` — MCP transport and tool/resource configuration
+- `Odyssey/Models/PermissionSet.swift` — allow/deny rules and permission mode
+- `Odyssey/Models/SharedWorkspace.swift` — collaboration workspace metadata
+- `Odyssey/Models/BlackboardEntry.swift` — mirrored blackboard key/value record
+- `Odyssey/Models/Peer.swift` — discovered LAN peer and shared agent metadata
+- `Odyssey/Models/TaskItem.swift` — task board item with lifecycle, labels, assignment, result
+- `Odyssey/Models/UnifiedLogEntry.swift` — normalized app/sidecar log entry
 
 ### Important Swift services
 
-- `ClaudeStudio/Services/SidecarManager.swift` — Bun process lifecycle, WebSocket connection, async event stream
-- `ClaudeStudio/Services/SidecarProtocol.swift` — shared wire enums/structs for commands and events
-- `ClaudeStudio/Services/AgentProvisioner.swift` — turns SwiftData configuration into `AgentConfig`
-- `ClaudeStudio/Services/WorkspaceResolver.swift` — GitHub clone destinations and workspace URL/path logic
-- `ClaudeStudio/Services/GitHubIntegration.swift` — clone/update operations
-- `ClaudeStudio/Services/GitWorkspacePreparer.swift` — prepares Git-backed workspace before first sidecar turn
-- `ClaudeStudio/Services/P2PNetworkManager.swift` — Bonjour browse/advertise and peer fetch
-- `ClaudeStudio/Services/PeerCatalogServer.swift` — local HTTP endpoint for agent sharing
-- `ClaudeStudio/Services/PeerAgentImporter.swift` — imports peer-advertised agents into local models
-- `ClaudeStudio/Services/LogAggregator.swift` — combines OSLog polling and sidecar log tailing
-- `ClaudeStudio/Services/ConfigFileManager.swift` — loads bundled skills/templates/config files
-- `ClaudeStudio/Services/ConfigSyncService.swift` — keeps app/sidecar config aligned
+- `Odyssey/Services/SidecarManager.swift` — Bun process lifecycle, WebSocket connection, async event stream
+- `Odyssey/Services/SidecarProtocol.swift` — shared wire enums/structs for commands and events
+- `Odyssey/Services/AgentProvisioner.swift` — turns SwiftData configuration into `AgentConfig`
+- `Odyssey/Services/WorkspaceResolver.swift` — GitHub clone destinations and workspace URL/path logic
+- `Odyssey/Services/GitHubIntegration.swift` — clone/update operations
+- `Odyssey/Services/GitWorkspacePreparer.swift` — prepares Git-backed workspace before first sidecar turn
+- `Odyssey/Services/P2PNetworkManager.swift` — Bonjour browse/advertise and peer fetch
+- `Odyssey/Services/PeerCatalogServer.swift` — local HTTP endpoint for agent sharing
+- `Odyssey/Services/PeerAgentImporter.swift` — imports peer-advertised agents into local models
+- `Odyssey/Services/LogAggregator.swift` — combines OSLog polling and sidecar log tailing
+- `Odyssey/Services/ConfigFileManager.swift` — loads bundled skills/templates/config files
+- `Odyssey/Services/ConfigSyncService.swift` — keeps app/sidecar config aligned
 
 ### Important views
 
-- `ClaudeStudio/Views/MainWindow/MainWindowView.swift` — `NavigationSplitView` shell with sidebar, chat, inspector, toolbar actions, and library sheet wiring
-- `ClaudeStudio/Views/MainWindow/IntentLibraryHubView.swift` — intent-first library hub (`Run`, `Build`, `Discover`) and adaptive compact/wide layouts
-- `ClaudeStudio/Views/MainWindow/SidebarView.swift` — pinned/active/recent/archived conversation organization, context menus, swipe actions
-- `ClaudeStudio/Views/MainWindow/ChatView.swift` — send flow, session bootstrap, streaming text, group chat sequencing/fan-out
-- `ClaudeStudio/Views/MainWindow/InspectorView.swift` — topic/session metadata, controls, usage counters, editor link
-- `ClaudeStudio/Views/MainWindow/NewSessionSheet.swift` — agent picker, mission, model/mode overrides, working directory picker
-- `ClaudeStudio/Views/MainWindow/PeerNetworkView.swift` — LAN peer discovery/import UI
-- `ClaudeStudio/Views/MainWindow/TaskCreationSheet.swift` and `TaskEditSheet.swift` — task board editing
-- `ClaudeStudio/Views/AgentLibrary/AgentEditorView.swift` — agent CRUD editor used from Build and install flows
-- `ClaudeStudio/Views/GroupLibrary/GroupEditorView.swift` — group CRUD editor used from Build flows
-- `ClaudeStudio/Views/Components/AgentCardView.swift` — agent launch card with working Start action
-- `ClaudeStudio/Views/Debug/DebugLogView.swift` — log viewer with filters and search
+- `Odyssey/Views/MainWindow/MainWindowView.swift` — `NavigationSplitView` shell with sidebar, chat, inspector, toolbar actions, and library sheet wiring
+- `Odyssey/Views/MainWindow/IntentLibraryHubView.swift` — intent-first library hub (`Run`, `Build`, `Discover`) and adaptive compact/wide layouts
+- `Odyssey/Views/MainWindow/SidebarView.swift` — pinned/active/recent/archived conversation organization, context menus, swipe actions
+- `Odyssey/Views/MainWindow/ChatView.swift` — send flow, session bootstrap, streaming text, group chat sequencing/fan-out
+- `Odyssey/Views/MainWindow/InspectorView.swift` — topic/session metadata, controls, usage counters, editor link
+- `Odyssey/Views/MainWindow/NewSessionSheet.swift` — agent picker, mission, model/mode overrides, working directory picker
+- `Odyssey/Views/MainWindow/PeerNetworkView.swift` — LAN peer discovery/import UI
+- `Odyssey/Views/MainWindow/TaskCreationSheet.swift` and `TaskEditSheet.swift` — task board editing
+- `Odyssey/Views/AgentLibrary/AgentEditorView.swift` — agent CRUD editor used from Build and install flows
+- `Odyssey/Views/GroupLibrary/GroupEditorView.swift` — group CRUD editor used from Build flows
+- `Odyssey/Views/Components/AgentCardView.swift` — agent launch card with working Start action
+- `Odyssey/Views/Debug/DebugLogView.swift` — log viewer with filters and search
 
 ### Important sidecar modules
 
@@ -158,7 +158,7 @@ SwiftUI app <-> AppState <-> SidecarManager <-> WebSocket JSON <-> WsServer <-> 
 - `SessionManager.sendMessage()` calls the Claude Agent SDK `query()` stream.
 - SDK messages are translated into sidecar events such as `stream.token`, `stream.toolCall`, `stream.toolResult`, `session.result`, and `session.error`.
 - Plan mode switches model behavior and appends the plan prompt from `src/prompts/plan-mode.ts`.
-- Blackboard and task board data persist under `~/.claudestudio/`.
+- Blackboard and task board data persist under `~/.odyssey/`.
 
 ### Ownership boundary
 
@@ -188,7 +188,7 @@ SwiftUI app <-> AppState <-> SidecarManager <-> WebSocket JSON <-> WsServer <-> 
 ### Task board
 
 1. Swift creates or edits `TaskItem`.
-2. Sidecar persists task state in `~/.claudestudio/taskboard/{scope}.json`.
+2. Sidecar persists task state in `~/.odyssey/taskboard/{scope}.json`.
 3. Task events broadcast back to Swift and update SwiftData.
 4. Agents can interact through the task board tools.
 
@@ -233,7 +233,7 @@ The docs describe the following as implemented:
 - P2P v1 LAN discovery/import
 - Chat export, attachments, streamed images/file cards/thinking
 - File inspector/file tree workflows
-- Launch parameters and `claudestudio://` deep links
+- Launch parameters and `odyssey://` deep links
 - Accessibility coverage intended for AppXray/Argus automation
 
 ## Known Gaps
@@ -250,7 +250,7 @@ Still listed as future or incomplete in the docs:
 
 ### When changing Swift models or UI
 
-- Keep model registration in sync with `ClaudeStudioApp.swift`.
+- Keep model registration in sync with `OdysseyApp.swift`.
 - Keep `AppState.handleEvent()` aligned with any new event payloads.
 - Add or update accessibility identifiers when UI changes.
 - Preserve the existing `NavigationSplitView` main-window structure unless the user asks for a redesign.
@@ -258,7 +258,7 @@ Still listed as future or incomplete in the docs:
 ### When changing sidecar protocol
 
 - Update `sidecar/src/types.ts`.
-- Update `ClaudeStudio/Services/SidecarProtocol.swift`.
+- Update `Odyssey/Services/SidecarProtocol.swift`.
 - Update JSON encoding/decoding.
 - Update `sidecar/src/ws-server.ts` dispatch.
 - Update `AppState.handleEvent()` for new incoming events.
@@ -275,8 +275,8 @@ Still listed as future or incomplete in the docs:
 
 ### Add a SwiftData model
 
-1. Create the file in `ClaudeStudio/Models/`.
-2. Register it in the model container in `ClaudeStudioApp.swift`.
+1. Create the file in `Odyssey/Models/`.
+2. Register it in the model container in `OdysseyApp.swift`.
 3. Regenerate the Xcode project if the file is new.
 
 ### Add a sidecar command
@@ -295,7 +295,7 @@ Still listed as future or incomplete in the docs:
 
 ### Add a launch parameter
 
-1. Update `ClaudeStudio/App/LaunchIntent.swift`.
+1. Update `Odyssey/App/LaunchIntent.swift`.
 2. Update URL parsing in the same file.
 3. Carry the new field through `LaunchIntent`.
 4. Handle it in `AppState.executeLaunchIntent()`.
@@ -314,7 +314,7 @@ Still listed as future or incomplete in the docs:
 Run:
 
 ```bash
-xcodebuild test -project ClaudeStudio.xcodeproj -scheme ClaudeStudio -destination 'platform=macOS'
+xcodebuild test -project Odyssey.xcodeproj -scheme Odyssey -destination 'platform=macOS'
 ```
 
 Important areas already covered include:
@@ -337,7 +337,7 @@ bun test
 For live Claude SDK coverage:
 
 ```bash
-CLAUDESTUDIO_E2E_LIVE=1 bun test
+ODYSSEY_E2E_LIVE=1 bun test
 ```
 
 Use `sanity-tests.md` as the most precise guide for current sidecar suites. It documents unit, integration, API, and E2E groups, and notes that the E2E files boot their own sidecar subprocesses on random ports.
@@ -375,24 +375,24 @@ Key prefixes used in the repo include:
 
 - Xcode project is managed via `project.yml` and XcodeGen.
 - Bun is resolved from common install paths or a configured override.
-- The sidecar can be discovered from the app bundle, current working directory, `~/ClaudeStudio/sidecar/`, or a configured path.
-- Runtime data lives under `~/.claudestudio/`.
+- The sidecar can be discovered from the app bundle, current working directory, `~/Odyssey/sidecar/`, or a configured path.
+- Runtime data lives under `~/.odyssey/`.
 
 Environment and defaults:
 
 - `ANTHROPIC_API_KEY` — required for Claude Agent SDK work
-- `CLAUDESTUDIO_WS_PORT` — default `9849`
-- `CLAUDESTUDIO_HTTP_PORT` — default `9850`
+- `ODYSSEY_WS_PORT` — default `9849`
+- `ODYSSEY_HTTP_PORT` — default `9850`
 
 ## High-Signal Files
 
 If you only open a few files, start here:
 
 - `CLAUDE.md`
-- `ClaudeStudio/App/AppState.swift`
-- `ClaudeStudio/Services/SidecarProtocol.swift`
-- `ClaudeStudio/Services/AgentProvisioner.swift`
-- `ClaudeStudio/Views/MainWindow/ChatView.swift`
+- `Odyssey/App/AppState.swift`
+- `Odyssey/Services/SidecarProtocol.swift`
+- `Odyssey/Services/AgentProvisioner.swift`
+- `Odyssey/Views/MainWindow/ChatView.swift`
 - `sidecar/src/ws-server.ts`
 - `sidecar/src/session-manager.ts`
 - `sidecar/src/types.ts`

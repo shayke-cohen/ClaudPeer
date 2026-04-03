@@ -4,7 +4,7 @@
  * Tests: create, get, update, claim, list, getSubtasks, persistence, status transitions.
  * These run in-process with no network, no sidecar boot required.
  *
- * Usage: CLAUDESTUDIO_DATA_DIR=/tmp/claudestudio-test-$(date +%s) bun test test/unit/task-board-store.test.ts
+ * Usage: ODYSSEY_DATA_DIR=/tmp/odyssey-test-$(date +%s) bun test test/unit/task-board-store.test.ts
  */
 import { describe, test, expect, beforeEach } from "bun:test";
 import { TaskBoardStore } from "../../src/stores/task-board-store.js";

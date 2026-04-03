@@ -147,8 +147,8 @@ wait_for_health() {
   return 1
 }
 
-DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-${TMPDIR:-/tmp}/claudestudio-shared-room-api-derived}"
-STORE_PATH="${STORE_PATH:-${TMPDIR:-/tmp}/claudestudio-shared-room-api-store-$$.plist}"
+DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-${TMPDIR:-/tmp}/odyssey-shared-room-api-derived}"
+STORE_PATH="${STORE_PATH:-${TMPDIR:-/tmp}/odyssey-shared-room-api-store-$$.plist}"
 RUN_ID="api-smoke-$$"
 HOST_INSTANCE="host-${RUN_ID}"
 GUEST_INSTANCE="guest-${RUN_ID}"
@@ -166,9 +166,9 @@ while [[ "$GUEST_APPXRAY_PORT" == "$HOST_API_PORT" || "$GUEST_APPXRAY_PORT" == "
   GUEST_APPXRAY_PORT="$(pick_port)"
 done
 
-APP_BIN="${APP_BIN:-${DERIVED_DATA_PATH}/Build/Products/Debug/ClaudeStudio.app/Contents/MacOS/ClaudeStudio}"
-HOST_LOG="${TMPDIR:-/tmp}/claudestudio-host-${RUN_ID}.log"
-GUEST_LOG="${TMPDIR:-/tmp}/claudestudio-guest-${RUN_ID}.log"
+APP_BIN="${APP_BIN:-${DERIVED_DATA_PATH}/Build/Products/Debug/Odyssey.app/Contents/MacOS/Odyssey}"
+HOST_LOG="${TMPDIR:-/tmp}/odyssey-host-${RUN_ID}.log"
+GUEST_LOG="${TMPDIR:-/tmp}/odyssey-guest-${RUN_ID}.log"
 HOST_PID=""
 GUEST_PID=""
 
@@ -181,16 +181,16 @@ cleanup() {
     kill "$GUEST_PID" 2>/dev/null || true
     wait "$GUEST_PID" 2>/dev/null || true
   fi
-  defaults delete "com.claudestudio.app.${HOST_INSTANCE}" >/dev/null 2>&1 || true
-  defaults delete "com.claudestudio.app.${GUEST_INSTANCE}" >/dev/null 2>&1 || true
+  defaults delete "com.odyssey.app.${HOST_INSTANCE}" >/dev/null 2>&1 || true
+  defaults delete "com.odyssey.app.${GUEST_INSTANCE}" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
-if [[ "${CLAUDESTUDIO_SKIP_BUILD:-0}" != "1" ]]; then
-  echo "Building ClaudeStudio into ${DERIVED_DATA_PATH}"
+if [[ "${ODYSSEY_SKIP_BUILD:-${CLAUDESTUDIO_SKIP_BUILD:-0}}" != "1" ]]; then
+  echo "Building Odyssey into ${DERIVED_DATA_PATH}"
   xcodebuild build \
-    -project ClaudeStudio.xcodeproj \
-    -scheme ClaudeStudio \
+    -project Odyssey.xcodeproj \
+    -scheme Odyssey \
     -destination 'platform=macOS' \
     -derivedDataPath "$DERIVED_DATA_PATH" \
     CODE_SIGNING_ALLOWED=NO \
@@ -205,17 +205,21 @@ if [[ ! -x "$APP_BIN" ]]; then
   exit 1
 fi
 
-defaults write "com.claudestudio.app.${HOST_INSTANCE}" "claudestudio.sharedRoom.userId" "host-user"
-defaults write "com.claudestudio.app.${HOST_INSTANCE}" "claudestudio.sharedRoom.displayName" "Host User"
-defaults write "com.claudestudio.app.${HOST_INSTANCE}" "claudestudio.autoConnectSidecar" -bool NO
-defaults write "com.claudestudio.app.${HOST_INSTANCE}" "claudestudio.instanceWorkingDirectory" "$REPO_ROOT"
-defaults write "com.claudestudio.app.${GUEST_INSTANCE}" "claudestudio.sharedRoom.userId" "guest-user"
-defaults write "com.claudestudio.app.${GUEST_INSTANCE}" "claudestudio.sharedRoom.displayName" "Guest User"
-defaults write "com.claudestudio.app.${GUEST_INSTANCE}" "claudestudio.autoConnectSidecar" -bool NO
-defaults write "com.claudestudio.app.${GUEST_INSTANCE}" "claudestudio.instanceWorkingDirectory" "$REPO_ROOT"
+defaults write "com.odyssey.app.${HOST_INSTANCE}" "odyssey.sharedRoom.userId" "host-user"
+defaults write "com.odyssey.app.${HOST_INSTANCE}" "odyssey.sharedRoom.displayName" "Host User"
+defaults write "com.odyssey.app.${HOST_INSTANCE}" "odyssey.autoConnectSidecar" -bool NO
+defaults write "com.odyssey.app.${HOST_INSTANCE}" "odyssey.instanceWorkingDirectory" "$REPO_ROOT"
+defaults write "com.odyssey.app.${GUEST_INSTANCE}" "odyssey.sharedRoom.userId" "guest-user"
+defaults write "com.odyssey.app.${GUEST_INSTANCE}" "odyssey.sharedRoom.displayName" "Guest User"
+defaults write "com.odyssey.app.${GUEST_INSTANCE}" "odyssey.autoConnectSidecar" -bool NO
+defaults write "com.odyssey.app.${GUEST_INSTANCE}" "odyssey.instanceWorkingDirectory" "$REPO_ROOT"
 
 echo "Launching host instance ${HOST_INSTANCE} on test API port ${HOST_API_PORT}"
 env \
+  ODYSSEY_SHARED_ROOM_BACKEND=local-test \
+  ODYSSEY_SHARED_ROOM_STORE_PATH="$STORE_PATH" \
+  ODYSSEY_TEST_API=1 \
+  ODYSSEY_TEST_API_PORT="$HOST_API_PORT" \
   CLAUDESTUDIO_SHARED_ROOM_BACKEND=local-test \
   CLAUDESTUDIO_SHARED_ROOM_STORE_PATH="$STORE_PATH" \
   CLAUDESTUDIO_TEST_API=1 \
@@ -231,6 +235,10 @@ wait_for_health "$HOST_API_PORT" || {
 
 echo "Launching guest instance ${GUEST_INSTANCE} on test API port ${GUEST_API_PORT}"
 env \
+  ODYSSEY_SHARED_ROOM_BACKEND=local-test \
+  ODYSSEY_SHARED_ROOM_STORE_PATH="$STORE_PATH" \
+  ODYSSEY_TEST_API=1 \
+  ODYSSEY_TEST_API_PORT="$GUEST_API_PORT" \
   CLAUDESTUDIO_SHARED_ROOM_BACKEND=local-test \
   CLAUDESTUDIO_SHARED_ROOM_STORE_PATH="$STORE_PATH" \
   CLAUDESTUDIO_TEST_API=1 \

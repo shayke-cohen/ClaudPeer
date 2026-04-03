@@ -16,11 +16,11 @@ import { logger, setLogLevel } from "./logger.js";
 import type { ToolContext } from "./tools/tool-context.js";
 import type { AgentConfig, ApiContext, SidecarEvent } from "./types.js";
 
-setLogLevel((process.env.CLAUDESTUDIO_LOG_LEVEL ?? "info") as any);
+setLogLevel((process.env.ODYSSEY_LOG_LEVEL ?? process.env.CLAUDESTUDIO_LOG_LEVEL ?? "info") as any);
 
-const WS_PORT = parseInt(process.env.CLAUDESTUDIO_WS_PORT ?? "9849", 10);
-const HTTP_PORT = parseInt(process.env.CLAUDESTUDIO_HTTP_PORT ?? "9850", 10);
-const DATA_DIR = process.env.CLAUDESTUDIO_DATA_DIR ?? "~/.claudestudio";
+const WS_PORT = parseInt(process.env.ODYSSEY_WS_PORT ?? process.env.CLAUDESTUDIO_WS_PORT ?? "9849", 10);
+const HTTP_PORT = parseInt(process.env.ODYSSEY_HTTP_PORT ?? process.env.CLAUDESTUDIO_HTTP_PORT ?? "9850", 10);
+const DATA_DIR = process.env.ODYSSEY_DATA_DIR ?? process.env.CLAUDESTUDIO_DATA_DIR ?? "~/.odyssey";
 
 logger.info("sidecar", "Starting...");
 

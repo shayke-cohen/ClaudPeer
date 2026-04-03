@@ -9,7 +9,7 @@
 
 ## Context
 
-ClaudeStudio supports multi-agent conversations today — users select multiple agents in NewSessionSheet and a group chat begins. But there's no concept of a saved group: no way to name a team, give it a shared instruction, re-use it, or share it with peers. Every group must be reconstituted from scratch each time.
+Odyssey supports multi-agent conversations today — users select multiple agents in NewSessionSheet and a group chat begins. But there's no concept of a saved group: no way to name a team, give it a shared instruction, re-use it, or share it with peers. Every group must be reconstituted from scratch each time.
 
 This spec adds Agent Groups as first-class entities: named, reusable team templates with a shared instruction, per-group icon/color, a default mission, conversation history, and peer sharing.
 
@@ -33,7 +33,7 @@ This spec adds Agent Groups as first-class entities: named, reusable team templa
 
 ### New: `AgentGroup` SwiftData model
 
-**File:** `ClaudeStudio/Models/AgentGroup.swift`
+**File:** `Odyssey/Models/AgentGroup.swift`
 
 ```swift
 @Model final class AgentGroup {
@@ -57,13 +57,13 @@ This spec adds Agent Groups as first-class entities: named, reusable team templa
 
 ### Modified: `Conversation`
 
-**File:** `ClaudeStudio/Models/Conversation.swift`
+**File:** `Odyssey/Models/Conversation.swift`
 
 Add `var sourceGroupId: UUID?` — links a conversation back to the group that spawned it. Optional, nil for all existing conversations (lightweight migration safe).
 
 ### Model Container
 
-**File:** `ClaudeStudio/App/ClaudeStudioApp.swift`
+**File:** `Odyssey/App/OdysseyApp.swift`
 
 Add `AgentGroup.self` to the `ModelContainer(for:...)` list.
 
@@ -71,7 +71,7 @@ Add `AgentGroup.self` to the `ModelContainer(for:...)` list.
 
 ## New Default Agents (3)
 
-New JSON files in `ClaudeStudio/Resources/DefaultAgents/`:
+New JSON files in `Odyssey/Resources/DefaultAgents/`:
 
 | File | Name | Icon | Color | Role |
 |---|---|---|---|---|
@@ -85,7 +85,7 @@ New JSON files in `ClaudeStudio/Resources/DefaultAgents/`:
 
 ## 12 Built-in Groups
 
-Seeded by a new `DefaultsSeeder.seedGroupsIfNeeded(container:)` method (separate UserDefaults key: `claudestudio.groupsSeeded` so existing users get groups seeded on next launch even if agents were already seeded).
+Seeded by a new `DefaultsSeeder.seedGroupsIfNeeded(container:)` method (separate UserDefaults key: `odyssey.groupsSeeded` so existing users get groups seeded on next launch even if agents were already seeded).
 
 | # | Name | Agents | Category |
 |---|---|---|---|
@@ -106,7 +106,7 @@ Seeded by a new `DefaultsSeeder.seedGroupsIfNeeded(container:)` method (separate
 
 ## Group Instruction Injection
 
-**File:** `ClaudeStudio/Services/GroupPromptBuilder.swift`
+**File:** `Odyssey/Services/GroupPromptBuilder.swift`
 
 Add `groupInstruction: String? = nil` parameter to `buildMessageText(...)`. When present, prepend:
 
@@ -118,7 +118,7 @@ Add `groupInstruction: String? = nil` parameter to `buildMessageText(...)`. When
 
 before the delta transcript block.
 
-**File:** `ClaudeStudio/Views/MainWindow/ChatView.swift`
+**File:** `Odyssey/Views/MainWindow/ChatView.swift`
 
 Before calling `buildMessageText`, fetch `groupInstruction` from `Conversation.sourceGroupId`:
 
@@ -134,7 +134,7 @@ let groupInstruction: String? = {
 
 ## AppState Changes
 
-**File:** `ClaudeStudio/App/AppState.swift`
+**File:** `Odyssey/App/AppState.swift`
 
 - Add `@Published var showGroupLibrary = false`
 - Add `func startGroupChat(group: AgentGroup, modelContext: ModelContext)`:
@@ -150,7 +150,7 @@ let groupInstruction: String? = {
 
 ## New Views
 
-**Directory:** `ClaudeStudio/Views/GroupLibrary/`
+**Directory:** `Odyssey/Views/GroupLibrary/`
 
 | File | Description |
 |---|---|
@@ -163,7 +163,7 @@ let groupInstruction: String? = {
 
 ## SidebarView Changes
 
-**File:** `ClaudeStudio/Views/MainWindow/SidebarView.swift`
+**File:** `Odyssey/Views/MainWindow/SidebarView.swift`
 
 Add "Groups" section above the Agents section:
 - `@Query(sort: \AgentGroup.sortOrder) var groups: [AgentGroup]`
@@ -176,7 +176,7 @@ Add "Groups" section above the Agents section:
 
 ## MainWindowView Changes
 
-**File:** `ClaudeStudio/Views/MainWindow/MainWindowView.swift`
+**File:** `Odyssey/Views/MainWindow/MainWindowView.swift`
 
 Add `.sheet(isPresented: $appState.showGroupLibrary) { GroupLibraryView() }` alongside existing `showAgentLibrary` sheet.
 
@@ -184,14 +184,14 @@ Add `.sheet(isPresented: $appState.showGroupLibrary) { GroupLibraryView() }` alo
 
 ## Peer Sharing
 
-**File:** `ClaudeStudio/Services/PeerCatalogServer.swift`
+**File:** `Odyssey/Services/PeerCatalogServer.swift`
 
 Extend the catalog HTTP response to include groups:
 - Fetch `AgentGroup` entities with `originKind != "peer"`
 - Serialize to JSON (id, name, description, icon, color, groupInstruction, defaultMission, agentIds mapped to agent names)
 - Add to catalog payload under `"groups"` key
 
-**File:** `ClaudeStudio/Views/P2P/PeerNetworkView.swift` (or `PeerAgentImporter.swift`)
+**File:** `Odyssey/Views/P2P/PeerNetworkView.swift` (or `PeerAgentImporter.swift`)
 
 Add "Import Groups" alongside existing agent import:
 - Decode groups from peer catalog
@@ -223,14 +223,14 @@ Add "Import Groups" alongside existing agent import:
 
 ## project.yml
 
-Add all new Swift source files to the `ClaudeStudio` target sources in `project.yml`. After changes, run `xcodegen generate`.
+Add all new Swift source files to the `Odyssey` target sources in `project.yml`. After changes, run `xcodegen generate`.
 
 New source paths to add:
-- `ClaudeStudio/Models/AgentGroup.swift`
-- `ClaudeStudio/Views/GroupLibrary/GroupCardView.swift`
-- `ClaudeStudio/Views/GroupLibrary/GroupLibraryView.swift`
-- `ClaudeStudio/Views/GroupLibrary/GroupEditorView.swift`
-- `ClaudeStudio/Views/GroupLibrary/GroupSidebarRowView.swift`
+- `Odyssey/Models/AgentGroup.swift`
+- `Odyssey/Views/GroupLibrary/GroupCardView.swift`
+- `Odyssey/Views/GroupLibrary/GroupLibraryView.swift`
+- `Odyssey/Views/GroupLibrary/GroupEditorView.swift`
+- `Odyssey/Views/GroupLibrary/GroupSidebarRowView.swift`
 
 ---
 

@@ -1,6 +1,6 @@
-# ClaudeStudio — Sanity Test Plan
+# Odyssey — Sanity Test Plan
 
-Rerunnable sanity test plan for the ClaudeStudio sidecar. Covers unit, integration, API, protocol, and E2E layers.
+Rerunnable sanity test plan for the Odyssey sidecar. Covers unit, integration, API, protocol, and E2E layers.
 
 > Project-first shell note: the product now organizes UI around Projects → Threads/Tasks/Team/Schedules. Any older sidebar references in this file should be treated as legacy until the matching sanity scripts are refreshed.
 
@@ -11,7 +11,7 @@ Rerunnable sanity test plan for the ClaudeStudio sidecar. Covers unit, integrati
 - **Bun** installed and on `$PATH`
 - **Sidecar** source at `sidecar/`
 - Claude subscription active (no API key needed — `ANTHROPIC_API_KEY` is set via subscription)
-- `CLAUDESTUDIO_E2E_LIVE=1` to enable live Claude SDK tests (tests marked `[LIVE]` are skipped otherwise)
+- `ODYSSEY_E2E_LIVE=1` to enable live Claude SDK tests (tests marked `[LIVE]` are skipped otherwise)
 
 ## Running All Tests
 
@@ -19,7 +19,7 @@ Rerunnable sanity test plan for the ClaudeStudio sidecar. Covers unit, integrati
 cd sidecar
 
 # Full suite including live Claude SDK calls
-CLAUDESTUDIO_E2E_LIVE=1 bun test
+ODYSSEY_E2E_LIVE=1 bun test
 
 # Offline only (skips live tests)
 bun test
@@ -44,7 +44,7 @@ bun test test/api/ws-protocol.test.ts
 bun test test/e2e/full-flow.test.ts
 
 # E2E: all scenario groups
-CLAUDESTUDIO_E2E_LIVE=1 bun test test/e2e/scenarios.test.ts
+ODYSSEY_E2E_LIVE=1 bun test test/e2e/scenarios.test.ts
 
 # E2E: specific scenario group
 bun test test/e2e/scenarios.test.ts -t "BB: Blackboard"
@@ -257,12 +257,12 @@ AppXray provides inside-out testing of a running DEBUG build. It connects via We
 ### Architecture
 
 ```
-ClaudeStudio (DEBUG) ──WebSocket──> MCP Relay (127.0.0.1:19400) <──stdio── AppXray MCP Server <── AI Agent (Cursor)
+Odyssey (DEBUG) ──WebSocket──> MCP Relay (127.0.0.1:19400) <──stdio── AppXray MCP Server <── AI Agent (Cursor)
 ```
 
 ### Prerequisites
 
-- ClaudeStudio built in **DEBUG** configuration (AppXray SDK is `#if DEBUG` only in `ClaudeStudioApp.swift`)
+- Odyssey built in **DEBUG** configuration (AppXray SDK is `#if DEBUG` only in `OdysseyApp.swift`)
 - AppXray MCP server configured in Cursor (runs via `npx -y @wix/appxray-mcp-server` with `APPXRAY_AUTO_CONNECT=true`)
 - The relay starts automatically on `127.0.0.1:19400` when the MCP server launches
 
@@ -272,8 +272,8 @@ ClaudeStudio (DEBUG) ──WebSocket──> MCP Relay (127.0.0.1:19400) <──s
 // 1. Discover running AppXray-enabled apps
 session({ action: "discover" })
 
-// 2. Connect to ClaudeStudio
-session({ action: "connect", appId: "com.claudestudio.app" })
+// 2. Connect to Odyssey
+session({ action: "connect", appId: "com.odyssey.app" })
 
 // 3. Full snapshot (tree + screenshot + state + network + logs)
 inspect({ target: "tree" })
@@ -342,15 +342,15 @@ interact({ action: "tap", selector: '@testId("settings.tab.developer")' })
 
 ## Parallel App Instances
 
-ClaudeStudio supports running multiple isolated instances simultaneously via the `--instance` flag. Each instance gets its own data, ports, and sidecar process.
+Odyssey supports running multiple isolated instances simultaneously via the `--instance` flag. Each instance gets its own data, ports, and sidecar process.
 
 ### Launching Instances
 
 ```bash
 # Launch three isolated instances for parallel testing
-open -n /path/to/ClaudeStudio.app --args --instance test-sidebar
-open -n /path/to/ClaudeStudio.app --args --instance test-chat
-open -n /path/to/ClaudeStudio.app --args --instance test-agents
+open -n /path/to/Odyssey.app --args --instance test-sidebar
+open -n /path/to/Odyssey.app --args --instance test-chat
+open -n /path/to/Odyssey.app --args --instance test-agents
 ```
 
 ### Isolation Per Instance
@@ -359,11 +359,11 @@ Each named instance (via `InstanceConfig.swift`) gets:
 
 | Resource | Path / Value |
 |----------|-------------|
-| UserDefaults suite | `com.claudestudio.app.<name>` |
-| SwiftData store | `~/.claudestudio/instances/<name>/data/ClaudeStudio.store` |
-| Blackboard data | `~/.claudestudio/instances/<name>/blackboard/` |
-| Log directory | `~/.claudestudio/instances/<name>/logs/` |
-| Sidecar log | `~/.claudestudio/instances/<name>/logs/sidecar.log` |
+| UserDefaults suite | `com.odyssey.app.<name>` |
+| SwiftData store | `~/.odyssey/instances/<name>/data/Odyssey.store` |
+| Blackboard data | `~/.odyssey/instances/<name>/blackboard/` |
+| Log directory | `~/.odyssey/instances/<name>/logs/` |
+| Sidecar log | `~/.odyssey/instances/<name>/logs/sidecar.log` |
 | WS + HTTP ports | Auto-assigned free ports (non-default instances) |
 | Sidecar process | Separate subprocess per instance |
 
@@ -390,7 +390,7 @@ Instance "test-agents"   --> AppXray session 3 --> agent library + editor tests
 
 Do **not** run two instances both as "default" (no `--instance` flag). They would share:
 - Ports 9849/9850 and the same sidecar process
-- The same SwiftData store at `~/.claudestudio/instances/default/data/`
+- The same SwiftData store at `~/.odyssey/instances/default/data/`
 - The same UserDefaults suite
 
 This causes broadcast cross-talk between sessions and potential data corruption.
@@ -402,7 +402,7 @@ This causes broadcast cross-talk between sessions and potential data corruption.
 ### Sidecar Won't Connect
 
 1. **Check the status pill** in the toolbar (`mainWindow.sidecarStatusPill`) — shows disconnected, connecting, connected, or error
-2. **Check the sidecar log:** `~/.claudestudio/instances/<instance>/logs/sidecar.log`
+2. **Check the sidecar log:** `~/.odyssey/instances/<instance>/logs/sidecar.log`
 3. **Hit the health endpoint:** `curl -s http://127.0.0.1:9850/health | jq .`
 4. **Verify Bun is installed** — the app searches these paths in order:
    - `/opt/homebrew/bin/bun`
@@ -433,8 +433,8 @@ This causes broadcast cross-talk between sessions and potential data corruption.
 
 | Log | Location |
 |-----|----------|
-| Sidecar output | `~/.claudestudio/instances/<instance>/logs/sidecar.log` |
-| Sidecar prefixes | `[claudestudio-sidecar]`, `[ws]`, `[http]` |
+| Sidecar output | `~/.odyssey/instances/<instance>/logs/sidecar.log` |
+| Sidecar prefixes | `[odyssey-sidecar]`, `[ws]`, `[http]` |
 | Swift app | `[SidecarManager]`, `[AppState]` in Xcode console or `Console.app` |
 
 ### Quick Health Check
@@ -447,10 +447,10 @@ curl -s http://127.0.0.1:9850/health | jq .
 lsof -i :9849 -i :9850
 
 # Tail sidecar log (default instance)
-tail -50 ~/.claudestudio/instances/default/logs/sidecar.log
+tail -50 ~/.odyssey/instances/default/logs/sidecar.log
 
 # Tail a named instance log
-tail -50 ~/.claudestudio/instances/test-chat/logs/sidecar.log
+tail -50 ~/.odyssey/instances/test-chat/logs/sidecar.log
 ```
 
 ---
@@ -514,7 +514,7 @@ Use AppXray to find gaps:
 
 ```javascript
 // Connect to the running DEBUG app
-session({ action: "connect", appId: "com.claudestudio.app" })
+session({ action: "connect", appId: "com.odyssey.app" })
 
 // Inspect the full accessibility tree
 inspect({ target: "accessibility" })
@@ -535,5 +535,5 @@ Compare the returned tree against the tables in `TESTING.md` Section 5. Any inte
 
 **Date:** 2026-03-22
 **Result:** 139/139 pass (excluding 2 legacy failures in `sidecar-api.test.ts`)
-**Live tests:** All 6 live tests pass with `CLAUDESTUDIO_E2E_LIVE=1`
+**Live tests:** All 6 live tests pass with `ODYSSEY_E2E_LIVE=1`
 **ACCEPT-1 time:** ~135s (Orchestrator delegated to Researcher + Coder, produced meditation app)

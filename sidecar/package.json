@@ -1,13 +1,13 @@
 {
-  "name": "claudestudio-sidecar",
+  "name": "odyssey-sidecar",
   "version": "0.1.0",
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun --watch run src/index.ts",
-    "test": "CLAUDESTUDIO_DATA_DIR=/tmp/claudestudio-test-$(date +%s) bun test",
-    "test:unit": "CLAUDESTUDIO_DATA_DIR=/tmp/claudestudio-test-$(date +%s) bun test test/unit/",
-    "test:integration": "CLAUDESTUDIO_DATA_DIR=/tmp/claudestudio-test-$(date +%s) bun test test/integration/",
-    "test:api": "CLAUDESTUDIO_DATA_DIR=/tmp/claudestudio-test-$(date +%s) bun test test/api/",
+    "test": "ODYSSEY_DATA_DIR=/tmp/odyssey-test-$(date +%s) bun test",
+    "test:unit": "ODYSSEY_DATA_DIR=/tmp/odyssey-test-$(date +%s) bun test test/unit/",
+    "test:integration": "ODYSSEY_DATA_DIR=/tmp/odyssey-test-$(date +%s) bun test test/integration/",
+    "test:api": "ODYSSEY_DATA_DIR=/tmp/odyssey-test-$(date +%s) bun test test/api/",
     "test:e2e": "bun test test/e2e/",
     "test:repo-all": "bash ../scripts/run-all-tests.sh"
   },

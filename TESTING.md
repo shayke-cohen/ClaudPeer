@@ -1,6 +1,6 @@
-# ClaudeStudio — Testing Guide
+# Odyssey — Testing Guide
 
-This document covers how to test ClaudeStudio across all three testing layers, provides a complete inventory of every screen and interactive control with its accessibility identifier, and explains how to target elements in AppXray and Argus automation.
+This document covers how to test Odyssey across all three testing layers, provides a complete inventory of every screen and interactive control with its accessibility identifier, and explains how to target elements in AppXray and Argus automation.
 
 ---
 
@@ -21,7 +21,7 @@ This document covers how to test ClaudeStudio across all three testing layers, p
 
 ## 1. Testing Overview
 
-ClaudeStudio uses three complementary testing layers:
+Odyssey uses three complementary testing layers:
 
 | Layer | Tool | Scope | When to Use |
 |-------|------|-------|-------------|
@@ -39,7 +39,7 @@ ClaudeStudio uses three complementary testing layers:
 
 ### Existing Test Files
 
-All tests live in `ClaudeStudioTests/`:
+All tests live in `OdysseyTests/`:
 
 | File | What It Tests |
 |------|---------------|
@@ -64,8 +64,8 @@ Product > Test (Cmd+U)
 From the command line:
 ```bash
 xcodebuild test \
-  -project ClaudeStudio.xcodeproj \
-  -scheme ClaudeStudio \
+  -project Odyssey.xcodeproj \
+  -scheme Odyssey \
   -destination 'platform=macOS'
 ```
 
@@ -92,7 +92,7 @@ Test files in `sidecar/test/`:
 Run the WhatsApp live smoke in read-only mode:
 
 ```bash
-CLAUDESTUDIO_CONNECTOR_LIVE=1 \
+ODYSSEY_CONNECTOR_LIVE=1 \
 WHATSAPP_ACCESS_TOKEN=... \
 WHATSAPP_WABA_ID=... \
 bun test sidecar/test/e2e/connector-live.test.ts
@@ -101,8 +101,8 @@ bun test sidecar/test/e2e/connector-live.test.ts
 Optional write smoke, only when you intentionally want to send a real template:
 
 ```bash
-CLAUDESTUDIO_CONNECTOR_LIVE=1 \
-CLAUDESTUDIO_CONNECTOR_LIVE_WRITE=1 \
+ODYSSEY_CONNECTOR_LIVE=1 \
+ODYSSEY_CONNECTOR_LIVE_WRITE=1 \
 WHATSAPP_ACCESS_TOKEN=... \
 WHATSAPP_WABA_ID=... \
 WHATSAPP_PHONE_NUMBER_ID=... \
@@ -118,7 +118,7 @@ bun test sidecar/test/e2e/connector-live.test.ts
 ### Architecture
 
 ```
-ClaudeStudio (DEBUG, server mode on 19480) ──WebSocket──> AppXray MCP/CLI relay (default 127.0.0.1:19400) <──stdio── AI Agent
+Odyssey (DEBUG, server mode on 19480) ──WebSocket──> AppXray MCP/CLI relay (default 127.0.0.1:19400) <──stdio── AI Agent
 ```
 
 ### Prerequisites
@@ -126,7 +126,7 @@ ClaudeStudio (DEBUG, server mode on 19480) ──WebSocket──> AppXray MCP/CL
 1. The AppXray SDK is integrated as a local SPM package at `Dependencies/appxray/packages/sdk-ios` (DEBUG builds only).
 2. The AppXray MCP server must be configured in Cursor's MCP settings.
 3. The relay starts automatically with the MCP server.
-4. ClaudeStudio's DEBUG build pins AppXray server mode to port `19480` to avoid the relay's default `19400` port.
+4. Odyssey's DEBUG build pins AppXray server mode to port `19480` to avoid the relay's default `19400` port.
 
 ### Connecting
 
@@ -134,8 +134,8 @@ ClaudeStudio (DEBUG, server mode on 19480) ──WebSocket──> AppXray MCP/CL
 // 1. Discover running AppXray-enabled apps
 session({ action: "discover" })
 
-// 2. Connect to ClaudeStudio
-session({ action: "connect", appId: "com.claudestudio.app" })
+// 2. Connect to Odyssey
+session({ action: "connect", appId: "com.odyssey.app" })
 ```
 
 ### Available AppXray Tools
@@ -988,12 +988,12 @@ Set via AppKit `setAccessibilityIdentifier`. The SwiftUI wrapper gets its own id
 
 ## 7. Argus macOS Testing (Outside-In E2E)
 
-Argus can drive ClaudeStudio as a macOS app without the AppXray SDK.
+Argus can drive Odyssey as a macOS app without the AppXray SDK.
 
 ### Starting a Session
 
 ```javascript
-inspect({ platform: "macos", appName: "ClaudeStudio" })
+inspect({ platform: "macos", appName: "Odyssey" })
 ```
 
 This captures a screenshot and the accessibility element tree.
@@ -1053,7 +1053,7 @@ Argus supports YAML test files for repeatable regression testing:
 ```yaml
 name: Create and send message
 platform: macos
-appName: ClaudeStudio
+appName: Odyssey
 steps:
   - inspect: {}
   - act:
@@ -1089,14 +1089,14 @@ steps:
 
 Run with:
 ```javascript
-test({ action: "run", path: "tests/create-session.yaml", platform: "macos", appName: "ClaudeStudio" })
+test({ action: "run", path: "tests/create-session.yaml", platform: "macos", appName: "Odyssey" })
 ```
 
 ### Example: Full Session Flow
 
 ```javascript
 // 1. Launch and inspect
-inspect({ platform: "macos", appName: "ClaudeStudio" })
+inspect({ platform: "macos", appName: "Odyssey" })
 
 // 2. Check sidecar is connected
 assert({ type: "ai", prompt: "The sidecar status pill shows Connected" })

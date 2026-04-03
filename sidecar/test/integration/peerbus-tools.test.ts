@@ -5,7 +5,7 @@
  * createChatTools, createWorkspaceTools) by wiring them through a real ToolContext
  * with real stores — but no sidecar, no WebSocket, no Claude SDK.
  *
- * Usage: CLAUDESTUDIO_DATA_DIR=/tmp/claudestudio-test-$(date +%s) bun test test/integration/peerbus-tools.test.ts
+ * Usage: ODYSSEY_DATA_DIR=/tmp/odyssey-test-$(date +%s) bun test test/integration/peerbus-tools.test.ts
  */
 import { describe, test, expect, beforeEach } from "bun:test";
 import { BlackboardStore } from "../../src/stores/blackboard-store.js";

@@ -2,17 +2,17 @@
  * Live connector smoke tests.
  *
  * These tests hit real third-party provider APIs and are skipped unless
- * CLAUDESTUDIO_CONNECTOR_LIVE=1 is set.
+ * ODYSSEY_CONNECTOR_LIVE=1 is set.
  *
  * WhatsApp read-only smoke:
- *   CLAUDESTUDIO_CONNECTOR_LIVE=1 \
+ *   ODYSSEY_CONNECTOR_LIVE=1 \
  *   WHATSAPP_ACCESS_TOKEN=... \
  *   WHATSAPP_WABA_ID=... \
  *   bun test sidecar/test/e2e/connector-live.test.ts
  *
  * Optional WhatsApp write smoke:
- *   CLAUDESTUDIO_CONNECTOR_LIVE=1 \
- *   CLAUDESTUDIO_CONNECTOR_LIVE_WRITE=1 \
+ *   ODYSSEY_CONNECTOR_LIVE=1 \
+ *   ODYSSEY_CONNECTOR_LIVE_WRITE=1 \
  *   WHATSAPP_ACCESS_TOKEN=... \
  *   WHATSAPP_WABA_ID=... \
  *   WHATSAPP_PHONE_NUMBER_ID=... \
@@ -24,8 +24,8 @@ import { describe, expect, test } from "bun:test";
 import { executeConnectorCapability, probeConnector } from "../../src/connectors/provider-runtime.js";
 import type { RuntimeConnectorState } from "../../src/stores/connector-store.js";
 
-const isLive = process.env.CLAUDESTUDIO_CONNECTOR_LIVE === "1";
-const isWriteLive = isLive && process.env.CLAUDESTUDIO_CONNECTOR_LIVE_WRITE === "1";
+const isLive = (process.env.ODYSSEY_CONNECTOR_LIVE ?? process.env.CLAUDESTUDIO_CONNECTOR_LIVE) === "1";
+const isWriteLive = isLive && (process.env.ODYSSEY_CONNECTOR_LIVE_WRITE ?? process.env.CLAUDESTUDIO_CONNECTOR_LIVE_WRITE) === "1";
 const liveTest = isLive ? test : test.skip;
 
 const hasWhatsAppReadEnv = Boolean(

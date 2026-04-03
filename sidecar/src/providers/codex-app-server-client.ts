@@ -147,7 +147,7 @@ export class CodexAppServerClient {
 
     await this.sendRequest("initialize", {
       clientInfo: {
-        name: "claudestudio-sidecar",
+        name: "odyssey-sidecar",
         version: "0.1.0",
       },
       capabilities: {

@@ -1,0 +1,18 @@
+{
+  "catalogId": "delegation-patterns",
+  "name": "Delegation Patterns",
+  "description": "Split work across specialists with crisp inputs and outputs",
+  "category": "Odyssey Collaboration",
+  "icon": "arrow.turn.down.right",
+  "requiredMCPs": [],
+  "triggers": [
+    "delegate",
+    "subagent",
+    "handoff"
+  ],
+  "tags": [
+    "workflow",
+    "agents",
+    "odyssey"
+  ]
+}

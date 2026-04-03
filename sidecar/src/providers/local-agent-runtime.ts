@@ -33,7 +33,7 @@ export class LocalAgentRuntime implements ProviderRuntime {
       const handlers = this.toolHandlers(params.sessionId);
       const handler = handlers.get(params.toolName);
       if (!handler) {
-        throw new Error(`Unknown ClaudeStudio callback tool: ${params.toolName}`);
+        throw new Error(`Unknown Odyssey callback tool: ${params.toolName}`);
       }
 
       const result = await handler.execute(
@@ -121,7 +121,10 @@ export class LocalAgentRuntime implements ProviderRuntime {
       attachmentCount,
       planMode: planMode === true,
       backendSessionId,
-      packagePath: process.env.CLAUDESTUDIO_LOCAL_AGENT_PACKAGE_PATH ?? this.defaultPackagePath(),
+      packagePath:
+        process.env.ODYSSEY_LOCAL_AGENT_PACKAGE_PATH
+        ?? process.env.CLAUDESTUDIO_LOCAL_AGENT_PACKAGE_PATH
+        ?? this.defaultPackagePath(),
       toolDefinitionCount: this.hostToolDefinitions(sessionId, config).length,
     };
   }
@@ -239,7 +242,8 @@ export class LocalAgentRuntime implements ProviderRuntime {
   }
 
   private defaultPackagePath(): string {
-    return process.env.CLAUDESTUDIO_LOCAL_AGENT_PACKAGE_PATH?.trim()
-      || `${import.meta.dir}/../../../Packages/ClaudeStudioLocalAgent`;
+    return process.env.ODYSSEY_LOCAL_AGENT_PACKAGE_PATH?.trim()
+      || process.env.CLAUDESTUDIO_LOCAL_AGENT_PACKAGE_PATH?.trim()
+      || `${import.meta.dir}/../../../Packages/OdysseyLocalAgent`;
   }
 }

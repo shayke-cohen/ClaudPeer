@@ -70,8 +70,10 @@ export class WebhookManager {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-ClaudeStudio-Event": event.type,
-            "X-ClaudeStudio-Webhook-Id": webhook.id,
+            "X-Odyssey-Event": event.type,
+            "X-Odyssey-Webhook-Id": webhook.id,
+            "X-Odyssey-Event": event.type,
+            "X-Odyssey-Webhook-Id": webhook.id,
           },
           body: JSON.stringify(event),
           signal: AbortSignal.timeout(10_000),

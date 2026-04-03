@@ -78,7 +78,7 @@ export class CodexRuntime implements ProviderRuntime {
   private static readonly MCP_STATUS_POLL_INTERVAL_MS = 250;
   private static readonly APPROVAL_POLICY = "never";
   private static readonly SANDBOX_MODE = "danger-full-access";
-  private static readonly DEFAULT_PERMISSIONS_PROFILE = "claudestudio_full_access";
+  private static readonly DEFAULT_PERMISSIONS_PROFILE = "odyssey_full_access";
   private static readonly THREAD_SANDBOX = "danger-full-access";
   private static readonly TURN_SANDBOX_POLICY = { type: "dangerFullAccess" } as const;
 
@@ -413,7 +413,7 @@ export class CodexRuntime implements ProviderRuntime {
       approvalPolicy: CodexRuntime.APPROVAL_POLICY,
       sandbox: CodexRuntime.THREAD_SANDBOX,
       developerInstructions,
-      serviceName: "claudestudio-sidecar",
+      serviceName: "odyssey-sidecar",
       experimentalRawEvents: false,
       persistExtendedHistory: true,
       dynamicTools,
@@ -444,7 +444,7 @@ export class CodexRuntime implements ProviderRuntime {
       return [{ type: "text", text }];
     }
 
-    const tmpDir = join(homedir(), ".claudestudio", "tmp-attachments");
+    const tmpDir = join(homedir(), ".odyssey", "tmp-attachments");
     mkdirSync(tmpDir, { recursive: true });
 
     const inputs: any[] = [];
@@ -1504,7 +1504,7 @@ export class CodexRuntime implements ProviderRuntime {
 
   private buildIsolatedCodexConfig(config: AgentConfig): string {
     const lines = [
-      "# Managed by ClaudeStudio sidecar. User-level Codex config is intentionally isolated.",
+      "# Managed by Odyssey sidecar. User-level Codex config is intentionally isolated.",
       "",
     ];
 
@@ -1531,7 +1531,9 @@ export class CodexRuntime implements ProviderRuntime {
   }
 
   private sidecarDataDir(): string {
-    return process.env.CLAUDESTUDIO_DATA_DIR?.trim() || join(homedir(), ".claudestudio", "instances", "default");
+    return process.env.ODYSSEY_DATA_DIR?.trim()
+      || process.env.CLAUDESTUDIO_DATA_DIR?.trim()
+      || join(homedir(), ".odyssey", "instances", "default");
   }
 
   private syncCodexAuthFile(sourceAuthPath: string, targetAuthPath: string) {

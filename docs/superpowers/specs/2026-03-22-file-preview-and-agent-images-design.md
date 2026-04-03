@@ -5,7 +5,7 @@
 
 ## Overview
 
-Three related enhancements to ClaudeStudio's inspector and chat:
+Three related enhancements to Odyssey's inspector and chat:
 
 1. **Smart file preview** — Preview mode for HTML, PDF, JSON, and images (markdown already supported)
 2. **Diff syntax highlighting** — Syntax-colored code in the diff view, not just plain monospaced text

@@ -11,7 +11,7 @@ export class BlackboardStore {
   private persistPath: string;
 
   constructor(scope?: string) {
-    const baseDir = process.env.CLAUDESTUDIO_DATA_DIR ?? join(homedir(), ".claudestudio");
+    const baseDir = process.env.ODYSSEY_DATA_DIR ?? process.env.CLAUDESTUDIO_DATA_DIR ?? join(homedir(), ".odyssey");
     const dir = join(baseDir, "blackboard");
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     this.persistPath = join(dir, `${scope ?? "global"}.json`);

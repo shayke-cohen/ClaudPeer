@@ -34,7 +34,9 @@ function corsHeaders(): Record<string, string> {
 }
 
 function clientIdentity(req: Request): string {
-  return req.headers.get("X-ClaudeStudio-Client") ?? "rest-api";
+  return req.headers.get("X-Odyssey-Client")
+    ?? req.headers.get("X-Odyssey-Client")
+    ?? "rest-api";
 }
 
 async function parseBody<T>(req: Request): Promise<T> {
@@ -92,7 +94,7 @@ export async function handleApiRequest(
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, X-ClaudeStudio-Client",
+        "Access-Control-Allow-Headers": "Content-Type, X-Odyssey-Client, X-Odyssey-Client",
       },
     });
   }
