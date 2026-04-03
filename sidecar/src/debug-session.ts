@@ -1,7 +1,7 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { writeFileSync } from "fs";
 
-const STDIO_SERVER = "/Users/shayco/ClaudeStudio/sidecar/src/tools/ask-user-stdio-server.ts";
+const STDIO_SERVER = "/Users/shayco/Odyssey/sidecar/src/tools/ask-user-stdio-server.ts";
 const DEBUG_FILE = "/tmp/claude-debug-mcp.log";
 
 console.log("[debug] process.execPath:", process.execPath);
@@ -27,8 +27,8 @@ const stream = query({
         command: process.execPath,
         args: [STDIO_SERVER],
         env: {
-          CLAUDESTUDIO_SESSION_ID: "debug-001",
-          CLAUDESTUDIO_HTTP_PORT: "9850",
+          ODYSSEY_SESSION_ID: "debug-001",
+          ODYSSEY_HTTP_PORT: "9850",
           PATH: process.env.PATH ?? "",
           HOME: process.env.HOME ?? "",
         }

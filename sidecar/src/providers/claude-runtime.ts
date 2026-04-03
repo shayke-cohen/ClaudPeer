@@ -93,7 +93,7 @@ export class ClaudeRuntime implements ProviderRuntime {
 
   async createSession(_sessionId: string, _config: AgentConfig): Promise<void> {}
 
-  async resumeSession(_sessionId: string, _backendSessionId: string): Promise<void> {}
+  async resumeSession(_sessionId: string, _backendSessionId: string, _config?: AgentConfig): Promise<void> {}
 
   async forkSession(
     _parentSessionId: string,
@@ -288,7 +288,7 @@ export class ClaudeRuntime implements ProviderRuntime {
       return text;
     }
 
-    const tmpDir = join(homedir(), ".claudestudio", "tmp-attachments");
+    const tmpDir = join(homedir(), ".odyssey", "tmp-attachments");
     mkdirSync(tmpDir, { recursive: true });
 
     const inlineTexts: string[] = [];

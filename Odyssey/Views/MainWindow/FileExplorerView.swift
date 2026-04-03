@@ -1,0 +1,167 @@
+import SwiftUI
+
+struct FileExplorerView: View {
+    let workingDirectory: String
+    var displayPath: String?
+    let refreshTrigger: Int
+    var selectionRequest: InspectorFileSelectionRequest?
+    var onConsumeSelectionRequest: ((UUID) -> Void)?
+
+    @State private var selectedFile: FileNode?
+    @State private var changesOnly = false
+    @State private var showHidden = false
+    @State private var localRefresh = 0
+
+    private var rootURL: URL {
+        URL(fileURLWithPath: workingDirectory)
+    }
+
+    private var abbreviatedPath: String {
+        let path = displayPath ?? workingDirectory
+        let home = NSHomeDirectory()
+        if path.hasPrefix(home) {
+            return "~" + path.dropFirst(home.count)
+        }
+        return path
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            toolbar
+            Divider()
+            if selectedFile != nil {
+                contentView
+            } else {
+                treeView
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: selectionRequest?.id) {
+            applySelectionRequestIfNeeded()
+        }
+    }
+
+    // MARK: - Toolbar
+
+    private var toolbar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(abbreviatedPath)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .truncationMode(.head)
+                .help(workingDirectory)
+                .xrayId("inspector.fileTree.pathLabel")
+
+            HStack(spacing: 8) {
+                Button {
+                    localRefresh += 1
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+                .help("Refresh file tree")
+                .xrayId("inspector.fileTree.refreshButton")
+                .accessibilityLabel("Refresh file tree")
+
+                Button {
+                    changesOnly.toggle()
+                } label: {
+                    Image(systemName: changesOnly ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                        .font(.caption)
+                        .foregroundStyle(changesOnly ? Color.accentColor : Color.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help(changesOnly ? "Show all files" : "Show changes only")
+                .xrayId("inspector.fileTree.changesOnlyToggle")
+                .accessibilityLabel(changesOnly ? "Show all files" : "Show changes only")
+
+                Spacer(minLength: 0)
+
+                Menu {
+                    Toggle("Show Hidden Files", isOn: $showHidden)
+                        .xrayId("inspector.fileTree.showHiddenToggle")
+                    Toggle("Changes Only", isOn: $changesOnly)
+                        .xrayId("inspector.fileTree.changesOnlyMenuToggle")
+                    Divider()
+                    Button("Reveal in Finder") {
+                        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: workingDirectory)
+                    }
+                    .xrayId("inspector.fileTree.revealInFinderButton")
+                    Button("Open in Terminal") {
+                        openInTerminal(workingDirectory)
+                    }
+                    .xrayId("inspector.fileTree.openInTerminalButton")
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.caption)
+                }
+                .menuStyle(.borderlessButton)
+                .frame(width: 20)
+                .help("File explorer settings")
+                .xrayId("inspector.fileTree.settingsButton")
+                .accessibilityLabel("File explorer settings")
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+    }
+
+    // MARK: - Tree
+
+    private var treeView: some View {
+        FileTreeView(
+            rootURL: rootURL,
+            onSelectFile: { node in
+                selectedFile = node
+            },
+            changesOnly: changesOnly,
+            showHidden: showHidden,
+            refreshTrigger: refreshTrigger + localRefresh
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Content
+
+    @ViewBuilder
+    private var contentView: some View {
+        if let file = selectedFile {
+            FileContentView(
+                node: file,
+                rootURL: rootURL,
+                onBack: { selectedFile = nil }
+            )
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func openInTerminal(_ path: String) {
+        let script = "tell application \"Terminal\" to do script \"cd \(path.replacingOccurrences(of: "\"", with: "\\\""))\""
+        if let appleScript = NSAppleScript(source: script) {
+            var error: NSDictionary?
+            appleScript.executeAndReturnError(&error)
+        }
+    }
+
+    private func applySelectionRequestIfNeeded() {
+        guard let selectionRequest else { return }
+        defer {
+            onConsumeSelectionRequest?(selectionRequest.id)
+        }
+
+        let requestedURL = selectionRequest.url.standardizedFileURL.resolvingSymlinksInPath()
+        let normalizedRootURL = rootURL.standardizedFileURL.resolvingSymlinksInPath()
+        guard requestedURL.path == normalizedRootURL.path || requestedURL.path.hasPrefix(normalizedRootURL.path + "/") else {
+            return
+        }
+
+        guard let node = FileSystemService.node(at: requestedURL), !node.isDirectory else {
+            return
+        }
+
+        selectedFile = node
+    }
+}

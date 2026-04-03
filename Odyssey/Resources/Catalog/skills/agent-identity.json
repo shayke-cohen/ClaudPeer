@@ -1,0 +1,18 @@
+{
+  "catalogId": "agent-identity",
+  "name": "Agent Identity",
+  "description": "Roles, prompts, and permissions that stay consistent over time",
+  "category": "Odyssey Collaboration",
+  "icon": "person.crop.circle.badge.checkmark",
+  "requiredMCPs": [],
+  "triggers": [
+    "agent persona",
+    "role",
+    "permissions"
+  ],
+  "tags": [
+    "governance",
+    "prompting",
+    "odyssey"
+  ]
+}

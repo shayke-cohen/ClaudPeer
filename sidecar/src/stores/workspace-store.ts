@@ -17,7 +17,7 @@ export class WorkspaceStore {
 
   constructor() {
     this.baseDir = join(
-      process.env.CLAUDESTUDIO_DATA_DIR ?? join(homedir(), ".claudestudio"),
+      process.env.ODYSSEY_DATA_DIR ?? process.env.CLAUDESTUDIO_DATA_DIR ?? join(homedir(), ".odyssey"),
       "workspaces",
     );
     if (!existsSync(this.baseDir)) mkdirSync(this.baseDir, { recursive: true });

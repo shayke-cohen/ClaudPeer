@@ -1,0 +1,81 @@
+[
+  {
+    "name": "Full Access",
+    "allowRules": ["*"],
+    "denyRules": [],
+    "additionalDirectories": [],
+    "permissionMode": "default"
+  },
+  {
+    "name": "Read Only",
+    "allowRules": [
+      "Read",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "Bash(git blame *)"
+    ],
+    "denyRules": ["Write", "Bash"],
+    "additionalDirectories": [],
+    "permissionMode": "default"
+  },
+  {
+    "name": "Read + Write Docs",
+    "allowRules": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Write(*.md)",
+      "Write(*.txt)",
+      "Write(*.json)",
+      "WebSearch",
+      "WebFetch"
+    ],
+    "denyRules": ["Bash"],
+    "additionalDirectories": [],
+    "permissionMode": "default"
+  },
+  {
+    "name": "Git Only",
+    "allowRules": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(docker *)",
+      "Bash(npm *)",
+      "Bash(bun *)"
+    ],
+    "denyRules": ["Write"],
+    "additionalDirectories": [],
+    "permissionMode": "default"
+  },
+  {
+    "name": "Sandbox",
+    "allowRules": ["*"],
+    "denyRules": [],
+    "additionalDirectories": ["~/.odyssey/sandboxes/"],
+    "permissionMode": "default"
+  },
+  {
+    "name": "Config Editing",
+    "allowRules": [
+      "Read",
+      "Write(*.json)",
+      "Write(*.md)",
+      "Grep",
+      "Glob",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(cp *)"
+    ],
+    "denyRules": ["Bash(rm *)", "Bash(mv *)"],
+    "additionalDirectories": [],
+    "permissionMode": "default"
+  }
+]

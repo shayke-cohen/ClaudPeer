@@ -1,6 +1,6 @@
-# ClaudeStudio — Testing Guide
+# Odyssey — Testing Guide
 
-This document covers how to test ClaudeStudio across all three testing layers, provides a complete inventory of every screen and interactive control with its accessibility identifier, and explains how to target elements in AppXray and Argus automation.
+This document covers how to test Odyssey across all three testing layers, provides a complete inventory of every screen and interactive control with its accessibility identifier, and explains how to target elements in AppXray and Argus automation.
 
 ---
 
@@ -21,7 +21,7 @@ This document covers how to test ClaudeStudio across all three testing layers, p
 
 ## 1. Testing Overview
 
-ClaudeStudio uses three complementary testing layers:
+Odyssey uses three complementary testing layers:
 
 | Layer | Tool | Scope | When to Use |
 |-------|------|-------|-------------|
@@ -39,7 +39,7 @@ ClaudeStudio uses three complementary testing layers:
 
 ### Existing Test Files
 
-All tests live in `ClaudeStudioTests/`:
+All tests live in `OdysseyTests/`:
 
 | File | What It Tests |
 |------|---------------|
@@ -64,8 +64,8 @@ Product > Test (Cmd+U)
 From the command line:
 ```bash
 xcodebuild test \
-  -project ClaudeStudio.xcodeproj \
-  -scheme ClaudeStudio \
+  -project Odyssey.xcodeproj \
+  -scheme Odyssey \
   -destination 'platform=macOS'
 ```
 
@@ -85,6 +85,31 @@ Test files in `sidecar/test/`:
 - `api/ws-protocol.test.ts` — WebSocket protocol conformance
 - `e2e/full-flow.test.ts` — end-to-end session lifecycle
 - `e2e/scenarios.test.ts` — multi-session scenarios (includes **GC-1** group transcript chain and **GC-2** peer-notify prompt shape; live sidecar + API key)
+- `e2e/connector-live.test.ts` — live connector/provider smoke tests (env-gated; WhatsApp read smoke supported, write smoke opt-in)
+
+### Live Connector Smoke
+
+Run the WhatsApp live smoke in read-only mode:
+
+```bash
+ODYSSEY_CONNECTOR_LIVE=1 \
+WHATSAPP_ACCESS_TOKEN=... \
+WHATSAPP_WABA_ID=... \
+bun test sidecar/test/e2e/connector-live.test.ts
+```
+
+Optional write smoke, only when you intentionally want to send a real template:
+
+```bash
+ODYSSEY_CONNECTOR_LIVE=1 \
+ODYSSEY_CONNECTOR_LIVE_WRITE=1 \
+WHATSAPP_ACCESS_TOKEN=... \
+WHATSAPP_WABA_ID=... \
+WHATSAPP_PHONE_NUMBER_ID=... \
+WHATSAPP_TEMPLATE_NAME=... \
+WHATSAPP_TO=... \
+bun test sidecar/test/e2e/connector-live.test.ts
+```
 
 ---
 
@@ -93,7 +118,7 @@ Test files in `sidecar/test/`:
 ### Architecture
 
 ```
-ClaudeStudio (DEBUG, server mode on 19480) ──WebSocket──> AppXray MCP/CLI relay (default 127.0.0.1:19400) <──stdio── AI Agent
+Odyssey (DEBUG, server mode on 19480) ──WebSocket──> AppXray MCP/CLI relay (default 127.0.0.1:19400) <──stdio── AI Agent
 ```
 
 ### Prerequisites
@@ -101,7 +126,7 @@ ClaudeStudio (DEBUG, server mode on 19480) ──WebSocket──> AppXray MCP/CL
 1. The AppXray SDK is integrated as a local SPM package at `Dependencies/appxray/packages/sdk-ios` (DEBUG builds only).
 2. The AppXray MCP server must be configured in Cursor's MCP settings.
 3. The relay starts automatically with the MCP server.
-4. ClaudeStudio's DEBUG build pins AppXray server mode to port `19480` to avoid the relay's default `19400` port.
+4. Odyssey's DEBUG build pins AppXray server mode to port `19480` to avoid the relay's default `19400` port.
 
 ### Connecting
 
@@ -109,8 +134,8 @@ ClaudeStudio (DEBUG, server mode on 19480) ──WebSocket──> AppXray MCP/CL
 // 1. Discover running AppXray-enabled apps
 session({ action: "discover" })
 
-// 2. Connect to ClaudeStudio
-session({ action: "connect", appId: "com.claudestudio.app" })
+// 2. Connect to Odyssey
+session({ action: "connect", appId: "com.odyssey.app" })
 ```
 
 ### Available AppXray Tools
@@ -179,17 +204,21 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 |---------|-----------|-------|----------|
 | No-conversation placeholder | `mainWindow.noConversationPlaceholder` | — | `@testId("mainWindow.noConversationPlaceholder")` |
 | Inspector placeholder | `mainWindow.inspectorPlaceholder` | — | `@testId("mainWindow.inspectorPlaceholder")` |
-| Toolbar: New Session | `mainWindow.newSessionButton` | — | `@testId("mainWindow.newSessionButton")` |
-| Toolbar: Quick Chat | `mainWindow.quickChatButton` | — | `@testId("mainWindow.quickChatButton")` |
-| Toolbar: Schedules | `mainWindow.schedulesButton` | `Schedules` | `@testId("mainWindow.schedulesButton")` |
-| Toolbar: Agent Comms | `mainWindow.agentCommsButton` | — | `@testId("mainWindow.agentCommsButton")` |
-| Toolbar: Peer Network | `mainWindow.peerNetworkButton` | — | `@testId("mainWindow.peerNetworkButton")` |
+| Toolbar: Workspace menu | `mainWindow.workspaceMenu` | `Workspace` | `@testId("mainWindow.workspaceMenu")` |
 | Toolbar: Inspector toggle | `mainWindow.inspectorToggle` | — | `@testId("mainWindow.inspectorToggle")` |
 | Sidecar status pill | `mainWindow.sidecarStatusPill` | `Sidecar {status}` | `@testId("mainWindow.sidecarStatusPill")` |
 | Status popover | `mainWindow.statusPopover` | — | `@testId("mainWindow.statusPopover")` |
 | Popover: Reconnect | `mainWindow.statusPopover.reconnectButton` | — | `@testId("mainWindow.statusPopover.reconnectButton")` |
 | Popover: Stop | `mainWindow.statusPopover.stopButton` | — | `@testId("mainWindow.statusPopover.stopButton")` |
 | Popover: Connect | `mainWindow.statusPopover.connectButton` | — | `@testId("mainWindow.statusPopover.connectButton")` |
+
+Legacy comparison mode also exposes:
+- `mainWindow.newSessionButton`
+- `mainWindow.quickChatButton`
+- `mainWindow.schedulesButton`
+- `mainWindow.agentCommsButton`
+- `mainWindow.peerNetworkButton`
+- `mainWindow.newGroupThreadButton`
 
 **Sheets opened from MainWindowView:**
 - `NewSessionSheet` via `appState.showNewSessionSheet`
@@ -206,7 +235,7 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Control | Identifier | Label | Selector |
 |---------|-----------|-------|----------|
 | Sidebar list | `sidebar.conversationList` | — | `@testId("sidebar.conversationList")` |
-| Utility: New Thread | `sidebar.utility.newThread` | — | `@testId("sidebar.utility.newThread")` |
+| Utility: New menu | `sidebar.utility.newMenu` | `New` | `@testId("sidebar.utility.newMenu")` |
 | Utility: Library | `sidebar.utility.library` | — | `@testId("sidebar.utility.library")` |
 | Utility: Add Project | `sidebar.utility.addProject` | — | `@testId("sidebar.utility.addProject")` |
 | Project row | `sidebar.projectRow.{uuid}` | — | `@testId("sidebar.projectRow.{uuid}")` |
@@ -217,7 +246,7 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Thread row | `sidebar.conversationRow.{uuid}` | — | `@testId("sidebar.conversationRow.{uuid}")` |
 | Archived threads section | `sidebar.archivedSection` | — | `@testId("sidebar.archivedSection")` |
 
-The sidebar is now **project-first**: utilities live above projects, and each project disclosure contains Threads, Tasks, Team, and Schedules subsections. Legacy bottom-bar references should not be used for new tests.
+The sidebar is now **project-first**: utilities live above projects, and each project disclosure contains Threads, Tasks, Team, and Schedules subsections. In legacy comparison mode, the utility section still exposes `sidebar.utility.newThread`; new tests should prefer `sidebar.utility.newMenu`.
 
 **Context menu on thread rows** (Rename, Pin/Unpin, Close, Duplicate, Archive/Unarchive, Delete) and **swipe actions** do not have explicit identifiers.
 
@@ -232,9 +261,17 @@ The sidebar is now **project-first**: utilities live above projects, and each pr
 |---------|-----------|-------|----------|
 | Topic text (display) | `chat.topicTitle` | — | `@testId("chat.topicTitle")` |
 | Topic text field (editing) | `chat.topicField` | — | `@testId("chat.topicField")` |
-| Model pill | `chat.modelPill` | — | `@testId("chat.modelPill")` |
-| Live cost label | `chat.liveCostLabel` | — | `@testId("chat.liveCostLabel")` |
 | Mission preview | `chat.missionPreview` | — | `@testId("chat.missionPreview")` |
+| Mission card | `chat.missionCard` | — | `@testId("chat.missionCard")` |
+| Mission editor | `chat.missionEditor` | — | `@testId("chat.missionEditor")` |
+| Mission save | `chat.missionSaveButton` | — | `@testId("chat.missionSaveButton")` |
+| Mission cancel | `chat.missionCancelButton` | — | `@testId("chat.missionCancelButton")` |
+| Mission edit | `chat.missionEditButton` | — | `@testId("chat.missionEditButton")` |
+| Mission add | `chat.missionAddButton` | — | `@testId("chat.missionAddButton")` |
+| Mission expand/collapse | `chat.missionToggleButton` | — | `@testId("chat.missionToggleButton")` |
+| Session menu | `chat.sessionMenu` | `Session menu` | `@testId("chat.sessionMenu")` |
+| Tools menu | `chat.toolsMenu` | `Tools` | `@testId("chat.toolsMenu")` |
+| Group settings menu | `chat.groupSettingsMenu` | `Group settings` | `@testId("chat.groupSettingsMenu")` |
 | Agent icon button | `chat.agentIconButton` | `Open agent {name}` | `@testId("chat.agentIconButton")` |
 | Default chat icon | `chat.chatIcon` | — | `@testId("chat.chatIcon")` |
 | Stop button | `chat.stopButton` | `Stop agent` | `@testId("chat.stopButton")` |
@@ -260,15 +297,24 @@ The sidebar is now **project-first**: utilities live above projects, and each pr
 | Group “Sending to” hint | `chat.sendingToHint` | — | `@testId("chat.sendingToHint")` |
 | Mention suggestion strip | `chat.mentionSuggestions` | — | `@testId("chat.mentionSuggestions")` |
 | Mention suggestion row | `chat.mentionSuggestion.{agentUuid}` | — | `@testId("chat.mentionSuggestion.{agentUuid}")` |
-| Open blackboard | `chat.openBlackboardButton` | `Open blackboard` | `@testId("chat.openBlackboardButton")` |
 | Jump to latest | `chat.jumpToLatestButton` | `Jump to latest message` | `@testId("chat.jumpToLatestButton")` |
 | Send button | `chat.sendButton` | `Send message` | `@testId("chat.sendButton")` |
 | Pending attachments strip | `chat.pendingAttachments` | — | `@testId("chat.pendingAttachments")` |
+
+Legacy comparison mode also exposes:
+- `chat.modelPill`
+- `chat.liveCostLabel`
+- `chat.openBlackboardButton`
+- `chat.moreOptionsMenu`
+- `chat.attachButton`
 | Pending attachment thumb | `chat.pendingAttachment.{index}` | — | `@testId("chat.pendingAttachment.{index}")` |
 | Remove pending attachment | `chat.pendingAttachment.remove.{index}` | `Remove attachment` | `@testId("chat.pendingAttachment.remove.{index}")` |
 | Delegate button | `chat.delegateButton` | `Delegate to agent` | `@testId("chat.delegateButton")` |
 | Streaming bubble | `chat.streamingBubble` | — | `@testId("chat.streamingBubble")` |
 | Streaming thinking toggle | `chat.streamingThinkingToggle` | `Expand/Collapse thinking` | `@testId("chat.streamingThinkingToggle")` |
+| Session summary card | `chat.sessionSummaryCard` | — | `@testId("chat.sessionSummaryCard")` |
+| Session summary header | `chat.sessionSummaryCard.header` | — | `@testId("chat.sessionSummaryCard.header")` |
+| Session summary file row | `chat.sessionSummaryCard.file.{index}` | `Open file {displayPath}` | `@testId("chat.sessionSummaryCard.file.{index}")` |
 
 **Note:** The inner `NSTextField` of `PasteableTextField` also exposes `pasteableTextField.input` at the AppKit level. **Return** submits when there is text or pending attachments (and the session is not processing); **Shift+Return** inserts a newline; **⌘↩** also submits; the Send button submits as well. Opening a chat restores the last in-window reading position when available; otherwise it opens at the latest message.
 
@@ -325,29 +371,39 @@ The sidebar is now **project-first**: utilities live above projects, and each pr
 ### 5.4 NewSessionSheet
 
 **File:** `Views/MainWindow/NewSessionSheet.swift`
-**Access:** Toolbar "New Session" (Cmd+N) or sidebar bottom bar.
+**Access:** `New Thread` opens this sheet on the `Agents` tab. `Group Thread` opens the same sheet on the `Groups` tab.
 
 | Control | Identifier | Label | Selector |
 |---------|-----------|-------|----------|
 | Title | `newSession.title` | — | `@testId("newSession.title")` |
 | Close button | `newSession.closeButton` | `Close` | `@testId("newSession.closeButton")` |
+| Start kind: Blank | `newSession.startKind.blank` | `Blank` | `@testId("newSession.startKind.blank")` |
+| Start kind: Agents | `newSession.startKind.agents` | `Agents` | `@testId("newSession.startKind.agents")` |
+| Start kind: Groups | `newSession.startKind.groups` | `Groups` | `@testId("newSession.startKind.groups")` |
+| Blank starter card | `newSession.blankStateCard` | — | `@testId("newSession.blankStateCard")` |
 | Recent agent chip | `newSession.recentAgent.{uuid}` | — | `@testId("newSession.recentAgent.{uuid}")` |
+| Recent group chip | `newSession.recentGroup.{uuid}` | — | `@testId("newSession.recentGroup.{uuid}")` |
 | Selected agents summary (multi-select) | `newSession.selectedAgentsSummary` | — | `@testId("newSession.selectedAgentsSummary")` |
-| Freeform agent card | `newSession.agentCard.freeform` | — | `@testId("newSession.agentCard.freeform")` |
+| Agent search field | `newSession.agentSearchField` | — | `@testId("newSession.agentSearchField")` |
+| Group search field | `newSession.groupSearchField` | — | `@testId("newSession.groupSearchField")` |
+| Agent picker: List | `newSession.agentPickerStyle.list` | — | `@testId("newSession.agentPickerStyle.list")` |
+| Agent picker: Cards | `newSession.agentPickerStyle.cards` | — | `@testId("newSession.agentPickerStyle.cards")` |
+| Group picker: List | `newSession.groupPickerStyle.list` | — | `@testId("newSession.groupPickerStyle.list")` |
+| Group picker: Cards | `newSession.groupPickerStyle.cards` | — | `@testId("newSession.groupPickerStyle.cards")` |
 | Agent card | `newSession.agentCard.{uuid}` | — | `@testId("newSession.agentCard.{uuid}")` |
+| Agent row | `newSession.agentRow.{uuid}` | — | `@testId("newSession.agentRow.{uuid}")` |
+| Group card | `newSession.groupCard.{uuid}` | — | `@testId("newSession.groupCard.{uuid}")` |
+| Group row | `newSession.groupRow.{uuid}` | — | `@testId("newSession.groupRow.{uuid}")` |
+| Expanded group members | `newSession.groupMembers.{groupUuid}` | — | `@testId("newSession.groupMembers.{groupUuid}")` |
+| Expanded group member | `newSession.groupMember.{groupUuid}.{agentUuid}` | — | `@testId("newSession.groupMember.{groupUuid}.{agentUuid}")` |
 | Model picker | `newSession.modelPicker` | — | `@testId("newSession.modelPicker")` |
-| Mode picker (segmented) | `newSession.modePicker` | — | `@testId("newSession.modePicker")` |
 | Mission field | `newSession.missionField` | — | `@testId("newSession.missionField")` |
-| Working directory field | `newSession.workingDirectoryField` | — | `@testId("newSession.workingDirectoryField")` |
-| Browse directory | `newSession.browseDirectoryButton` | `Browse for directory` | `@testId("newSession.browseDirectoryButton")` |
-| GitHub workspace mode (segmented) | `newSession.githubWorkspaceModePicker` | — | `@testId("newSession.githubWorkspaceModePicker")` |
-| GitHub status summary | `newSession.githubStatusSummary` | — | `@testId("newSession.githubStatusSummary")` |
-| GitHub workspace error | `newSession.githubWorkspaceError` | — | `@testId("newSession.githubWorkspaceError")` |
-| GitHub validate/update clone | `newSession.githubValidateButton` | — | `@testId("newSession.githubValidateButton")` |
 | Options disclosure | `newSession.optionsDisclosure` | — | `@testId("newSession.optionsDisclosure")` |
-| Mode description | `newSession.modeDescription` | — | `@testId("newSession.modeDescription")` |
 | Quick Chat button | `newSession.quickChatButton` | — | `@testId("newSession.quickChatButton")` |
 | Start Session button | `newSession.startSessionButton` | — | `@testId("newSession.startSessionButton")` |
+| Group mode constraint | `newSession.groupModeConstraint` | — | `@testId("newSession.groupModeConstraint")` |
+
+The unified sheet now covers the former group-thread entry as well. `NewGroupThreadSheet` remains in the repo, but the main window routes new group creation into `NewSessionSheet` on the `Groups` tab.
 
 #### Add agents to chat (`/agents`)
 
@@ -932,12 +988,12 @@ Set via AppKit `setAccessibilityIdentifier`. The SwiftUI wrapper gets its own id
 
 ## 7. Argus macOS Testing (Outside-In E2E)
 
-Argus can drive ClaudeStudio as a macOS app without the AppXray SDK.
+Argus can drive Odyssey as a macOS app without the AppXray SDK.
 
 ### Starting a Session
 
 ```javascript
-inspect({ platform: "macos", appName: "ClaudeStudio" })
+inspect({ platform: "macos", appName: "Odyssey" })
 ```
 
 This captures a screenshot and the accessibility element tree.
@@ -997,7 +1053,7 @@ Argus supports YAML test files for repeatable regression testing:
 ```yaml
 name: Create and send message
 platform: macos
-appName: ClaudeStudio
+appName: Odyssey
 steps:
   - inspect: {}
   - act:
@@ -1008,7 +1064,7 @@ steps:
       selector: "newSession.title"
   - act:
       action: tap
-      selector: "newSession.agentCard.freeform"
+      selector: "newSession.startKind.blank"
   - act:
       action: tap
       selector: "newSession.startSessionButton"
@@ -1033,14 +1089,14 @@ steps:
 
 Run with:
 ```javascript
-test({ action: "run", path: "tests/create-session.yaml", platform: "macos", appName: "ClaudeStudio" })
+test({ action: "run", path: "tests/create-session.yaml", platform: "macos", appName: "Odyssey" })
 ```
 
 ### Example: Full Session Flow
 
 ```javascript
 // 1. Launch and inspect
-inspect({ platform: "macos", appName: "ClaudeStudio" })
+inspect({ platform: "macos", appName: "Odyssey" })
 
 // 2. Check sidecar is connected
 assert({ type: "ai", prompt: "The sidecar status pill shows Connected" })
@@ -1049,8 +1105,8 @@ assert({ type: "ai", prompt: "The sidecar status pill shows Connected" })
 act({ action: "tap", selector: "mainWindow.newSessionButton" })
 wait({ for: "element", selector: "newSession.title" })
 
-// 4. Select freeform agent and start
-act({ action: "tap", selector: "newSession.agentCard.freeform" })
+// 4. Switch to Blank and start
+act({ action: "tap", selector: "newSession.startKind.blank" })
 act({ action: "tap", selector: "newSession.startSessionButton" })
 wait({ for: "element", selector: "chat.messageInput" })
 
@@ -1082,6 +1138,14 @@ Used for any SwiftData entity row/card. The UUID is the entity's `id.uuidString`
 | `sidebar.conversationRow.{uuid}` | SidebarView |
 | `sidebar.agentRow.{uuid}` | SidebarView |
 | `sidebar.agentRow.startSession.{uuid}` | SidebarView context menu |
+| `newSession.recentAgent.{uuid}` | NewSessionSheet recent chips |
+| `newSession.recentGroup.{uuid}` | NewSessionSheet recent chips |
+| `newSession.agentRow.{uuid}` | NewSessionSheet list picker |
+| `newSession.agentCard.{uuid}` | NewSessionSheet card picker |
+| `newSession.groupRow.{uuid}` | NewSessionSheet list picker |
+| `newSession.groupCard.{uuid}` | NewSessionSheet card picker |
+| `newSession.groupMembers.{groupUuid}` | NewSessionSheet expanded group panel |
+| `newSession.groupMember.{groupUuid}.{agentUuid}` | NewSessionSheet expanded group member |
 | `agentLibrary.card.{uuid}` | AgentLibraryView |
 | `agentLibrary.card.context.{action}.{uuid}` | AgentLibraryView context menu |
 | `newSession.recentAgent.{uuid}` | NewSessionSheet |

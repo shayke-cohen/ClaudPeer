@@ -22,24 +22,24 @@
 
 | File | Responsibility | Status |
 |---|---|---|
-| `ClaudeStudio/Services/FileSystemService.swift` | File type classification helpers | Modify |
-| `ClaudeStudio/Views/MainWindow/FileContentView.swift` | Preview dispatch, `fileData`, diff highlighting | Modify |
-| `ClaudeStudio/Views/MainWindow/HTMLPreviewView.swift` | WKWebView wrapper (JS disabled) | Create |
-| `ClaudeStudio/Views/MainWindow/JSONTreeView.swift` | Collapsible JSON tree | Create |
-| `ClaudeStudio/Views/MainWindow/PDFPreviewView.swift` | PDFKit wrapper | Create |
-| `ClaudeStudio/Views/MainWindow/ImagePreviewView.swift` | Inline image + info overlay | Create |
-| `ClaudeStudio/Models/MessageAttachment.swift` | Add `localFilePath` field | Modify |
-| `ClaudeStudio/Services/SidecarProtocol.swift` | `streamImage` + `streamFileCard` events | Modify |
-| `ClaudeStudio/App/AppState.swift` | Image/fileCard accumulators + event handlers | Modify |
-| `ClaudeStudio/Views/MainWindow/ChatView.swift` | Finalize images/fileCards into attachments | Modify |
-| `ClaudeStudio/Views/Components/AttachmentThumbnail.swift` | File card rendering for HTML/PDF | Modify |
+| `Odyssey/Services/FileSystemService.swift` | File type classification helpers | Modify |
+| `Odyssey/Views/MainWindow/FileContentView.swift` | Preview dispatch, `fileData`, diff highlighting | Modify |
+| `Odyssey/Views/MainWindow/HTMLPreviewView.swift` | WKWebView wrapper (JS disabled) | Create |
+| `Odyssey/Views/MainWindow/JSONTreeView.swift` | Collapsible JSON tree | Create |
+| `Odyssey/Views/MainWindow/PDFPreviewView.swift` | PDFKit wrapper | Create |
+| `Odyssey/Views/MainWindow/ImagePreviewView.swift` | Inline image + info overlay | Create |
+| `Odyssey/Models/MessageAttachment.swift` | Add `localFilePath` field | Modify |
+| `Odyssey/Services/SidecarProtocol.swift` | `streamImage` + `streamFileCard` events | Modify |
+| `Odyssey/App/AppState.swift` | Image/fileCard accumulators + event handlers | Modify |
+| `Odyssey/Views/MainWindow/ChatView.swift` | Finalize images/fileCards into attachments | Modify |
+| `Odyssey/Views/Components/AttachmentThumbnail.swift` | File card rendering for HTML/PDF | Modify |
 | `sidecar/src/types.ts` | New event types | Modify |
 | `sidecar/src/session-manager.ts` | Handle image blocks + tool file path scanning | Modify |
-| `ClaudeStudioTests/FileClassificationTests.swift` | File type helper tests | Create |
-| `ClaudeStudioTests/JSONTreeParsingTests.swift` | JSON parsing + truncation tests | Create |
-| `ClaudeStudioTests/DiffLineStyleTests.swift` | Diff line classification tests | Create |
-| `ClaudeStudioTests/AppStateEventTests.swift` | Extend with image/fileCard event tests | Modify |
-| `ClaudeStudioTests/SidecarProtocolTests.swift` | Extend with new event encoding/decoding | Modify |
+| `OdysseyTests/FileClassificationTests.swift` | File type helper tests | Create |
+| `OdysseyTests/JSONTreeParsingTests.swift` | JSON parsing + truncation tests | Create |
+| `OdysseyTests/DiffLineStyleTests.swift` | Diff line classification tests | Create |
+| `OdysseyTests/AppStateEventTests.swift` | Extend with image/fileCard event tests | Modify |
+| `OdysseyTests/SidecarProtocolTests.swift` | Extend with new event encoding/decoding | Modify |
 | `sidecar/test/file-path-extraction.test.ts` | File path regex tests | Create |
 
 ---
@@ -47,15 +47,15 @@
 ### Task 1: File Type Classification Helpers
 
 **Files:**
-- Modify: `ClaudeStudio/Services/FileSystemService.swift:11` (after `markdownExtensions`)
-- Create: `ClaudeStudioTests/FileClassificationTests.swift`
+- Modify: `Odyssey/Services/FileSystemService.swift:11` (after `markdownExtensions`)
+- Create: `OdysseyTests/FileClassificationTests.swift`
 
 - [ ] **Step 1: Write failing tests**
 
 ```swift
-// ClaudeStudioTests/FileClassificationTests.swift
+// OdysseyTests/FileClassificationTests.swift
 import XCTest
-@testable import ClaudeStudio
+@testable import Odyssey
 
 final class FileClassificationTests: XCTestCase {
     func testHTMLDetection() {
@@ -112,7 +112,7 @@ final class FileClassificationTests: XCTestCase {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `xcodebuild test -scheme ClaudeStudio -destination 'platform=macOS' -only-testing ClaudeStudioTests/FileClassificationTests 2>&1 | tail -20`
+Run: `xcodebuild test -scheme Odyssey -destination 'platform=macOS' -only-testing OdysseyTests/FileClassificationTests 2>&1 | tail -20`
 Expected: FAIL — methods don't exist yet
 
 - [ ] **Step 3: Implement file classification helpers**
@@ -158,13 +158,13 @@ static func isBinaryPreviewable(_ ext: String) -> Bool {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `xcodebuild test -scheme ClaudeStudio -destination 'platform=macOS' -only-testing ClaudeStudioTests/FileClassificationTests 2>&1 | tail -20`
+Run: `xcodebuild test -scheme Odyssey -destination 'platform=macOS' -only-testing OdysseyTests/FileClassificationTests 2>&1 | tail -20`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ClaudeStudio/Services/FileSystemService.swift ClaudeStudioTests/FileClassificationTests.swift
+git add Odyssey/Services/FileSystemService.swift OdysseyTests/FileClassificationTests.swift
 git commit -m "feat: add file type classification helpers for preview support"
 ```
 
@@ -173,12 +173,12 @@ git commit -m "feat: add file type classification helpers for preview support"
 ### Task 2: Image Preview View
 
 **Files:**
-- Create: `ClaudeStudio/Views/MainWindow/ImagePreviewView.swift`
+- Create: `Odyssey/Views/MainWindow/ImagePreviewView.swift`
 
 - [ ] **Step 1: Create ImagePreviewView**
 
 ```swift
-// ClaudeStudio/Views/MainWindow/ImagePreviewView.swift
+// Odyssey/Views/MainWindow/ImagePreviewView.swift
 import SwiftUI
 import AppKit
 
@@ -249,13 +249,13 @@ struct ImagePreviewView: View {
 
 - [ ] **Step 2: Build to verify it compiles**
 
-Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme Odyssey -destination 'platform=macOS' build 2>&1 | tail -5`
 Expected: BUILD SUCCEEDED
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudeStudio/Views/MainWindow/ImagePreviewView.swift
+git add Odyssey/Views/MainWindow/ImagePreviewView.swift
 git commit -m "feat: add ImagePreviewView for inline image display with info overlay"
 ```
 
@@ -264,12 +264,12 @@ git commit -m "feat: add ImagePreviewView for inline image display with info ove
 ### Task 3: HTML Preview View
 
 **Files:**
-- Create: `ClaudeStudio/Views/MainWindow/HTMLPreviewView.swift`
+- Create: `Odyssey/Views/MainWindow/HTMLPreviewView.swift`
 
 - [ ] **Step 1: Create HTMLPreviewView**
 
 ```swift
-// ClaudeStudio/Views/MainWindow/HTMLPreviewView.swift
+// Odyssey/Views/MainWindow/HTMLPreviewView.swift
 import SwiftUI
 import WebKit
 
@@ -314,13 +314,13 @@ struct HTMLPreviewView: NSViewRepresentable {
 
 - [ ] **Step 2: Build to verify it compiles**
 
-Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme Odyssey -destination 'platform=macOS' build 2>&1 | tail -5`
 Expected: BUILD SUCCEEDED
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudeStudio/Views/MainWindow/HTMLPreviewView.swift
+git add Odyssey/Views/MainWindow/HTMLPreviewView.swift
 git commit -m "feat: add HTMLPreviewView with WKWebView, JS disabled, navigation blocked"
 ```
 
@@ -329,12 +329,12 @@ git commit -m "feat: add HTMLPreviewView with WKWebView, JS disabled, navigation
 ### Task 4: PDF Preview View
 
 **Files:**
-- Create: `ClaudeStudio/Views/MainWindow/PDFPreviewView.swift`
+- Create: `Odyssey/Views/MainWindow/PDFPreviewView.swift`
 
 - [ ] **Step 1: Create PDFPreviewView**
 
 ```swift
-// ClaudeStudio/Views/MainWindow/PDFPreviewView.swift
+// Odyssey/Views/MainWindow/PDFPreviewView.swift
 import SwiftUI
 import PDFKit
 
@@ -367,13 +367,13 @@ struct PDFPreviewView: NSViewRepresentable {
 
 - [ ] **Step 2: Build to verify it compiles**
 
-Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme Odyssey -destination 'platform=macOS' build 2>&1 | tail -5`
 Expected: BUILD SUCCEEDED
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudeStudio/Views/MainWindow/PDFPreviewView.swift
+git add Odyssey/Views/MainWindow/PDFPreviewView.swift
 git commit -m "feat: add PDFPreviewView using PDFKit with URL-based loading"
 ```
 
@@ -382,15 +382,15 @@ git commit -m "feat: add PDFPreviewView using PDFKit with URL-based loading"
 ### Task 5: JSON Tree View
 
 **Files:**
-- Create: `ClaudeStudio/Views/MainWindow/JSONTreeView.swift`
-- Create: `ClaudeStudioTests/JSONTreeParsingTests.swift`
+- Create: `Odyssey/Views/MainWindow/JSONTreeView.swift`
+- Create: `OdysseyTests/JSONTreeParsingTests.swift`
 
 - [ ] **Step 1: Write failing tests**
 
 ```swift
-// ClaudeStudioTests/JSONTreeParsingTests.swift
+// OdysseyTests/JSONTreeParsingTests.swift
 import XCTest
-@testable import ClaudeStudio
+@testable import Odyssey
 
 final class JSONTreeParsingTests: XCTestCase {
     func testSimpleObject() {
@@ -437,12 +437,12 @@ final class JSONTreeParsingTests: XCTestCase {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `xcodebuild test -scheme ClaudeStudio -destination 'platform=macOS' -only-testing ClaudeStudioTests/JSONTreeParsingTests 2>&1 | tail -20`
+Run: `xcodebuild test -scheme Odyssey -destination 'platform=macOS' -only-testing OdysseyTests/JSONTreeParsingTests 2>&1 | tail -20`
 Expected: FAIL — `JSONTreeParser` doesn't exist
 
 - [ ] **Step 3: Implement JSONTreeView and JSONTreeParser**
 
-Create `ClaudeStudio/Views/MainWindow/JSONTreeView.swift` with both the parser and the view. The parser is a testable standalone enum. The view uses recursive `DisclosureGroup`. See spec Section A "JSONTreeView" for full details.
+Create `Odyssey/Views/MainWindow/JSONTreeView.swift` with both the parser and the view. The parser is a testable standalone enum. The view uses recursive `DisclosureGroup`. See spec Section A "JSONTreeView" for full details.
 
 Key points:
 - `JSONTreeParser.parse(_ text: String) -> [JSONNode]` — returns parsed tree
@@ -453,13 +453,13 @@ Key points:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `xcodebuild test -scheme ClaudeStudio -destination 'platform=macOS' -only-testing ClaudeStudioTests/JSONTreeParsingTests 2>&1 | tail -20`
+Run: `xcodebuild test -scheme Odyssey -destination 'platform=macOS' -only-testing OdysseyTests/JSONTreeParsingTests 2>&1 | tail -20`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ClaudeStudio/Views/MainWindow/JSONTreeView.swift ClaudeStudioTests/JSONTreeParsingTests.swift
+git add Odyssey/Views/MainWindow/JSONTreeView.swift OdysseyTests/JSONTreeParsingTests.swift
 git commit -m "feat: add JSONTreeView with collapsible tree and 1000 node limit"
 ```
 
@@ -468,7 +468,7 @@ git commit -m "feat: add JSONTreeView with collapsible tree and 1000 node limit"
 ### Task 6: Wire FileContentView to New Preview Views
 
 **Files:**
-- Modify: `ClaudeStudio/Views/MainWindow/FileContentView.swift`
+- Modify: `Odyssey/Views/MainWindow/FileContentView.swift`
 
 This task connects Tasks 1-5 to the existing `FileContentView`. Changes:
 1. Replace `isMarkdown` gate with `isPreviewable`
@@ -560,13 +560,13 @@ private var previewView: some View {
 
 - [ ] **Step 4: Build and run to verify previews work**
 
-Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme Odyssey -destination 'platform=macOS' build 2>&1 | tail -5`
 Then launch the app and test with HTML, JSON, PDF, and image files.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ClaudeStudio/Views/MainWindow/FileContentView.swift
+git add Odyssey/Views/MainWindow/FileContentView.swift
 git commit -m "feat: wire file preview dispatch for HTML, JSON, PDF, Image, SVG"
 ```
 
@@ -575,15 +575,15 @@ git commit -m "feat: wire file preview dispatch for HTML, JSON, PDF, Image, SVG"
 ### Task 7: Diff Syntax Highlighting
 
 **Files:**
-- Modify: `ClaudeStudio/Views/MainWindow/FileContentView.swift` (replace `DiffTextView` at line 339-403)
-- Create: `ClaudeStudioTests/DiffLineStyleTests.swift`
+- Modify: `Odyssey/Views/MainWindow/FileContentView.swift` (replace `DiffTextView` at line 339-403)
+- Create: `OdysseyTests/DiffLineStyleTests.swift`
 
 - [ ] **Step 1: Write failing tests for diff line classification**
 
 ```swift
-// ClaudeStudioTests/DiffLineStyleTests.swift
+// OdysseyTests/DiffLineStyleTests.swift
 import XCTest
-@testable import ClaudeStudio
+@testable import Odyssey
 
 final class DiffLineStyleTests: XCTestCase {
     func testAddedLine() {
@@ -644,7 +644,7 @@ Open a modified file in the inspector, switch to Diff tab. Code should be syntax
 - [ ] **Step 6: Commit**
 
 ```bash
-git add ClaudeStudio/Views/MainWindow/FileContentView.swift ClaudeStudioTests/DiffLineStyleTests.swift
+git add Odyssey/Views/MainWindow/FileContentView.swift OdysseyTests/DiffLineStyleTests.swift
 git commit -m "feat: add syntax highlighting to diff view with Highlightr"
 ```
 
@@ -654,8 +654,8 @@ git commit -m "feat: add syntax highlighting to diff view with Highlightr"
 
 **Files:**
 - Modify: `sidecar/src/types.ts:52-63`
-- Modify: `ClaudeStudio/Services/SidecarProtocol.swift:134-207`
-- Modify: `ClaudeStudioTests/SidecarProtocolTests.swift`
+- Modify: `Odyssey/Services/SidecarProtocol.swift:134-207`
+- Modify: `OdysseyTests/SidecarProtocolTests.swift`
 
 - [ ] **Step 1: Add event types to `types.ts` (after line 62)**
 
@@ -698,13 +698,13 @@ Extend `SidecarProtocolTests.swift` with tests for the new event types. Test tha
 
 - [ ] **Step 6: Build and run tests**
 
-Run: `xcodebuild test -scheme ClaudeStudio -destination 'platform=macOS' -only-testing ClaudeStudioTests/SidecarProtocolTests 2>&1 | tail -20`
+Run: `xcodebuild test -scheme Odyssey -destination 'platform=macOS' -only-testing OdysseyTests/SidecarProtocolTests 2>&1 | tail -20`
 Expected: PASS
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add sidecar/src/types.ts ClaudeStudio/Services/SidecarProtocol.swift ClaudeStudioTests/SidecarProtocolTests.swift
+git add sidecar/src/types.ts Odyssey/Services/SidecarProtocol.swift OdysseyTests/SidecarProtocolTests.swift
 git commit -m "feat: add stream.image and stream.fileCard wire protocol events"
 ```
 
@@ -859,8 +859,8 @@ git commit -m "feat: handle SDK image blocks and scan tool results for file path
 ### Task 10: AppState — Image and FileCard Accumulators
 
 **Files:**
-- Modify: `ClaudeStudio/App/AppState.swift:23-24` (add properties) and `186-258` (handleEvent)
-- Modify: `ClaudeStudioTests/AppStateEventTests.swift`
+- Modify: `Odyssey/App/AppState.swift:23-24` (add properties) and `186-258` (handleEvent)
+- Modify: `OdysseyTests/AppStateEventTests.swift`
 
 - [ ] **Step 1: Write failing tests**
 
@@ -925,7 +925,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ClaudeStudio/App/AppState.swift ClaudeStudioTests/AppStateEventTests.swift
+git add Odyssey/App/AppState.swift OdysseyTests/AppStateEventTests.swift
 git commit -m "feat: add streaming image and fileCard accumulators to AppState"
 ```
 
@@ -934,7 +934,7 @@ git commit -m "feat: add streaming image and fileCard accumulators to AppState"
 ### Task 11: MessageAttachment — Add `localFilePath` Field
 
 **Files:**
-- Modify: `ClaudeStudio/Models/MessageAttachment.swift`
+- Modify: `Odyssey/Models/MessageAttachment.swift`
 
 - [ ] **Step 1: Add `localFilePath` property**
 
@@ -946,7 +946,7 @@ var localFilePath: String?
 
 - [ ] **Step 2: Build to verify schema change compiles**
 
-Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme Odyssey -destination 'platform=macOS' build 2>&1 | tail -5`
 Expected: BUILD SUCCEEDED
 
 Note: SwiftData handles schema migration automatically for additive changes (new optional field).
@@ -954,7 +954,7 @@ Note: SwiftData handles schema migration automatically for additive changes (new
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudeStudio/Models/MessageAttachment.swift
+git add Odyssey/Models/MessageAttachment.swift
 git commit -m "feat: add localFilePath to MessageAttachment for tool-generated files"
 ```
 
@@ -963,7 +963,7 @@ git commit -m "feat: add localFilePath to MessageAttachment for tool-generated f
 ### Task 12: Message Finalization — Convert Images and FileCards to Attachments
 
 **Files:**
-- Modify: `ClaudeStudio/Views/MainWindow/ChatView.swift:1389` (after `convo.messages.append(response)`)
+- Modify: `Odyssey/Views/MainWindow/ChatView.swift:1389` (after `convo.messages.append(response)`)
 
 - [ ] **Step 1: Add image finalization after line 1391**
 
@@ -1004,13 +1004,13 @@ if let cards = appState.streamingFileCards[sidecarKey] {
 
 - [ ] **Step 2: Build and verify**
 
-Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme Odyssey -destination 'platform=macOS' build 2>&1 | tail -5`
 Expected: BUILD SUCCEEDED
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudeStudio/Views/MainWindow/ChatView.swift
+git add Odyssey/Views/MainWindow/ChatView.swift
 git commit -m "feat: finalize streaming images and file cards into MessageAttachment records"
 ```
 
@@ -1019,7 +1019,7 @@ git commit -m "feat: finalize streaming images and file cards into MessageAttach
 ### Task 13: AttachmentThumbnail — File Card Rendering
 
 **Files:**
-- Modify: `ClaudeStudio/Views/Components/AttachmentThumbnail.swift`
+- Modify: `Odyssey/Views/Components/AttachmentThumbnail.swift`
 
 - [ ] **Step 1: Add file card variant for HTML/PDF with `localFilePath`**
 
@@ -1074,13 +1074,13 @@ private var fileCardThumbnail: some View {
 
 - [ ] **Step 2: Build and verify**
 
-Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme Odyssey -destination 'platform=macOS' build 2>&1 | tail -5`
 Expected: BUILD SUCCEEDED
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add ClaudeStudio/Views/Components/AttachmentThumbnail.swift
+git add Odyssey/Views/Components/AttachmentThumbnail.swift
 git commit -m "feat: add file card rendering for HTML/PDF tool-generated attachments"
 ```
 
@@ -1117,11 +1117,11 @@ git commit -m "docs: update CLAUDE.md and TESTING.md with new events and test co
 
 - [ ] **Step 1: Build the full project**
 
-Run: `xcodebuild -scheme ClaudeStudio -destination 'platform=macOS' build 2>&1 | tail -5`
+Run: `xcodebuild -scheme Odyssey -destination 'platform=macOS' build 2>&1 | tail -5`
 
 - [ ] **Step 2: Run all tests**
 
-Run: `xcodebuild test -scheme ClaudeStudio -destination 'platform=macOS' 2>&1 | grep -E 'Test Suite|Tests|PASS|FAIL' | tail -20`
+Run: `xcodebuild test -scheme Odyssey -destination 'platform=macOS' 2>&1 | grep -E 'Test Suite|Tests|PASS|FAIL' | tail -20`
 
 - [ ] **Step 3: Manual verification checklist**
 

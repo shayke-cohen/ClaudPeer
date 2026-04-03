@@ -55,7 +55,7 @@ export function buildMCPPreflightReport(config: AgentConfig): MCPPreflightReport
       ? probeAppXrayTarget(APPXRAY_DEFAULT_PORT)
       : {
           checked: false,
-          appName: "ClaudeStudio",
+          appName: "Odyssey",
           port: APPXRAY_DEFAULT_PORT,
           processRunning: false,
           portReachable: false,
@@ -116,12 +116,13 @@ function isNPXCommand(command: string): boolean {
 }
 
 function probeAppXrayTarget(port: number): AppXrayTargetPreflight {
-  const processRunning = commandSucceeds(["/usr/bin/pgrep", "-x", "ClaudeStudio"]);
+  const processRunning = commandSucceeds(["/usr/bin/pgrep", "-x", "Odyssey"])
+    || commandSucceeds(["/usr/bin/pgrep", "-x", "Odyssey"]);
   const portReachable = commandSucceeds(["/usr/bin/nc", "-z", "127.0.0.1", String(port)]);
 
   return {
     checked: true,
-    appName: "ClaudeStudio",
+    appName: "Odyssey",
     port,
     processRunning,
     portReachable,

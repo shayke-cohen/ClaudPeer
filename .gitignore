@@ -5,7 +5,9 @@ build/
 DerivedData/
 .derivedData/
 .derived-run/
+.derived-run-appstart/
 .build-run/
+.build/
 *.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
 *.profraw
 
@@ -24,3 +26,5 @@ Dependencies/
 
 # Runtime data
 .claudestudio/
+
+.derived-run-appstart/

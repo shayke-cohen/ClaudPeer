@@ -2,7 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { detectGitHubRemote, buildGitHubPromptSection } from "../../src/utils/github-detection.js";
 
 describe("GitHub Detection", () => {
-  test("detects GitHub remote in the ClaudPeer repo", () => {
+  test("detects GitHub remote in the Odyssey repo", () => {
     // Use the project root (parent of sidecar/) as test fixture
     const projectRoot = new URL("../../../", import.meta.url).pathname.replace(/\/$/, "");
     const remote = detectGitHubRemote(projectRoot);

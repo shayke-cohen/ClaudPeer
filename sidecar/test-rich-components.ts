@@ -31,7 +31,7 @@ async function main() {
 
   const sessionId = uuid();
   console.log(`\n📋 Session ID: ${sessionId}`);
-  console.log("   Open this session in ClaudeStudio to see the test.\n");
+  console.log("   Open this session in Odyssey to see the test.\n");
 
   // Create session with comprehensive test instructions
   ws.send(JSON.stringify({
@@ -57,7 +57,7 @@ Step 1: Call render_content with format="html" and this content:
 
 Step 2: Call render_content with format="mermaid" and title="Architecture Diagram":
 graph TD
-    A[User] --> B[ClaudeStudio]
+    A[User] --> B[Odyssey]
     B --> C[Sidecar]
     C --> D[Claude API]
     C --> E[MCP Tools]

@@ -1,5 +1,5 @@
 /**
- * Structured JSON-line logger for the ClaudeStudio sidecar.
+ * Structured JSON-line logger for the Odyssey sidecar.
  *
  * Each line written to stdout is a single JSON object:
  *   {"ts":"2026-03-26T12:01:02.123Z","level":"info","category":"ws","message":"Client connected"}

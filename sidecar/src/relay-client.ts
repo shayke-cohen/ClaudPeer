@@ -27,7 +27,7 @@ export class RelayClient {
       ws.addEventListener("open", () => {
         ws.send(JSON.stringify({
           type: "relay.handshake",
-          peerName: process.env.CLAUDESTUDIO_INSTANCE ?? "default",
+          peerName: process.env.ODYSSEY_INSTANCE ?? process.env.CLAUDESTUDIO_INSTANCE ?? "default",
           version: "0.2.0",
         }));
         this.connections.set(peerName, ws);

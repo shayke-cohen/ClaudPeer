@@ -1,4 +1,4 @@
-import { query, createSdkMcpServer, tool } from "/Users/shayco/ClaudeStudio/sidecar/node_modules/@anthropic-ai/claude-agent-sdk/sdk.mjs";
+import { query, createSdkMcpServer, tool } from "/Users/shayco/Odyssey/sidecar/node_modules/@anthropic-ai/claude-agent-sdk/sdk.mjs";
 import { z } from "zod";
 
 let toolCalled = false;

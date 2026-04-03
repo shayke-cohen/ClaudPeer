@@ -7,6 +7,7 @@ import { MessageStore } from "./stores/message-store.js";
 import { ChatChannelStore } from "./stores/chat-channel-store.js";
 import { WorkspaceStore } from "./stores/workspace-store.js";
 import { PeerRegistry } from "./stores/peer-registry.js";
+import { ConnectorStore } from "./stores/connector-store.js";
 import { RelayClient } from "./relay-client.js";
 import { SessionManager } from "./session-manager.js";
 import { SseManager } from "./sse-manager.js";
@@ -15,11 +16,11 @@ import { logger, setLogLevel } from "./logger.js";
 import type { ToolContext } from "./tools/tool-context.js";
 import type { AgentConfig, ApiContext, SidecarEvent } from "./types.js";
 
-setLogLevel((process.env.CLAUDESTUDIO_LOG_LEVEL ?? "info") as any);
+setLogLevel((process.env.ODYSSEY_LOG_LEVEL ?? process.env.CLAUDESTUDIO_LOG_LEVEL ?? "info") as any);
 
-const WS_PORT = parseInt(process.env.CLAUDESTUDIO_WS_PORT ?? "9849", 10);
-const HTTP_PORT = parseInt(process.env.CLAUDESTUDIO_HTTP_PORT ?? "9850", 10);
-const DATA_DIR = process.env.CLAUDESTUDIO_DATA_DIR ?? "~/.claudestudio";
+const WS_PORT = parseInt(process.env.ODYSSEY_WS_PORT ?? process.env.CLAUDESTUDIO_WS_PORT ?? "9849", 10);
+const HTTP_PORT = parseInt(process.env.ODYSSEY_HTTP_PORT ?? process.env.CLAUDESTUDIO_HTTP_PORT ?? "9850", 10);
+const DATA_DIR = process.env.ODYSSEY_DATA_DIR ?? process.env.CLAUDESTUDIO_DATA_DIR ?? "~/.odyssey";
 
 logger.info("sidecar", "Starting...");
 
@@ -30,6 +31,7 @@ const messages = new MessageStore();
 const channels = new ChatChannelStore();
 const workspaces = new WorkspaceStore();
 const peerRegistry = new PeerRegistry();
+const connectors = new ConnectorStore();
 const relayClient = new RelayClient((event) => broadcastFn(event));
 const agentDefinitions = new Map<string, AgentConfig>();
 const sseManager = new SseManager();
@@ -45,6 +47,7 @@ const toolContext: ToolContext = {
   channels,
   workspaces,
   peerRegistry,
+  connectors,
   relayClient,
   broadcast: (event) => broadcastFn(event),
   agentDefinitions,

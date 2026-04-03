@@ -1,10 +1,10 @@
-# ClaudeStudio — Claude Code Configuration
+# Odyssey — Claude Code Configuration
 
-Project-specific rules and context for AI coding agents working on ClaudeStudio.
+Project-specific rules and context for AI coding agents working on Odyssey.
 
 ## Project Overview
 
-ClaudeStudio is a native macOS app (Swift 6 / SwiftUI / SwiftData) with a TypeScript sidecar (Bun + Claude Agent SDK). The two processes communicate over a local WebSocket. The current shell is **project-first**: projects own threads, tasks, schedules, and workspace context. See `system-plan-vision.md` for the full architecture vision.
+Odyssey is a native macOS app (Swift 6 / SwiftUI / SwiftData) with a TypeScript sidecar (Bun + Claude Agent SDK). The two processes communicate over a local WebSocket. The current shell is **project-first**: projects own threads, tasks, schedules, and workspace context. See `system-plan-vision.md` for the full architecture vision.
 
 ## Architecture Rules
 
@@ -22,7 +22,7 @@ ClaudeStudio is a native macOS app (Swift 6 / SwiftUI / SwiftData) with a TypeSc
 - **No ViewModels** — views use `@Query` and `@Environment(\.modelContext)` directly
 - `AppState` is the single `@ObservableObject` for global UI state (sidecar status, selections, streaming buffers)
 - Use `AsyncStream` for event flows from `SidecarManager` to `AppState`
-- Target: **macOS 14.0+**, bundle ID: `com.claudestudio.app`
+- Target: **macOS 14.0+**, bundle ID: `com.odyssey.app`
 - Skills are app-level structured config: keep them in `AgentConfig.skills` and let the sidecar runtimes compile them once into provider instructions. `systemPrompt` should stay focused on the base prompt and mission.
 
 ### TypeScript Conventions
@@ -31,13 +31,13 @@ ClaudeStudio is a native macOS app (Swift 6 / SwiftUI / SwiftData) with a TypeSc
 - **ES modules** — all imports use `.js` extensions
 - Claude Agent SDK: use `query()` from `@anthropic-ai/claude-agent-sdk`
 - Session manager uses `permissionMode: "bypassPermissions"` for development
-- Blackboard persists to `~/.claudestudio/blackboard/{scope}.json`
+- Blackboard persists to `~/.odyssey/blackboard/{scope}.json`
 - Structured JSON logging via `logger.ts` — use `logger.info/warn/error/debug()` with categories, not `console.log()`
 
 ### Wire Protocol
 
 Commands (Swift → Sidecar) and events (Sidecar → Swift) are defined in:
-- Swift: `ClaudeStudio/Services/SidecarProtocol.swift` — `SidecarCommand`, `SidecarEvent`, `IncomingWireMessage`
+- Swift: `Odyssey/Services/SidecarProtocol.swift` — `SidecarCommand`, `SidecarEvent`, `IncomingWireMessage`
 - TypeScript: `sidecar/src/types.ts` — `SidecarCommand`, `SidecarEvent`
 
 When adding a new command or event:
@@ -52,10 +52,10 @@ Note: recent wire additions include `stream.image`, `stream.fileCard`, `stream.t
 ## File System Rules
 
 - **Never modify** `system-plan-vision.md` unless the current task explicitly includes architecture doc updates
-- **Swift sources** go under `ClaudeStudio/` following the existing directory structure
+- **Swift sources** go under `Odyssey/` following the existing directory structure
 - **Sidecar sources** go under `sidecar/src/`
 - **Tests** go under `sidecar/test/`
-- Runtime data goes under `~/.claudestudio/` (logs, blackboard, repos, sandboxes, workspaces)
+- Runtime data goes under `~/.odyssey/` (logs, blackboard, repos, sandboxes, workspaces)
 
 ## Build System
 
@@ -69,14 +69,14 @@ Note: recent wire additions include `stream.image`, `stream.fileCard`, `stream.t
 
 | Port | Service | Configurable Via |
 |---|---|---|
-| 9849 | WebSocket (Swift ↔ Sidecar) | `CLAUDESTUDIO_WS_PORT` |
-| 9850 | Blackboard HTTP API | `CLAUDESTUDIO_HTTP_PORT` |
+| 9849 | WebSocket (Swift ↔ Sidecar) | `ODYSSEY_WS_PORT` |
+| 9850 | Blackboard HTTP API | `ODYSSEY_HTTP_PORT` |
 
 The Task Board REST API is served on the same HTTP port (9850) under `/api/v1/tasks`.
 
 ## Data Model (SwiftData)
 
-Core entities (all in `ClaudeStudio/Models/`):
+Core entities (all in `Odyssey/Models/`):
 
 - `Agent` — template with skills, MCPs, permissions, instance policy, optional GitHub repo
 - `Session` — running instance with status, mode, workspace type, cost tracking
@@ -114,7 +114,7 @@ Core entities (all in `ClaudeStudio/Models/`):
 - Resizable chat/inspector split with persistent divider
 - Conversation archive/unarchive
 - Multi-instance support (`InstanceConfig`, `--instance` flag)
-- Launch parameters (`LaunchIntent`, `--chat`/`--agent`/`--group`/`--prompt`/`--workdir`/`--autonomous`) and `claudestudio://` URL scheme
+- Launch parameters (`LaunchIntent`, `--chat`/`--agent`/`--group`/`--prompt`/`--workdir`/`--autonomous`) and `odyssey://` URL scheme
 - Group peer fan-out (`GroupPeerFanOutContext`, budget limiter, deduplication)
 - P2P LAN networking (Bonjour discovery, `PeerCatalogServer`, `PeerAgentImporter`, `PeerNetworkView`)
 - Full accessibility coverage (347+ identifiers)
@@ -207,7 +207,7 @@ When adding new views, pick a unique camelCase prefix and annotate every interac
 ## Testing
 
 See `TESTING.md` for the complete testing guide, including:
-- XCTest: group chat coverage in `ClaudeStudioTests/GroupPromptBuilderTests.swift` (transcript, peer prompts, fan-out context)
+- XCTest: group chat coverage in `OdysseyTests/GroupPromptBuilderTests.swift` (transcript, peer prompts, fan-out context)
 - Three testing layers (XCTest, AppXray, Argus)
 - Full screen-by-screen control inventory with all `accessibilityIdentifier` and `accessibilityLabel` values
 - AppXray selector syntax (`@testId`, `@label`, `@text`, `@type`)
@@ -217,8 +217,8 @@ See `TESTING.md` for the complete testing guide, including:
 ## Common Tasks
 
 ### Adding a new SwiftData model
-1. Create `ClaudeStudio/Models/NewModel.swift` with `@Model` class
-2. Add to the model container in `ClaudeStudioApp.swift` `.modelContainer(for: [...])`
+1. Create `Odyssey/Models/NewModel.swift` with `@Model` class
+2. Add to the model container in `OdysseyApp.swift` `.modelContainer(for: [...])`
 3. Regenerate Xcode project if needed: `xcodegen generate`
 
 ### Adding a new sidecar command
@@ -235,10 +235,10 @@ See `TESTING.md` for the complete testing guide, including:
 
 ### Adding a new launch parameter
 
-1. Add the flag to `LaunchIntent.fromCommandLine()` in `ClaudeStudio/App/LaunchIntent.swift`
+1. Add the flag to `LaunchIntent.fromCommandLine()` in `Odyssey/App/LaunchIntent.swift`
 2. Add the URL query parameter to `LaunchIntent.fromURL()` in the same file
 3. Add any new fields to the `LaunchIntent` struct
-4. Handle the new field in `AppState.executeLaunchIntent()` in `ClaudeStudio/App/AppState.swift`
+4. Handle the new field in `AppState.executeLaunchIntent()` in `Odyssey/App/AppState.swift`
 
 ### Launch parameter flow
 
@@ -246,7 +246,7 @@ See `TESTING.md` for the complete testing guide, including:
 - **Execution**: `AppState.executeLaunchIntent(_:modelContext:)` — SwiftData lookup + session creation
 - **Prompt queue**: `AppState.pendingAutoPrompt` — drained on sidecar `.connected` event via `drainPendingAutoPrompt()`
 - **Errors**: `AppState.launchError` — shown as alert in `MainWindowView`
-- **URL scheme**: `claudestudio://` registered in `ClaudeStudio/Resources/Info.plist`
+- **URL scheme**: `odyssey://` registered in `Odyssey/Resources/Info.plist` (with legacy aliases preserved)
 
 ### Adding a new task board tool
 

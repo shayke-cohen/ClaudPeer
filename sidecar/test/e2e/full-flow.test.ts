@@ -1,5 +1,5 @@
 /**
- * End-to-end tests for the ClaudeStudio sidecar.
+ * End-to-end tests for the Odyssey sidecar.
  *
  * Boots the full sidecar (index.ts) as a subprocess, then exercises:
  * - WebSocket connect + sidecar.ready
@@ -14,7 +14,7 @@
  * Note: These tests require `bun` available in PATH. They boot a real sidecar
  * on random ports and clean up after. Claude SDK calls are real — tests that
  * involve session.message + actual Claude responses are skipped unless
- * CLAUDESTUDIO_E2E_LIVE=1 is set (to avoid API costs in CI).
+ * ODYSSEY_E2E_LIVE=1 is set (to avoid API costs in CI).
  */
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { spawn, type Subprocess } from "bun";
@@ -25,8 +25,8 @@ import { BufferedWs, wsConnect as wsConnectHelper, waitForHealth as waitForHealt
 
 const WS_PORT = 29849 + Math.floor(Math.random() * 500);
 const HTTP_PORT = 29850 + Math.floor(Math.random() * 500);
-const DATA_DIR = mkdtempSync(join(tmpdir(), "claudestudio-e2e-"));
-const isLive = process.env.CLAUDESTUDIO_E2E_LIVE === "1";
+const DATA_DIR = mkdtempSync(join(tmpdir(), "odyssey-e2e-"));
+const isLive = (process.env.ODYSSEY_E2E_LIVE ?? process.env.CLAUDESTUDIO_E2E_LIVE) === "1";
 
 let proc: Subprocess;
 
@@ -42,6 +42,9 @@ beforeAll(async () => {
     cmd: ["bun", "run", sidecarPath],
     env: {
       ...process.env,
+      ODYSSEY_WS_PORT: String(WS_PORT),
+      ODYSSEY_HTTP_PORT: String(HTTP_PORT),
+      ODYSSEY_DATA_DIR: DATA_DIR,
       CLAUDESTUDIO_WS_PORT: String(WS_PORT),
       CLAUDESTUDIO_HTTP_PORT: String(HTTP_PORT),
       CLAUDESTUDIO_DATA_DIR: DATA_DIR,

@@ -26,8 +26,8 @@ Add the ability to attach a GitHub repo to a running conversation via a sheet ac
 
 ### New Service: `RecentRepos.swift`
 Mirrors `RecentDirectories` structure (but skips `fileExists` check since repos are remote):
-- File: `ClaudeStudio/Services/RecentRepos.swift`
-- Persists to `~/.claudestudio/recent-repos.json`
+- File: `Odyssey/Services/RecentRepos.swift`
+- Persists to `~/.odyssey/recent-repos.json`
 - `enum RecentRepos` with static methods: `load() -> [String]`, `add(_ repo: String)`
 - Max 10 entries, stores `org/repo` or full URL strings
 - Validates format (contains `/` or starts with `https://` / `git@`) instead of filesystem existence
@@ -55,7 +55,7 @@ Files affected:
 - `sidecar/src/stores/session-registry.ts` — add `updateConfig()` method
 - `sidecar/src/ws-server.ts` — add handler
 - `sidecar/src/types.ts` — add command type
-- `ClaudeStudio/Services/SidecarProtocol.swift` — add Swift command case + encoding
+- `Odyssey/Services/SidecarProtocol.swift` — add Swift command case + encoding
 
 ---
 
@@ -80,7 +80,7 @@ Workspace (headline)
 [ Local Directory | GitHub Repo ]     ← segmented picker
 
 ── Local Directory tab ──
-Recent: [ClaudeStudio] [appxray] [project-x]    ← capsule chips, horizontal scroll
+Recent: [Odyssey] [appxray] [project-x]    ← capsule chips, horizontal scroll
 Directory: [__/path/to/dir__________] 📁      ← text field + browse button
 
 ── GitHub Repo tab ──
@@ -88,7 +88,7 @@ Recent: [acme/backend] [acme/frontend]        ← capsule chips
 Repo:   [__org/repo or URL__________]         ← text field
 Branch: [__main___________]                   ← text field, default "main"
 Mode:   [ Clone | Worktree ]                  ← segmented picker
-Path:   ~/.claudestudio/repos/acme-backend       ← computed, read-only
+Path:   ~/.odyssey/repos/acme-backend       ← computed, read-only
 [Validate / Clone]                            ← action button
 ── Issue (optional) ──
 Issue: [#__] [Fetch]                          ← same as existing
@@ -128,11 +128,11 @@ case .githubRepo:
 // For multi-agent: GroupWorkingDirectory.ensureShared() normalizes afterward
 ```
 
-**Recent chips accessibility:** Each chip gets both `.accessibilityIdentifier` and `.accessibilityLabel` — e.g., `"Select recent directory: ClaudeStudio at /Users/shayco/ClaudeStudio"`.
+**Recent chips accessibility:** Each chip gets both `.accessibilityIdentifier` and `.accessibilityLabel` — e.g., `"Select recent directory: Odyssey at /Users/shayco/Odyssey"`.
 
 ### Attach Repo Sheet (Feature 3)
 
-**New file**: `ClaudeStudio/Views/MainWindow/AttachRepoSheet.swift`
+**New file**: `Odyssey/Views/MainWindow/AttachRepoSheet.swift`
 
 **Entry points (both):**
 
@@ -174,22 +174,22 @@ Branch: [__main___________]
 
 | File | Purpose |
 |------|---------|
-| `ClaudeStudio/Services/RecentRepos.swift` | Recent GitHub repos persistence (mirrors `RecentDirectories`) |
-| `ClaudeStudio/Views/MainWindow/AttachRepoSheet.swift` | Sheet for attaching a repo to existing conversations |
+| `Odyssey/Services/RecentRepos.swift` | Recent GitHub repos persistence (mirrors `RecentDirectories`) |
+| `Odyssey/Views/MainWindow/AttachRepoSheet.swift` | Sheet for attaching a repo to existing conversations |
 
 ### Modified Files (7)
 
 | File | Changes |
 |------|---------|
-| `ClaudeStudio/Views/MainWindow/NewSessionSheet.swift` | Replace `SessionDirMode` with `WorkspaceTab` + `GitHubWorkspaceMode`; remove `singleAgentWithGithub` gating; add tabbed workspace section with chips; remove directory from optionsSection; simplify `createSessionAsync()` |
-| `ClaudeStudio/Views/MainWindow/ChatView.swift` | Add "Attach GitHub Repo" menu item in header menu; add `@State showAttachRepoSheet`; add `.sheet` modifier |
-| `ClaudeStudio/Views/MainWindow/InspectorView.swift` | Add "Attach Repo" button (outside `hasWorkingDirectory` guard); add `@State showAttachRepoSheet`; add `.sheet` modifier |
-| `ClaudeStudio/Services/SidecarProtocol.swift` | Add `sessionUpdateCwd` case to `SidecarCommand` + encoding |
+| `Odyssey/Views/MainWindow/NewSessionSheet.swift` | Replace `SessionDirMode` with `WorkspaceTab` + `GitHubWorkspaceMode`; remove `singleAgentWithGithub` gating; add tabbed workspace section with chips; remove directory from optionsSection; simplify `createSessionAsync()` |
+| `Odyssey/Views/MainWindow/ChatView.swift` | Add "Attach GitHub Repo" menu item in header menu; add `@State showAttachRepoSheet`; add `.sheet` modifier |
+| `Odyssey/Views/MainWindow/InspectorView.swift` | Add "Attach Repo" button (outside `hasWorkingDirectory` guard); add `@State showAttachRepoSheet`; add `.sheet` modifier |
+| `Odyssey/Services/SidecarProtocol.swift` | Add `sessionUpdateCwd` case to `SidecarCommand` + encoding |
 | `sidecar/src/types.ts` | Add `session.updateCwd` to `SidecarCommand` union |
 | `sidecar/src/stores/session-registry.ts` | Add `updateConfig(id, updates)` method |
 | `sidecar/src/ws-server.ts` | Add `session.updateCwd` handler |
 
-Also update `ClaudeStudio/CLAUDE.md` — add `AttachRepoSheet` to accessibility identifier prefix map.
+Also update `Odyssey/CLAUDE.md` — add `AttachRepoSheet` to accessibility identifier prefix map.
 
 ### Unchanged (reused as-is)
 

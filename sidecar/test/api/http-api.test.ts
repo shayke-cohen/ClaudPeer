@@ -4,7 +4,7 @@
  * Boots a real HttpServer on a random port and tests all REST endpoints.
  * Tests WebSocket protocol framing (connect, ready event, command dispatch).
  *
- * Usage: CLAUDESTUDIO_DATA_DIR=/tmp/claudestudio-test-$(date +%s) bun test test/api/http-api.test.ts
+ * Usage: ODYSSEY_DATA_DIR=/tmp/odyssey-test-$(date +%s) bun test test/api/http-api.test.ts
  */
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "bun:test";
 import { BlackboardStore } from "../../src/stores/blackboard-store.js";
